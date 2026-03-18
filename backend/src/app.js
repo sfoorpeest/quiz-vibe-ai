@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const authRoutes = require('./routes/authRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 require('dotenv').config();
 
 const { connectDB } = require('./config/database');
@@ -15,6 +16,7 @@ app.use(cors()); // Cho phép FE truy cập
 app.use(morgan('dev')); // Log request ra console
 app.use(express.json()); // Đọc dữ liệu JSON từ request body
 app.use('/api/auth', authRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // Kết nối Database
 connectDB();
