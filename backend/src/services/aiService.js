@@ -2,36 +2,50 @@ const axios = require('axios');
 
 exports.generateQuizFromAI = async (topic, limit = 5) => {
     try {
-        const response = await axios.post('https://api.deepseek.com/v1/chat/completions', {
-            model: "deepseek-chat",
-            messages: [
-                {
-                    role: "system",
-                    content: "Bạn là chuyên gia giáo dục. Chỉ trả về dữ liệu định dạng JSON duy nhất. Cấu trúc: {\"questions\": [{\"question\": \"...\", \"options\": [\"...\"], \"correct_answer\": \"...\"}]}"
-                },
-                {
-                    role: "user",
-                    content: `Tạo ${limit} câu hỏi trắc nghiệm về: ${topic}`
-                }
-            ],
-            // Thêm các tham số tối ưu hóa
-            response_format: { type: 'json_object' },
-            max_tokens: 2000, 
-            temperature: 0.7 
-        }, {
-            headers: {
-                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                'Content-Type': 'application/json'
+        // SỬ DỤNG MODEL THÀNH CÔNG NHẤT TỪ FILE TEST: gemini-2.5-flash
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+        const prompt = `Bạn là một chuyên gia giáo dục. 
+        Hãy tạo ${limit} câu hỏi trắc nghiệm về chủ đề: ${topic}.
+        Yêu cầu trả về định dạng JSON duy nhất là một mảng các đối tượng:
+        [
+          {
+            "question": "Nội dung câu hỏi",
+            "options": ["A", "B", "C", "D"],
+            "correct_answer": "Nội dung của đáp án đúng"
+          }
+        ]
+        Chỉ trả về JSON thuần túy, không kèm lời dẫn hay markdown.`;
+
+        const response = await axios.post(url, {
+            contents: [{
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                // Model 2.5 hỗ trợ cực tốt việc ép kiểu JSON
+                response_mime_type: "application/json",
+                temperature: 0.7
             }
         });
 
-        const content = JSON.parse(response.data.choices[0].message.content);
-        return content.questions;
+        // Trích xuất text từ response của Gemini 2.5
+        const text = response.data.candidates[0].content.parts[0].text;
+        
+        // Parse JSON (Gemini 2.5 thường trả về JSON sạch, nhưng ta vẫn dùng try-catch cho chắc)
+        const parsedData = JSON.parse(text);
+
+        return Array.isArray(parsedData) ? parsedData : (parsedData.questions || [parsedData]);
+
     } catch (error) {
-        // Log chi tiết lỗi để bạn dễ theo dõi
-        if (error.response && error.response.data) {
-            console.error("DeepSeek API Detail:", error.response.data);
-        }
-        throw new Error("Lỗi kết nối DeepSeek: " + (error.response?.data?.error?.message || error.message));
+        console.error("❌ Gemini 2.5 API Error:", error.response?.data || error.message);
+        
+        // Fallback (Dữ liệu dự phòng)
+        return [
+            {
+                question: `Câu hỏi dự phòng về ${topic} (Hệ thống AI đang phản hồi chậm)`,
+                options: ["Đáp án 1", "Đáp án 2", "Đáp án 3", "Đáp án 4"],
+                correct_answer: "Đáp án 1"
+            }
+        ];
     }
 };
