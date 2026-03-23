@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { BrainCircuit, Eye, EyeOff, Loader2, User, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BrainCircuit, Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
@@ -18,7 +18,7 @@ export default function Login() {
   const [successMsg, setSuccessMsg] = useState(location.state?.successMessage || '');
 
   const [formData, setFormData] = useState({ 
-    name: '', 
+    email: '', 
     password: ''
   });
 
@@ -44,8 +44,8 @@ export default function Login() {
     e.preventDefault();
     
     // Quick validation
-    if (!formData.name || !formData.password) {
-      setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+    if (!formData.email || !formData.password) {
+      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
       return;
     }
 
@@ -54,7 +54,7 @@ export default function Login() {
     setSuccessMsg('');
     
     try {
-      const response = await authService.login(formData.name, formData.password);
+      const response = await authService.login(formData.email, formData.password);
       
       // Save user and token to context/LocalStorage (implemented in AuthContext)
       login(response.user, response.token);
@@ -106,23 +106,23 @@ export default function Login() {
           {/* Form */}
           <form onSubmit={handleSubmit} method="POST" action="#" className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-200 mb-1.5" htmlFor="name">
-                Tên đăng nhập
+              <label className="block text-sm font-bold text-slate-200 mb-1.5" htmlFor="email">
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User size={20} className="text-slate-400" />
+                  <Mail size={20} className="text-slate-400" />
                 </div>
                 <input
-                  id="name"
-                  name="name"
-                  type="text"
+                  id="email"
+                  name="email"
+                  type="email"
                   required
                   autoComplete="username"
-                  value={formData.name}
+                  value={formData.email}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                  placeholder="nhập tên đăng nhập của bạn..."
+                  placeholder="email@example.com"
                 />
               </div>
             </div>

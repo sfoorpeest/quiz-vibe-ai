@@ -1,17 +1,30 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken'); // 1. Thêm thư viện JWT
+const jwt = require('jsonwebtoken');
 
-// --- HÀM ĐĂNG KÝ (Giữ nguyên của bạn) ---
+// --- HÀM ĐĂNG KÝ (Kiểm tra nghiêm ngặt mã bí mật & Tự động đăng nhập) ---
 exports.register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role, secretCode } = req.body;
 
-        const nameExists = await User.findOne({ where: { name } });
-        if (nameExists) return res.status(400).json({ message: "Tên đăng nhập đã tồn tại" });
+        const userExists = await User.findOne({ where: { email } });
+        if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
 
-        const emailExists = await User.findOne({ where: { email } });
-        if (emailExists) return res.status(400).json({ message: "Email đã tồn tại" });
+        // Theo dõi role được gán
+        let assignedRoleId = 1; // Học sinh
+
+        // Kiểm tra nghiêm ngặt mã phân quyền
+        if (role === 'admin') {
+            if (secretCode !== process.env.ADMIN_SECRET_CODE) {
+                return res.status(400).json({ message: "Mã bí mật Admin không chính xác!" });
+            }
+            assignedRoleId = 3;
+        } else if (role === 'teacher') {
+            if (secretCode !== process.env.TEACHER_SECRET_CODE) {
+                return res.status(400).json({ message: "Mã bí mật Giáo viên không chính xác!" });
+            }
+            assignedRoleId = 2;
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -20,48 +33,57 @@ exports.register = async (req, res) => {
             name,
             email,
             password_hash: hashedPassword,
-            role_id: 1 
+            role_id: assignedRoleId 
         });
 
-        res.status(201).json({ message: "Đăng ký thành công!", userId: newUser.id });
+        // Tạo JWT Token y hệt như đăng nhập để Client lưu vào LocalStorage
+        const token = jwt.sign(
+            { id: newUser.id, role_id: newUser.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // Trả về user và token
+        res.status(201).json({ 
+            message: "Đăng ký thành công!", 
+            token,
+            user: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                role_id: newUser.role_id
+            }
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// --- HÀM ĐĂNG NHẬP (Bổ sung mới) ---
+// --- HÀM ĐĂNG NHẬP (Đăng nhập bằng Email) ---
 exports.login = async (req, res) => {
     try {
-        const { name, password } = req.body;
+        const { email, password } = req.body;
+        const user = await User.findOne({ where: { email } });
+        
+        if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
 
-        // 1. Tìm user trong DB theo tên (thay vì email)
-        const user = await User.findOne({ where: { name } });
-        if (!user) {
-            return res.status(404).json({ message: "Tên đăng nhập không tồn tại" });
-        }
-
-        // 2. So sánh mật khẩu người dùng nhập với mật khẩu đã mã hóa trong DB
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Mật khẩu không chính xác" });
-        }
+        if (!isMatch) return res.status(401).json({ message: "Mật khẩu không chính xác" });
 
-        // 3. Tạo JWT Token (Sử dụng JWT_SECRET từ file .env)
-        // Token này sẽ chứa ID và Quyền của user, hết hạn sau 24 giờ
         const token = jwt.sign(
-            { id: user.id, role_id: user.role_id },
+            { id: user.id, role_id: user.role_id }, // Payload quan trọng cho middleware
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
 
-        // 4. Trả về Token và thông tin cơ bản của User
         res.json({
             message: "Đăng nhập thành công!",
             token,
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                role_id: user.role_id // Trả về để FE xử lý giao diện
             }
         });
     } catch (error) {

@@ -166,10 +166,12 @@ export default function Home() {
                 Bắt đầu học ngay
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <Link to="#features" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800/90 backdrop-blur-xl text-blue-300 px-8 py-4 rounded-xl font-semibold border border-slate-700 hover:border-slate-600 hover:bg-slate-800 shadow-xl transition-all text-lg">
-                <Play className="w-5 h-5" />
-                Tạo quiz
-              </Link>
+              {user.role_id !== 1 && (
+                <Link to="#features" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800/90 backdrop-blur-xl text-blue-300 px-8 py-4 rounded-xl font-semibold border border-slate-700 hover:border-slate-600 hover:bg-slate-800 shadow-xl transition-all text-lg">
+                  <Play className="w-5 h-5" />
+                  Tạo quiz
+                </Link>
+              )}
             </div>
           )}
         </div>

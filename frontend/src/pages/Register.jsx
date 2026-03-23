@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BrainCircuit, Eye, EyeOff, Loader2, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { BrainCircuit, Eye, EyeOff, Loader2, Mail, Lock, User, AlertCircle, Shield, GraduationCap, Crown } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { login, token } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedRole, setSelectedRole] = useState('student'); // 'student' | 'teacher' | 'admin'
 
   // Redirect if already logged in
   useEffect(() => {
@@ -26,8 +27,18 @@ export default function Register() {
     email: '', 
     password: '', 
     confirmPassword: '',
+    secretCode: '',
     agreeTerms: false 
   });
+
+  const handleRoleSelect = (role) => {
+    setSelectedRole(role);
+    // Clear secret code when switching back to student
+    if (role === 'student') {
+      setFormData(prev => ({ ...prev, secretCode: '' }));
+    }
+    if (error) setError('');
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -48,6 +59,9 @@ export default function Register() {
     if (formData.password.length < 6) {
       return "Mật khẩu phải có ít nhất 6 ký tự.";
     }
+    if (selectedRole !== 'student' && !formData.secretCode.trim()) {
+      return `Vui lòng nhập mã xác thực để đăng ký với vai trò ${selectedRole === 'teacher' ? 'Giáo viên' : 'Admin'}.`;
+    }
     if (!formData.agreeTerms) {
       return "Bạn cần đồng ý với các Điều khoản & Chính sách.";
     }
@@ -66,12 +80,13 @@ export default function Register() {
     setError('');
 
     try {
-      await authService.register(formData.name, formData.email, formData.password);
+      const response = await authService.register(formData.name, formData.email, formData.password, selectedRole, formData.secretCode);
       
-      // Redirect to login page and pass a success message
-      navigate('/login', { 
-        state: { successMessage: 'Đăng ký thành công! Vui lòng đăng nhập.' } 
-      });
+      // Tự động đăng nhập
+      login(response.user, response.token);
+
+      // Chuyển hướng về trang chủ
+      navigate('/', { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message || 
@@ -109,7 +124,7 @@ export default function Register() {
 
             <div>
               <label className="block text-sm font-bold text-slate-200 mb-1.5" htmlFor="name">
-                Tên đăng nhập
+                Tên người dùng
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -120,11 +135,11 @@ export default function Register() {
                   name="name"
                   type="text"
                   required
-                  autoComplete="username"
+                  autoComplete="name"
                   value={formData.name}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium shadow-sm"
-                  placeholder="nhập tên tài khoản..."
+                  placeholder="nhập họ tên của bạn..."
                 />
               </div>
             </div>
@@ -142,7 +157,7 @@ export default function Register() {
                   name="email"
                   type="email"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   value={formData.email}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium shadow-sm"
@@ -213,6 +228,96 @@ export default function Register() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Role Selector */}
+            <div>
+              <label className="block text-sm font-bold text-slate-200 mb-2.5">
+                Bạn là ai?
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Student */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('student')}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                    selectedRole === 'student'
+                      ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800'
+                  }`}
+                >
+                  <User className={`w-5 h-5 transition-colors ${selectedRole === 'student' ? 'text-blue-400' : 'text-slate-400'}`} />
+                  <span className={`text-xs font-bold transition-colors ${selectedRole === 'student' ? 'text-blue-300' : 'text-slate-400'}`}>
+                    Học sinh
+                  </span>
+                </button>
+
+                {/* Teacher */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('teacher')}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                    selectedRole === 'teacher'
+                      ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/20'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800'
+                  }`}
+                >
+                  <GraduationCap className={`w-5 h-5 transition-colors ${selectedRole === 'teacher' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <span className={`text-xs font-bold transition-colors ${selectedRole === 'teacher' ? 'text-emerald-300' : 'text-slate-400'}`}>
+                    Giáo viên
+                  </span>
+                </button>
+
+                {/* Admin */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('admin')}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                    selectedRole === 'admin'
+                      ? 'border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/20'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600 hover:bg-slate-800'
+                  }`}
+                >
+                  <Crown className={`w-5 h-5 transition-colors ${selectedRole === 'admin' ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span className={`text-xs font-bold transition-colors ${selectedRole === 'admin' ? 'text-amber-300' : 'text-slate-400'}`}>
+                    Admin
+                  </span>
+                </button>
+              </div>
+
+              {/* Secret Code Input - shown only for Teacher/Admin */}
+              {selectedRole !== 'student' && (
+                <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-bold mb-1.5" htmlFor="secretCode"
+                    style={{ color: selectedRole === 'teacher' ? '#6ee7b7' : '#fcd34d' }}
+                  >
+                    <Shield className="w-4 h-4 inline-block mr-1 -mt-0.5" />
+                    Mã xác thực {selectedRole === 'teacher' ? 'Giáo viên' : 'Admin'}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Shield className="h-5 w-5" style={{ color: selectedRole === 'teacher' ? '#34d399' : '#fbbf24' }} />
+                    </div>
+                    <input
+                      id="secretCode"
+                      name="secretCode"
+                      type="password"
+                      autoComplete="off"
+                      value={formData.secretCode}
+                      onChange={handleChange}
+                      className={`block w-full pl-10 pr-3 py-3 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all font-medium shadow-sm ${
+                        selectedRole === 'teacher'
+                          ? 'border-emerald-700/50 bg-emerald-950/30 focus:ring-emerald-500'
+                          : 'border-amber-700/50 bg-amber-950/30 focus:ring-amber-500'
+                      }`}
+                      placeholder={`Nhập mã bí mật ${selectedRole === 'teacher' ? 'giáo viên' : 'admin'}...`}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5 font-medium">
+                    Liên hệ quản trị viên để nhận mã xác thực phân quyền.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-start mt-2">
