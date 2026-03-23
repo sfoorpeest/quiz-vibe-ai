@@ -1,14 +1,21 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken'); // 1. Thêm thư viện JWT
+const jwt = require('jsonwebtoken');
 
-// --- HÀM ĐĂNG KÝ (Giữ nguyên của bạn) ---
 exports.register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, secretCode } = req.body; // Nhận thêm secretCode từ FE
 
         const userExists = await User.findOne({ where: { email } });
         if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
+
+        // Logic phân quyền dựa trên mã bí mật
+        let assignedRoleId = 1; // Mặc định là Student
+        if (secretCode === process.env.ADMIN_SECRET_CODE) {
+            assignedRoleId = 3;
+        } else if (secretCode === process.env.TEACHER_SECRET_CODE) {
+            assignedRoleId = 2;
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -17,48 +24,42 @@ exports.register = async (req, res) => {
             name,
             email,
             password_hash: hashedPassword,
-            role_id: 1 
+            role_id: assignedRoleId 
         });
 
-        res.status(201).json({ message: "Đăng ký thành công!", userId: newUser.id });
+        res.status(201).json({ 
+            message: "Đăng ký thành công!", 
+            role_id: assignedRoleId 
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// --- HÀM ĐĂNG NHẬP (Bổ sung mới) ---
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        // 1. Tìm user trong DB theo email
         const user = await User.findOne({ where: { email } });
-        if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
-        }
+        
+        if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
 
-        // 2. So sánh mật khẩu người dùng nhập với mật khẩu đã mã hóa trong DB
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Mật khẩu không chính xác" });
-        }
+        if (!isMatch) return res.status(401).json({ message: "Mật khẩu không chính xác" });
 
-        // 3. Tạo JWT Token (Sử dụng JWT_SECRET từ file .env)
-        // Token này sẽ chứa ID và Quyền của user, hết hạn sau 24 giờ
         const token = jwt.sign(
-            { id: user.id, role_id: user.role_id },
+            { id: user.id, role_id: user.role_id }, // Payload quan trọng cho middleware
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
 
-        // 4. Trả về Token và thông tin cơ bản của User
         res.json({
             message: "Đăng nhập thành công!",
             token,
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                role_id: user.role_id // Trả về để FE xử lý giao diện
             }
         });
     } catch (error) {

@@ -1,3 +1,9 @@
+-- 1. Tạo Database nếu chưa có
+CREATE DATABASE IF NOT EXISTS `education_quiz_db`;
+
+-- 2. Chỉ định MySQL sử dụng database này cho các lệnh phía dưới
+USE `education_quiz_db`;
+
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `questions`;
 DROP TABLE IF EXISTS `quizzes`;
