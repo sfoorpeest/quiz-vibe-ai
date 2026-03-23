@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import ChangePassword from './pages/ChangePassword';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -12,6 +14,14 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route 
+            path="/change-password" 
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

@@ -68,3 +68,35 @@ exports.login = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// --- HÀM ĐỔI MẬT KHẨU ---
+exports.changePassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        const userId = req.user.id; // Lấy từ authMiddleware
+
+        // 1. Tìm user trong DB theo ID
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại" });
+        }
+
+        // 2. Kiểm tra mật khẩu cũ
+        const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Mật khẩu cũ không chính xác" });
+        }
+
+        // 3. Mã hóa mật khẩu mới
+        const salt = await bcrypt.genSalt(10);
+        const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+        // 4. Cập nhật vào Database
+        user.password_hash = hashedNewPassword;
+        await user.save();
+
+        res.json({ message: "Đổi mật khẩu thành công!" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

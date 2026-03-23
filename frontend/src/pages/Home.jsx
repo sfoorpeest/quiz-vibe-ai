@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -76,32 +77,39 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {/* Menu Actions */}
                     <div className="p-2 space-y-1">
-                      <Link 
-                        to="#profile" 
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group"
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('#profile'); // Tạm thời để anchor
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
                       >
                         <User className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
                         Hồ sơ cá nhân
-                      </Link>
-                      <Link 
-                        to="#password" 
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group"
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('/change-password');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
                       >
                         <Key className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
                         Đổi mật khẩu
-                      </Link>
-                      <Link 
-                        to="#settings" 
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group"
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('#settings'); // Tạm thời để anchor
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
                       >
                         <Settings className="w-4 h-4 text-purple-400 group-hover:rotate-90 transition-transform duration-300" />
                         Cài đặt hệ thống
-                      </Link>
+                      </button>
                     </div>
                     
                     {/* Logout Footer */}

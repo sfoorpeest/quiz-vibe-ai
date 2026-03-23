@@ -10,6 +10,10 @@ export const authService = {
     const response = await api.post('/api/auth/register', { name, email, password });
     return response.data;
   },
+  changePassword: async (oldPassword, newPassword) => {
+    const response = await api.post('/api/auth/change-password', { oldPassword, newPassword });
+    return response.data;
+  },
 
   logout: () => {
     localStorage.removeItem('token');
