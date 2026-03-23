@@ -6,7 +6,11 @@ const ApiLog = sequelize.define('ApiLog', {
     user_id: { type: DataTypes.INTEGER },
     api_name: { type: DataTypes.STRING(100) },
     request_payload: { type: DataTypes.TEXT },
-    response_text: { type: DataTypes.TEXT }
+    response_text: { type: DataTypes.TEXT },
+    created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
 }, { 
     tableName: 'api_logs', 
     timestamps: false 

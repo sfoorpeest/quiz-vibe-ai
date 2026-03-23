@@ -31,11 +31,9 @@ export default function Register() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    // Map input name 'username' back to 'email' state key
-    const fieldName = name === 'username' ? 'email' : name;
     setFormData(prev => ({
       ...prev,
-      [fieldName]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value
     }));
     if (error) setError('');
   };
@@ -92,7 +90,7 @@ export default function Register() {
         <div className="bg-slate-900/80 backdrop-blur-xl rounded-4xl shadow-2xl shadow-blue-500/10 border border-slate-700/50 p-8 sm:p-10 mb-6 relative z-10">
           
           <div className="flex flex-col items-center mb-8">
-            <Link to="/" className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 hover:scale-105 transition-transform">
+            <Link to="/" className="w-16 h-16 bg-linear-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 hover:scale-105 transition-transform">
               <BrainCircuit className="text-white w-8 h-8" />
             </Link>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-50 mb-2 tracking-tight">Tạo tài khoản mới</h1>
@@ -122,7 +120,7 @@ export default function Register() {
                   name="name"
                   type="text"
                   required
-                  autoComplete="name"
+                  autoComplete="username"
                   value={formData.name}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium shadow-sm"
@@ -141,10 +139,10 @@ export default function Register() {
                 </div>
                 <input
                   id="email"
-                  name="username"
+                  name="email"
                   type="email"
                   required
-                  autoComplete="username"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium shadow-sm"

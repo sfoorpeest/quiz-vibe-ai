@@ -51,11 +51,11 @@ const AnimatedBackground = () => {
       <div className="absolute top-[75%] right-[15%] w-[35vw] h-[35vw] rounded-full bg-violet-500/10 blur-[110px] animate-pulse-soft" style={{ animationDelay: '2.5s' }} />
       
       {/* Lighter, more subtle overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-cyan-900/10 via-transparent to-purple-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-tr from-cyan-900/10 via-transparent to-purple-900/10 pointer-events-none" />
       <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] rounded-full bg-slate-900/40 blur-[160px]" />
 
       {/* Modern dotted grid for academic / notebook feel */}
-      <div className="absolute inset-0 bg-grid-edu opacity-20 [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-grid-edu opacity-20 mask-[radial-gradient(ellipse_at_center,black,transparent_80%)] pointer-events-none" />
 
       {/* Draggable 3D Cubes/Rings */}
       <motion.div 
@@ -64,7 +64,7 @@ const AnimatedBackground = () => {
         animate={{ rotateX: [30, 390], rotateY: [0, 360], rotateZ: [15, 375] }}
         transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
       >
-        <div className="w-20 h-20 bg-gradient-to-br from-cyan-900/80 to-slate-800 rounded-[2rem] shadow-2xl shadow-cyan-900/40 border-2 border-slate-700/50 backdrop-blur-md transform-3d" />
+        <div className="w-20 h-20 bg-linear-to-br from-cyan-900/80 to-slate-800 rounded-4xl shadow-2xl shadow-cyan-900/40 border-2 border-slate-700/50 backdrop-blur-md transform-3d" />
       </motion.div>
 
       <motion.div 

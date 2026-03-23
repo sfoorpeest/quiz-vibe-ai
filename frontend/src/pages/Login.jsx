@@ -59,7 +59,6 @@ export default function Login() {
       // Save user and token to context/LocalStorage (implemented in AuthContext)
       login(response.user, response.token);
 
-
       // Redirect to home or requested previous page (can be handled via location.state?.from)
       navigate('/', { replace: true });
     } catch (err) {
@@ -81,7 +80,7 @@ export default function Login() {
           
           {/* Logo & Header */}
           <div className="flex flex-col items-center mb-8">
-            <Link to="/" className="w-16 h-16 bg-gradient-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 hover:scale-105 transition-transform">
+            <Link to="/" className="w-16 h-16 bg-linear-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 hover:scale-105 transition-transform">
               <BrainCircuit className="text-white w-8 h-8" />
             </Link>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50 mb-2">Chào mừng trở lại!</h1>
@@ -161,7 +160,6 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
 
             <button
               type="submit"
