@@ -7,8 +7,11 @@ exports.register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        const userExists = await User.findOne({ where: { email } });
-        if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
+        const nameExists = await User.findOne({ where: { name } });
+        if (nameExists) return res.status(400).json({ message: "Tên đăng nhập đã tồn tại" });
+
+        const emailExists = await User.findOne({ where: { email } });
+        if (emailExists) return res.status(400).json({ message: "Email đã tồn tại" });
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -29,12 +32,12 @@ exports.register = async (req, res) => {
 // --- HÀM ĐĂNG NHẬP (Bổ sung mới) ---
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { name, password } = req.body;
 
-        // 1. Tìm user trong DB theo email
-        const user = await User.findOne({ where: { email } });
+        // 1. Tìm user trong DB theo tên (thay vì email)
+        const user = await User.findOne({ where: { name } });
         if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
+            return res.status(404).json({ message: "Tên đăng nhập không tồn tại" });
         }
 
         // 2. So sánh mật khẩu người dùng nhập với mật khẩu đã mã hóa trong DB
