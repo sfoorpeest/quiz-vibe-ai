@@ -1,13 +1,5 @@
--- 1. Tạo Database nếu chưa có
-CREATE DATABASE IF NOT EXISTS `education_quiz_db`;
-
--- 2. Chỉ định MySQL sử dụng database này cho các lệnh phía dưới
+CREATE DATABASE  IF NOT EXISTS `education_quiz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `education_quiz_db`;
-
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS `questions`;
-DROP TABLE IF EXISTS `quizzes`;
-SET FOREIGN_KEY_CHECKS = 1;
 -- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
 -- Host: localhost    Database: education_quiz_db
@@ -56,6 +48,70 @@ INSERT INTO `api_logs` VALUES (1,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình N
 UNLOCK TABLES;
 
 --
+-- Table structure for table `learning_history`
+--
+
+DROP TABLE IF EXISTS `learning_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `learning_history` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `material_id` int DEFAULT NULL,
+  `quiz_id` int DEFAULT NULL,
+  `action` enum('VIEWED_MATERIAL','STARTED_QUIZ','COMPLETED_QUIZ') NOT NULL,
+  `progress` tinyint DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_lh_user` (`user_id`),
+  KEY `fk_lh_material` (`material_id`),
+  KEY `fk_lh_quiz` (`quiz_id`),
+  CONSTRAINT `fk_lh_material` FOREIGN KEY (`material_id`) REFERENCES `materials` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_lh_quiz` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_lh_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_progress` CHECK (((`progress` >= 0) and (`progress` <= 100)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `learning_history`
+--
+
+LOCK TABLES `learning_history` WRITE;
+/*!40000 ALTER TABLE `learning_history` DISABLE KEYS */;
+/*!40000 ALTER TABLE `learning_history` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `materials`
+--
+
+DROP TABLE IF EXISTS `materials`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `materials` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `content_url` varchar(500) DEFAULT NULL,
+  `description` text,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_material_user` (`created_by`),
+  CONSTRAINT `fk_material_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `materials`
+--
+
+LOCK TABLES `materials` WRITE;
+/*!40000 ALTER TABLE `materials` DISABLE KEYS */;
+/*!40000 ALTER TABLE `materials` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `permissions`
 --
 
@@ -68,7 +124,7 @@ CREATE TABLE `permissions` (
   `description` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `permission_name` (`permission_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -77,6 +133,7 @@ CREATE TABLE `permissions` (
 
 LOCK TABLES `permissions` WRITE;
 /*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
+INSERT INTO `permissions` VALUES (1,'CREATE_QUIZ_AI','Quyền sử dụng Gemini để tạo câu hỏi trắc nghiệm'),(2,'MANAGE_QUIZ','Quyền sửa/xóa bài trắc nghiệm'),(3,'VIEW_STUDENT_RESULTS','Quyền xem điểm số của sinh viên'),(4,'MANAGE_SYSTEM_LOGS','Quyền xem API Logs và quản trị hệ thống');
 /*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -107,6 +164,32 @@ LOCK TABLES `questions` WRITE;
 /*!40000 ALTER TABLE `questions` DISABLE KEYS */;
 INSERT INTO `questions` VALUES (1,1,'Câu hỏi mẫu về Lập trình Node.js cơ bản 1','[\"A\", \"B\", \"C\", \"D\"]','A'),(2,1,'Câu hỏi mẫu về Lập trình Node.js cơ bản 2','[\"E\", \"F\", \"G\", \"H\"]','F'),(3,2,'Câu hỏi mẫu về Lập trình Node.js cơ bản 1','[\"A\", \"B\", \"C\", \"D\"]','A'),(4,2,'Câu hỏi mẫu về Lập trình Node.js cơ bản 2','[\"E\", \"F\", \"G\", \"H\"]','F'),(5,3,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(6,4,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(7,5,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(8,6,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(9,7,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(10,8,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang bảo trì)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(11,9,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang bảo trì)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(12,10,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang phản hồi chậm)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(13,11,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(14,12,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(15,13,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(16,14,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(17,15,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(18,16,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(19,17,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(20,22,'Số pi (π) được định nghĩa là tỉ số giữa đại lượng nào của một đường tròn?','[\"A. Bán kính và đường kính\", \"B. Chu vi và bán kính\", \"C. Chu vi và đường kính\", \"D. Diện tích và bán kính\"]','C. Chu vi và đường kính'),(21,22,'Giá trị xấp xỉ phổ biến nhất của số pi thường được sử dụng trong các phép tính cơ bản là bao nhiêu?','[\"A. 2.71\", \"B. 3.00\", \"C. 3.14\", \"D. 3.16\"]','C. 3.14'),(22,22,'Trong toán học, số pi (π) được phân loại là loại số nào?','[\"A. Số nguyên\", \"B. Số hữu tỉ\", \"C. Số vô tỉ\", \"D. Số phức\"]','C. Số vô tỉ'),(23,22,'Số pi (π) là một số siêu việt (transcendental). Điều này có nghĩa là gì?','[\"A. Nó là nghiệm của một phương trình đa thức với hệ số nguyên.\", \"B. Nó có thể được biểu diễn dưới dạng phân số a/b.\", \"C. Nó không phải là nghiệm của bất kỳ phương trình đa thức nào với hệ số hữu tỉ (khác 0).\", \"D. Nó là một số phức.\"]','C. Nó không phải là nghiệm của bất kỳ phương trình đa thức nào với hệ số hữu tỉ (khác 0).'),(24,22,'Nhà toán học cổ đại nào nổi tiếng với việc tính toán giá trị của số pi bằng phương pháp hình học (phương pháp vét cạn) thông qua việc sử dụng các đa giác nội tiếp và ngoại tiếp đường tròn?','[\"A. Euclid\", \"B. Pythagoras\", \"C. Archimedes\", \"D. Thales\"]','C. Archimedes'),(25,22,'Ký hiệu \'π\' cho số pi được phổ biến rộng rãi bởi nhà toán học nào vào thế kỷ 18?','[\"A. Isaac Newton\", \"B. Gottfried Leibniz\", \"C. Leonhard Euler\", \"D. Carl Friedrich Gauss\"]','C. Leonhard Euler'),(26,22,'Công thức tính diện tích hình tròn là A = πr². Trong công thức này, \'r\' đại diện cho yếu tố nào của đường tròn?','[\"A. Chu vi\", \"B. Đường kính\", \"C. Bán kính\", \"D. Dây cung\"]','C. Bán kính'),(27,22,'Do tính chất là số vô tỉ, điều gì đúng về các chữ số thập phân của số pi?','[\"A. Chúng lặp lại theo một chu kỳ nhất định.\", \"B. Chúng kết thúc sau một số hữu hạn chữ số.\", \"C. Chúng kéo dài vô hạn và không lặp lại theo một chu kỳ nhất định.\", \"D. Chúng chỉ bao gồm các số chẵn.\"]','C. Chúng kéo dài vô hạn và không lặp lại theo một chu kỳ nhất định.');
 /*!40000 ALTER TABLE `questions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `quiz_tags`
+--
+
+DROP TABLE IF EXISTS `quiz_tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `quiz_tags` (
+  `quiz_id` int NOT NULL,
+  `tag_id` int NOT NULL,
+  PRIMARY KEY (`quiz_id`,`tag_id`),
+  KEY `fk_qt_tag` (`tag_id`),
+  CONSTRAINT `fk_qt_quiz` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_qt_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `quiz_tags`
+--
+
+LOCK TABLES `quiz_tags` WRITE;
+/*!40000 ALTER TABLE `quiz_tags` DISABLE KEYS */;
+/*!40000 ALTER TABLE `quiz_tags` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -191,6 +274,7 @@ CREATE TABLE `role_permissions` (
 
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
+INSERT INTO `role_permissions` VALUES (2,1),(3,1),(2,2),(3,2),(2,3),(3,3),(3,4);
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -221,6 +305,30 @@ INSERT INTO `roles` VALUES (1,'Student','Người học tham gia giải đố'),
 UNLOCK TABLES;
 
 --
+-- Table structure for table `tags`
+--
+
+DROP TABLE IF EXISTS `tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tags` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tag_name` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_tag_name` (`tag_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `tags`
+--
+
+LOCK TABLES `tags` WRITE;
+/*!40000 ALTER TABLE `tags` DISABLE KEYS */;
+/*!40000 ALTER TABLE `tags` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `users`
 --
 
@@ -238,7 +346,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `email` (`email`),
   KEY `role_id` (`role_id`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -247,9 +355,17 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10$6jxTwIoF0ukmkmjkxJczpeKtyjg6WGeyAvqr2fNK.flRtZaim9bZ2',1,'2026-03-17 10:25:40');
+INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10$6jxTwIoF0ukmkmjkxJczpeKtyjg6WGeyAvqr2fNK.flRtZaim9bZ2',2,'2026-03-17 10:25:40'),(4,'Super Admin','admin@quizai.com','aim9bZ2',3,'2026-03-23 09:36:26');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Dumping events for database 'education_quiz_db'
+--
+
+--
+-- Dumping routines for database 'education_quiz_db'
+--
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -260,4 +376,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-23 14:55:39
+-- Dump completed on 2026-03-24 10:52:00
