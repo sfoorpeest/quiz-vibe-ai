@@ -251,7 +251,83 @@ INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+USE `education_quiz_db`;
 
+-- 1. Bảng Tags (Để phân loại Quiz và Tài liệu)
+CREATE TABLE IF NOT EXISTS `tags` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `tag_name` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_tag_name` (`tag_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. Bảng Materials (Học liệu: PDF, Link bài giảng, Video)
+CREATE TABLE IF NOT EXISTS `materials` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `title` VARCHAR(255) NOT NULL,
+  `content_url` VARCHAR(500), -- link tài liệu/video/pdf
+  `description` TEXT,
+  `created_by` INT,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_material_user`
+    FOREIGN KEY (`created_by`)
+    REFERENCES `users`(`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Bảng trung gian gắn Tag cho Quiz (Quan hệ n-n)
+CREATE TABLE IF NOT EXISTS `quiz_tags` (
+  `quiz_id` INT NOT NULL,
+  `tag_id` INT NOT NULL,
+  PRIMARY KEY (`quiz_id`, `tag_id`),
+  CONSTRAINT `fk_qt_quiz`
+    FOREIGN KEY (`quiz_id`)
+    REFERENCES `quizzes`(`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_qt_tag`
+    FOREIGN KEY (`tag_id`)
+    REFERENCES `tags`(`id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. Bảng Learning_History (Lịch sử học tập chi tiết)
+CREATE TABLE IF NOT EXISTS `learning_history` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `material_id` INT DEFAULT NULL,
+  `quiz_id` INT DEFAULT NULL,
+
+  `action` ENUM(
+    'VIEWED_MATERIAL',
+    'STARTED_QUIZ',
+    'COMPLETED_QUIZ'
+  ) NOT NULL,
+
+  `progress` TINYINT DEFAULT 0, -- 0 → 100 (%)
+
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+
+  CONSTRAINT `fk_lh_user`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users`(`id`)
+    ON DELETE CASCADE,
+
+  CONSTRAINT `fk_lh_material`
+    FOREIGN KEY (`material_id`)
+    REFERENCES `materials`(`id`)
+    ON DELETE SET NULL,
+
+  CONSTRAINT `fk_lh_quiz`
+    FOREIGN KEY (`quiz_id`)
+    REFERENCES `quizzes`(`id`)
+    ON DELETE SET NULL,
+
+  CONSTRAINT `chk_progress`
+    CHECK (`progress` >= 0 AND `progress` <= 100)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
