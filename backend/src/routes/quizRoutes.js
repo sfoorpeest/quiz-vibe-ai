@@ -1,19 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
-const checkRole = require('../middleware/roleMiddleware'); // Đảm bảo đã import middleware mới
+const checkRole = require('../middleware/roleMiddleware');
 const quizController = require('../controllers/quizController');
+const { createQuizValidator } = require('../validators/quizValidator');
 
 /**
- * @route   POST /api/quizzes/generate
- * @desc    Sử dụng Gemini AI để tạo Quiz và lưu vào Database
- * @access  Private (Chỉ dành cho Teacher và Admin)
+ * Lộ trình tạo Quiz AI
+ * Luồng xử lý: 
+ * 1. auth: Kiểm tra Token (Đã đăng nhập chưa?)
+ * 2. checkRole: Kiểm tra quyền (Có phải Teacher/Admin không?)
+ * 3. createQuizValidator: Kiểm tra dữ liệu (Topic có hợp lệ không? Limit có quá cao không?)
+ * 4. createAiQuiz: Thực thi gọi Gemini AI và lưu DB.
  */
 router.post(
     '/generate', 
-    auth,                   // Bước 1: Xác thực Token (Người dùng thật)
-    checkRole([2, 3]),      // Bước 2: Kiểm tra quyền (Chỉ ID 2 - Teacher và ID 3 - Admin)
-    quizController.createAiQuiz // Bước 3: Thực thi logic tại Controller
+    auth, 
+    checkRole([2, 3]), 
+    createQuizValidator, 
+    quizController.createAiQuiz 
 );
 
 module.exports = router;
