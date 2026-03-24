@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -427,6 +429,37 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      // ... dòng 242 là thẻ đóng </div> của cụm liên kết
+        </div>
+      </footer>
+      
+      {/* BẮT ĐẦU CHÈN TỪ ĐÂY */}
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        <button 
+          onClick={() => navigate('/result')}
+          style={{
+            padding: '14px 28px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '16px',
+            boxShadow: '0 10px 20px rgba(99, 102, 241, 0.3)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseOver={(e) => e.target.style.transform = 'translateY(-3px)'}
+          onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+        >
+          Nộp bài & Xem kết quả ngay 🚀
+        </button>
+      </div>
+      {/* KẾT THÚC CHÈN */}
+
+    </div> // Đây là dòng 244 cũ (thẻ đóng div ngoài cùng)
+  );
+};
     </div>
   );
 }
