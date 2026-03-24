@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import UploadCenter from './pages/UploadCenter';
 import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import ResultPage from './pages/ResultPage/ResultPage';
@@ -23,6 +24,14 @@ function App() {
             } 
           />
           <Route path="/result" element={<ResultPage />} />
+          <Route 
+            path="/upload" 
+            element={
+              <ProtectedRoute>
+                <UploadCenter />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

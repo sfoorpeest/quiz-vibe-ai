@@ -3,12 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-
 export default function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -219,7 +216,7 @@ export default function Home() {
             </div>
           </section>
         </>
-      ) : user.role_id === 2 ? (
+      ) : (user.role_id === 2 || user.role_id === 3) ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* === TEACHER DASHBOARD === */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
@@ -429,12 +426,8 @@ export default function Home() {
           </div>
         </div>
       </footer>
-      // ... dòng 242 là thẻ đóng </div> của cụm liên kết
-        </div>
-      </footer>
-      
-      {/* BẮT ĐẦU CHÈN TỪ ĐÂY */}
-      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+      {/* Nút Xem kết quả (do user tự chèn) */}
+      <div style={{ textAlign: 'center', padding: '40px 0', position: 'relative', zIndex: 10 }}>
         <button 
           onClick={() => navigate('/result')}
           style={{
@@ -455,11 +448,7 @@ export default function Home() {
           Nộp bài & Xem kết quả ngay 🚀
         </button>
       </div>
-      {/* KẾT THÚC CHÈN */}
 
-    </div> // Đây là dòng 244 cũ (thẻ đóng div ngoài cùng)
-  );
-};
     </div>
   );
 }
