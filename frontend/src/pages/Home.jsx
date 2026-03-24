@@ -70,8 +70,8 @@ export default function Home() {
                           <p className="text-base font-extrabold text-white truncate">
                             {user.name || user.fullName || 'Người dùng'}
                           </p>
-                          <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
-                            {user.email || 'Thành viên QuizVibe'}
+                          <p className="text-xs text-slate-400 font-medium truncate mt-0.5 uppercase tracking-wider">
+                            {user.role_id === 3 ? 'Quản trị viên' : user.role_id === 2 ? 'Giáo viên' : 'Học sinh'}
                           </p>
                         </div>
                       </div>
