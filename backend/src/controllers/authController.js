@@ -18,8 +18,8 @@ exports.register = async (req, res) => {
             } else if (secretCode === process.env.TEACHER_SECRET_CODE) {
                 assignedRoleId = 2;
             } else {
-                return res.status(401).json({ 
-                    message: "Mã bí mật không hợp lệ. Vui lòng liên hệ Admin hoặc đăng ký tài khoản Student (để trống mã)." 
+                return res.status(401).json({
+                    message: "Mã bí mật không hợp lệ. Vui lòng liên hệ Admin hoặc đăng ký tài khoản Student (để trống mã)."
                 });
             }
         }

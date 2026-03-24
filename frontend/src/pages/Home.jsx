@@ -336,7 +336,7 @@ export default function Home() {
                   <span>60%</span>
                 </div>
                 <div className="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden shadow-inner">
-                  <div className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_theme(colors.blue.500)]" style={{ width: '60%' }}></div>
+                  <div className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_var(--color-blue-500)]" style={{ width: '60%' }}></div>
                 </div>
               </div>
               

@@ -261,7 +261,7 @@ export default function UploadCenter() {
           <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-10 text-center animate-in zoom-in-95 duration-500 max-w-lg mx-auto shadow-2xl shadow-blue-900/20">
             <div className="w-24 h-24 mx-auto mb-8 relative">
               <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping"></div>
-              <div className="relative w-full h-full bg-slate-800 rounded-full flex items-center justify-center border-2 border-blue-500/50 shadow-[0_0_15px_theme(colors.blue.500)]">
+              <div className="relative w-full h-full bg-slate-800 rounded-full flex items-center justify-center border-2 border-blue-500/50 shadow-[0_0_15px_var(--color-blue-500)]">
                 <BrainCircuit className="w-10 h-10 text-blue-400 animate-pulse" />
               </div>
             </div>
