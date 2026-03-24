@@ -2,19 +2,26 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// 1. Hàm Đăng ký (Đã cập nhật logic chặt chẽ của bạn)
 exports.register = async (req, res) => {
     try {
-        const { name, email, password, secretCode } = req.body; // Nhận thêm secretCode từ FE
+        const { name, email, password, secretCode } = req.body;
 
         const userExists = await User.findOne({ where: { email } });
         if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
 
-        // Logic phân quyền dựa trên mã bí mật
         let assignedRoleId = 1; // Mặc định là Student
-        if (secretCode === process.env.ADMIN_SECRET_CODE) {
-            assignedRoleId = 3;
-        } else if (secretCode === process.env.TEACHER_SECRET_CODE) {
-            assignedRoleId = 2;
+
+        if (secretCode) {
+            if (secretCode === process.env.ADMIN_SECRET_CODE) {
+                assignedRoleId = 3;
+            } else if (secretCode === process.env.TEACHER_SECRET_CODE) {
+                assignedRoleId = 2;
+            } else {
+                return res.status(401).json({ 
+                    message: "Mã bí mật không hợp lệ. Vui lòng liên hệ Admin hoặc đăng ký tài khoản Student (để trống mã)." 
+                });
+            }
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -36,6 +43,7 @@ exports.register = async (req, res) => {
     }
 };
 
+// 2. Hàm Đăng nhập (BẠN CẦN PHẢI CÓ HÀM NÀY Ở ĐÂY)
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -47,7 +55,7 @@ exports.login = async (req, res) => {
         if (!isMatch) return res.status(401).json({ message: "Mật khẩu không chính xác" });
 
         const token = jwt.sign(
-            { id: user.id, role_id: user.role_id }, // Payload quan trọng cho middleware
+            { id: user.id, role_id: user.role_id },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -59,7 +67,7 @@ exports.login = async (req, res) => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role_id: user.role_id // Trả về để FE xử lý giao diện
+                role_id: user.role_id
             }
         });
     } catch (error) {

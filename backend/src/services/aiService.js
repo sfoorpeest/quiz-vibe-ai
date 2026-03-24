@@ -1,21 +1,9 @@
 const axios = require('axios');
 
-exports.generateQuizFromAI = async (topic, limit = 5) => {
+// HÀM CHUNG: Dùng để gửi Prompt bất kỳ cho Gemini (Tóm tắt, dịch, phân tích...)
+const generateContent = async (prompt) => {
     try {
-        // SỬ DỤNG MODEL THÀNH CÔNG NHẤT TỪ FILE TEST: gemini-2.5-flash
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-        const prompt = `Bạn là một chuyên gia giáo dục. 
-        Hãy tạo ${limit} câu hỏi trắc nghiệm về chủ đề: ${topic}.
-        Yêu cầu trả về định dạng JSON duy nhất là một mảng các đối tượng:
-        [
-          {
-            "question": "Nội dung câu hỏi",
-            "options": ["A", "B", "C", "D"],
-            "correct_answer": "Nội dung của đáp án đúng"
-          }
-        ]
-        Chỉ trả về JSON thuần túy, không kèm lời dẫn hay markdown.`;
 
         const response = await axios.post(url, {
             contents: [{
