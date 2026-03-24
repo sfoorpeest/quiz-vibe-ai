@@ -80,10 +80,13 @@ export default function Register() {
     setError('');
 
     try {
-      const response = await authService.register(formData.name, formData.email, formData.password, selectedRole, formData.secretCode);
+      await authService.register(formData.name, formData.email, formData.password, formData.secretCode);
       
-      // Tự động đăng nhập
-      login(response.user, response.token);
+      // Do Backend mới không cấp sẵn token khi Đăng ký, ta tiến hành gọi API Login ngay lập tức
+      const loginResponse = await authService.login(formData.email, formData.password);
+      
+      // Auto đăng nhập
+      login(loginResponse.user, loginResponse.token);
 
       // Chuyển hướng về trang chủ
       navigate('/', { replace: true });

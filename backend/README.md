@@ -1,21 +1,4 @@
 # Education Quiz AI (Vibe Coding)
-<<<<<<< HEAD
-
-Dự án thực tập tại Kyanon Digital.
-
-## Cấu trúc dự án
-
-- `backend/`: Node.js API (Layered Architecture)
-- `frontend/`: React.js (Vite)
-
-## Hướng dẫn thiết lập
-
-1. Cài đặt Database:
-   - Chạy file SQL trong `backend/src/database/sql/DeepSeek_Api_DB.sql`.
-   - Hoặc nếu đã có database, đảm bảo bảng `roles` có ít nhất một bản ghi (ví dụ `id=1`) để user có thể đăng ký.
-2. Backend: `cd backend && npm install && npm start`
-3. Frontend: `cd frontend && npm install && npm run dev`
-=======
 Dự án thực tập tại Kyanon Digital - Hệ thống tạo câu hỏi trắc nghiệm thông minh tích hợp Gemini AI.
 
 ## 📁 Cấu trúc dự án
@@ -40,4 +23,3 @@ npm start
 cd frontend
 npm install
 npm run dev
->>>>>>> main

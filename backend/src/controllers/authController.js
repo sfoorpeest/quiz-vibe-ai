@@ -2,41 +2,18 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-<<<<<<< HEAD
-// --- HÀM ĐĂNG KÝ (Kiểm tra nghiêm ngặt mã bí mật & Tự động đăng nhập) ---
-exports.register = async (req, res) => {
-    try {
-        const { name, email, password, role, secretCode } = req.body;
-=======
 exports.register = async (req, res) => {
     try {
         const { name, email, password, secretCode } = req.body; // Nhận thêm secretCode từ FE
->>>>>>> main
 
         const userExists = await User.findOne({ where: { email } });
         if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
 
-<<<<<<< HEAD
-        // Theo dõi role được gán
-        let assignedRoleId = 1; // Học sinh
-
-        // Kiểm tra nghiêm ngặt mã phân quyền
-        if (role === 'admin') {
-            if (secretCode !== process.env.ADMIN_SECRET_CODE) {
-                return res.status(400).json({ message: "Mã bí mật Admin không chính xác!" });
-            }
-            assignedRoleId = 3;
-        } else if (role === 'teacher') {
-            if (secretCode !== process.env.TEACHER_SECRET_CODE) {
-                return res.status(400).json({ message: "Mã bí mật Giáo viên không chính xác!" });
-            }
-=======
         // Logic phân quyền dựa trên mã bí mật
         let assignedRoleId = 1; // Mặc định là Student
         if (secretCode === process.env.ADMIN_SECRET_CODE) {
             assignedRoleId = 3;
         } else if (secretCode === process.env.TEACHER_SECRET_CODE) {
->>>>>>> main
             assignedRoleId = 2;
         }
 
@@ -47,47 +24,23 @@ exports.register = async (req, res) => {
             name,
             email,
             password_hash: hashedPassword,
-            role_id: assignedRoleId 
+            role_id: assignedRoleId
         });
 
-<<<<<<< HEAD
-        // Tạo JWT Token y hệt như đăng nhập để Client lưu vào LocalStorage
-        const token = jwt.sign(
-            { id: newUser.id, role_id: newUser.role_id },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        // Trả về user và token
-        res.status(201).json({ 
-            message: "Đăng ký thành công!", 
-            token,
-            user: {
-                id: newUser.id,
-                name: newUser.name,
-                email: newUser.email,
-                role_id: newUser.role_id
-            }
-=======
-        res.status(201).json({ 
-            message: "Đăng ký thành công!", 
-            role_id: assignedRoleId 
->>>>>>> main
+        res.status(201).json({
+            message: "Đăng ký thành công!",
+            role_id: assignedRoleId
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-<<<<<<< HEAD
-// --- HÀM ĐĂNG NHẬP (Đăng nhập bằng Email) ---
-=======
->>>>>>> main
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ where: { email } });
-        
+
         if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);

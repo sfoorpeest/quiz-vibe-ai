@@ -6,8 +6,9 @@ export const authService = {
     return response.data;
   },
 
-  register: async (name, email, password, role = 'student', secretCode = '') => {
-    const response = await api.post('/api/auth/register', { name, email, password, role, secretCode });
+  register: async (name, email, password, secretCode = '') => {
+    // Backend mới (Validator) chỉ chấp nhận name, email, password, secretCode
+    const response = await api.post('/api/auth/register', { name, email, password, secretCode });
     return response.data;
   },
   changePassword: async (oldPassword, newPassword) => {
