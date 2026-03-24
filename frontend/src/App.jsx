@@ -5,7 +5,7 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import ResultPage from './pages/ResultPage/ResultPage';
 function App() {
   return (
     <BrowserRouter>
@@ -22,6 +22,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/result" element={<ResultPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
