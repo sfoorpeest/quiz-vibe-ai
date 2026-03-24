@@ -15,7 +15,7 @@ exports.createAiQuiz = async (req, res) => {
         // 2. Tạo Quiz mới trong Database
         const newQuiz = await Quiz.create({
             title: `Quiz về ${topic}`,
-            subject: topic,
+            subject: topic, // Thêm subject theo cấu trúc SQL của bạn
             created_by: userId
         });
 

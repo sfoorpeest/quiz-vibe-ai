@@ -30,7 +30,11 @@ exports.generateQuizFromAI = async (topic, limit = 5) => {
 
         // Trích xuất text từ response của Gemini 2.5
         const text = response.data.candidates[0].content.parts[0].text;
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> main
         // Parse JSON (Gemini 2.5 thường trả về JSON sạch, nhưng ta vẫn dùng try-catch cho chắc)
         const parsedData = JSON.parse(text);
 
@@ -38,7 +42,11 @@ exports.generateQuizFromAI = async (topic, limit = 5) => {
 
     } catch (error) {
         console.error("❌ Gemini 2.5 API Error:", error.response?.data || error.message);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> main
         // Fallback (Dữ liệu dự phòng)
         return [
             {
