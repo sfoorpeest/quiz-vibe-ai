@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
 export default function Home() {
@@ -80,7 +80,7 @@ export default function Home() {
                       <button 
                         onClick={() => {
                           setIsProfileOpen(false);
-                          navigate('#profile'); // Tạm thời để anchor
+                          navigate('#profile');
                         }}
                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
                       >
@@ -102,13 +102,27 @@ export default function Home() {
                       <button 
                         onClick={() => {
                           setIsProfileOpen(false);
-                          navigate('#settings'); // Tạm thời để anchor
+                          navigate('#settings');
                         }}
                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
                       >
                         <Settings className="w-4 h-4 text-purple-400 group-hover:rotate-90 transition-transform duration-300" />
                         Cài đặt hệ thống
                       </button>
+
+                      {/* Admin Dashboard - chỉ hiện với role_id === 3 */}
+                      {user.role_id === 3 && (
+                        <button 
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            navigate('/admin');
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-all group focus:outline-none border border-transparent hover:border-amber-500/20"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                          Bảng điều khiển Admin
+                        </button>
+                      )}
                     </div>
                     
                     {/* Logout Footer */}

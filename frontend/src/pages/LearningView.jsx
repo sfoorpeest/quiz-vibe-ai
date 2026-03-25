@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, BrainCircuit, MessageSquare, FileText, 
-  Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2
+  Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
+  ChevronLeft, ChevronRight, List, CheckCircle2
 } from 'lucide-react';
 import api from '../api/axiosClient';
 
 export default function LearningView() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' or 'chat'
   const [chatMessage, setChatMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [readingProgress, setReadingProgress] = useState(0);
+  const [maxProgress, setMaxProgress] = useState(0); // Để biết đã đọc xa nhất tới đâu
+  const [showToc, setShowToc] = useState(false);
+  
   const [chatHistory, setChatHistory] = useState([
     { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi Google Gemini. Bạn có thắc mắc gì về bài học "Nhập môn Trí tuệ Nhân tạo cơ bản" không?' }
   ]);
@@ -43,7 +49,34 @@ export default function LearningView() {
       'Machine Learning (Học máy): Máy tự học từ dữ liệu thay vì được lập trình sẵn.',
       'Deep Learning (Học sâu): Phương pháp nâng cao mô phỏng mạng nơ-ron não bộ (nhận diện ảnh, giọng nói).',
       'Ứng dụng bao trùm từ giải trí (Netflix, Siri) đến y tế và xe tự lái.'
-    ]
+    ],
+    toc: [
+      { id: "sec-1", title: "1. Machine Learning (Học máy) là gì?" },
+      { id: "sec-2", title: "2. Deep Learning (Học sâu)" },
+      { id: "sec-3", title: "3. Ứng dụng thực tế" }
+    ],
+    prevLesson: { id: 1, title: 'Tổng quan Khoa học Máy tính' },
+    nextLesson: { id: 3, title: 'Tương lai của Trí tuệ Nhân tạo' }
+  };
+
+  // Tính toán phần trăm cuộn
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - clientHeight <= 0) {
+      setReadingProgress(100);
+      setMaxProgress(100);
+      return;
+    }
+    const currentProgress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+    const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
+    
+    setReadingProgress(roundedProgress);
+    if (roundedProgress > maxProgress) {
+      setMaxProgress(roundedProgress);
+      
+      // Giả lập lưu API tiến độ người dùng nếu đọc thêm được 10%
+      // if (roundedProgress % 10 === 0) api.post('/api/edu/learning/track', ...)
+    }
   };
 
   const handleSendMessage = async (e) => {
@@ -109,29 +142,93 @@ export default function LearningView() {
       </header>
 
       {/* MAIN 2-COLUMN LAYOUT */}
-      <main className="flex-[1] overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
+      <main className="flex-1 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
         
         {/* LFET COLUMN: TÀI LIỆU HỌC TẬP */}
-        <div className="flex-[2] bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-2 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
-          <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <FileText className="w-5 h-5 text-blue-400" />
+          <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <FileText className="w-5 h-5 text-blue-400" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-3">
+                Nội dung chi tiết
+                <span className="text-xs font-semibold bg-blue-500/20 text-blue-300 px-2 py-1 rounded-md">
+                  Tiến độ: {readingProgress}%
+                </span>
+              </h2>
             </div>
-            <h2 className="text-xl font-bold text-slate-100">Nội dung chi tiết</h2>
+            
+            <button 
+              onClick={() => setShowToc(!showToc)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${showToc ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+            >
+              <List className="w-4 h-4" /> Mục lục
+            </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            <div className="prose prose-invert prose-lg max-w-none text-slate-300 leading-relaxed font-medium">
-              <h1 className="text-3xl font-extrabold text-white mb-6 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400">{material.title}</h1>
-              <div className="whitespace-pre-line">{material.content}</div>
+          {/* Progress bar line under header */}
+          <div className="w-full h-1 bg-slate-800 z-10 relative">
+            <div className="h-full bg-linear-to-r from-blue-500 to-amber-500 transition-all duration-100" style={{ width: `${readingProgress}%` }}></div>
+            <div className="absolute top-0 left-0 h-full bg-slate-500/30 transition-all duration-300" style={{ width: `${maxProgress}%` }}></div>
+          </div>
+          
+          <div className="flex-1 overflow-hidden flex relative">
+            
+            {/* TOC Sidebar */}
+            {showToc && (
+              <div className="w-64 bg-slate-900/95 backdrop-blur-md border-r border-slate-700/50 flex flex-col absolute left-0 top-0 bottom-0 z-20 animate-in slide-in-from-left-4 fade-in duration-300 shadow-xl">
+                <div className="p-4 border-b border-slate-800">
+                  <h3 className="font-bold text-slate-200">Mục lục khóa học</h3>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2">
+                  {material.toc.map((item) => (
+                    <button key={item.id} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors line-clamp-2 mb-1">
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
+              <div className="prose prose-invert prose-lg max-w-[800px] mx-auto text-slate-300 leading-relaxed font-medium pb-10">
+                <h1 className="text-3xl font-extrabold mb-6 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400">{material.title}</h1>
+                <div className="whitespace-pre-line">{material.content}</div>
+              </div>
+              
+              {/* Bài kế tiếp / Trước đó */}
+              <div className="max-w-[800px] mx-auto mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4 justify-between items-center mb-8">
+                {material.prevLesson ? (
+                  <button className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700 group w-full sm:w-auto text-left">
+                    <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    <div>
+                      <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Bài trước</div>
+                      <div className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{material.prevLesson.title}</div>
+                    </div>
+                  </button>
+                ) : <div />}
+                
+                {material.nextLesson ? (
+                  <button className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700 group w-full sm:w-auto text-right justify-end">
+                    <div>
+                      <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Bài tiếp theo</div>
+                      <div className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{material.nextLesson.title}</div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+                ) : <div />}
+              </div>
+
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: AI SIDEBAR */}
-        <div className="flex-[1] min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-1 min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-violet-500 to-amber-500"></div>
           
           <div className="px-6 py-5 border-b border-slate-800 bg-slate-900">
@@ -160,7 +257,7 @@ export default function LearningView() {
           </div>
 
           {/* TAB CONTENT */}
-          <div className="flex-1 overflow-y-auto bg-slate-900/50 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+          <div className="flex-1 overflow-y-auto bg-slate-900/50 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
             
             {/* SUMMARY TAB */}
             {activeTab === 'summary' && (
@@ -191,7 +288,7 @@ export default function LearningView() {
             {activeTab === 'chat' && (
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
                 {/* Message List */}
-                <div className="flex-[1] overflow-y-auto p-5 space-y-5 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-5 space-y-5 flex flex-col">
                   {chatHistory.map((msg, index) => (
                     <div key={index} className={`flex max-w-[85%] ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}>
                       <div className={`p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${

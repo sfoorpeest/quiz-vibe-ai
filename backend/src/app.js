@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/authRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const eduRoutes = require('./routes/eduRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 require('dotenv').config();
 
@@ -20,6 +21,7 @@ app.use(express.json()); // Đọc dữ liệu JSON từ request body
 app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/edu', eduRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Kết nối Database
 connectDB();

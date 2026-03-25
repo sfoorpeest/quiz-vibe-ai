@@ -8,6 +8,7 @@ import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import ResultPage from './pages/ResultPage/ResultPage';
 import LearningView from './pages/LearningView';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -39,6 +40,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <LearningView />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
               </ProtectedRoute>
             } 
           />
