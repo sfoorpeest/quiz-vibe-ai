@@ -17,6 +17,9 @@ router.post('/materials/:id/ai-process', auth, checkRole([2, 3]), eduController.
 // 4. Lưu lịch sử học tập (Dành cho Student)
 router.post('/learning/track', auth, checkRole([1]), historyValidator, eduController.trackProgress);
 
+// 4.5. Trợ lý AI giải đáp thắc mắc (Student)
+router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
+
 module.exports = router;
 
 // 5. Quản trị hệ thống (Chỉ Admin mới có quyền)

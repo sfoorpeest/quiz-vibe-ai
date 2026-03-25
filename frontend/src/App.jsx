@@ -7,6 +7,8 @@ import UploadCenter from './pages/UploadCenter';
 import ChangePassword from './pages/ChangePassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import ResultPage from './pages/ResultPage/ResultPage';
+import LearningView from './pages/LearningView';
+
 function App() {
   return (
     <BrowserRouter>
@@ -29,6 +31,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <UploadCenter />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/learn/:id" 
+            element={
+              <ProtectedRoute>
+                <LearningView />
               </ProtectedRoute>
             } 
           />

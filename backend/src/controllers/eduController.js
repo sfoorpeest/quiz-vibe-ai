@@ -148,3 +148,28 @@ exports.deleteMaterialByAdmin = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi xóa học liệu" });
     }
 };
+
+/**
+ * 7. Giao tiếp với AI (Chat) trong Learning View
+ */
+exports.chatWithAI = async (req, res) => {
+    try {
+        const { context, question } = req.body;
+        
+        if (!question) {
+            return res.status(400).json({ message: "Vui lòng nhập câu hỏi." });
+        }
+
+        const prompt = `Bạn là một gia sư AI tận tâm tên là QuizVibe AI. Dựa vào nội dung tài liệu sau đây, hãy trả lời câu hỏi của học sinh một cách ngắn gọn, súc tích và thân thiện nhất, giống như bạn đang chat trực tiếp.\nHãy dùng tiếng Việt.\n\nNội dung tài liệu:\n${context || 'Không có tài liệu cụ thể.'}\n\nCâu hỏi của học sinh: ${question}`;
+        
+        const aiResponse = await aiService.generateContent(prompt);
+
+        res.status(200).json({
+            status: 'success',
+            answer: aiResponse
+        });
+    } catch (error) {
+        console.error("AI Chat Error:", error);
+        res.status(500).json({ message: "AI đang bận, vui lòng thử lại sau." });
+    }
+};
