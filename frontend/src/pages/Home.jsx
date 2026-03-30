@@ -1,13 +1,92 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axiosClient';
+
+// Biến toàn cục (Module-level) để khóa vĩnh viễn vòng lặp bất kể React có remount bao nhiêu lần
+let isMaterialsFetched = false;
+
 export default function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  // States lưu học liệu thật từ Database
+  const [materials, setMaterials] = useState([]);
+
+  // Kéo toàn bộ học liệu đã xử lý từ Database
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await api.post('/api/edu/materials/list');
+        if (isMounted && res.data && res.data.data) {
+          setMaterials(res.data.data);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải học liệu:", err);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  const fetchMaterialsManual = async () => {
+    if (!user?.id) return;
+    try {
+      const res = await api.post('/api/edu/materials/list');
+      if (res.data && res.data.data) {
+        setMaterials(res.data.data);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải học liệu thủ công:", err);
+    }
+  };
+
+  // State cho Modal Xóa và Thông báo (Toast)
+  const [deletingId, setDeletingId] = useState(null);
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  // Utils: Hiện Toast
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Nút Xóa (Mở Modal Xác Nhận)
+  const handleDeleteMaterial = (e, id) => {
+    e.stopPropagation(); // Ngăn navigate vào trang học
+    
+    if (user.role_id !== 3) {
+      showToast("Chỉ Quản trị viên mới có quyền xóa học liệu này.", "error");
+      return;
+    }
+    setDeletingId(id); // Kích hoạt Modal lên
+  };
+
+  // Xác nhận Xóa khi bấm trong Modal
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await api.delete(`/api/edu/admin/materials/${deletingId}`);
+      showToast("Đã xóa học liệu thành công!", "success");
+      fetchMaterialsManual(); // Tải lại danh sách sau khi xóa
+    } catch (err) {
+      console.error("Lỗi xóa học liệu:", err);
+      showToast("Không thể xóa học liệu. Vui lòng thử lại sau.", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -289,31 +368,46 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Mock Materials */}
-            {[1, 2].map((item) => (
-              <div key={item} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-500/50 transition-all rounded-2xl p-5 group cursor-pointer flex flex-col h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
-                    <FileText className="w-5 h-5 text-blue-400" />
+            {/* Thực tế: Hiển thị materials lấy từ API */}
+            {materials.length > 0 ? (
+              materials.map((item) => (
+                <div key={item.id} onClick={() => navigate(`/learn/${item.id}`)} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-500/50 transition-all rounded-2xl p-5 group cursor-pointer flex flex-col h-full">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
+                      <FileText className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-slate-100 font-bold line-clamp-1 group-hover:text-blue-400 transition-colors">{item.title}</h4>
+                      <p className="text-slate-500 text-xs mt-1 font-medium">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="text-slate-100 font-bold line-clamp-1 group-hover:text-blue-400 transition-colors">Vật lý Đại cương - Lược sử thời gian</h4>
-                    <p className="text-slate-500 text-xs mt-1 font-medium">Hôm qua, 14:30</p>
+                  <div className="mt-auto border-t border-slate-700/50 pt-4">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 px-2.5 py-1.5 rounded-md shrink-0">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Đã tóm tắt bằng AI
+                      </span>
+                      
+                      {user.role_id === 3 && (
+                        <>
+                          <button 
+                            onClick={(e) => handleDeleteMaterial(e, item.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-colors shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5" /> Xóa
+                          </button>
+                          <span className="text-xs font-medium text-slate-400 truncate flex-1" title={item.creator_name || 'Hệ thống'}>
+                            bởi <span className="text-slate-300 font-bold">{item.creator_name || 'Hệ thống'}</span>
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="mt-auto border-t border-slate-700/50 pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 px-2.5 py-1.5 rounded-md">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Đã tóm tắt AI
-                    </span>
-                    <button className="text-slate-400 hover:text-white transition-colors">
-                      <Settings className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="col-span-1 md:col-span-2 text-center text-slate-400 py-10 font-medium">Chưa có học liệu nào. Hãy bắt đầu tải lên!</div>
+            )}
             
             {/* Add New Card */}
             <Link to="/upload" className="bg-slate-800/20 border-2 border-slate-700 border-dashed hover:border-blue-500/50 hover:bg-slate-800/40 transition-all rounded-2xl p-5 flex flex-col items-center justify-center min-h-[160px] text-slate-400 hover:text-blue-400 cursor-pointer group">
@@ -400,24 +494,28 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">
-                <div className="flex justify-between items-start mb-5">
-                  <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item}</span>
-                  <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
+            {materials.length > 0 ? (
+              materials.map((item) => (
+                <div key={item.id} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">
+                  <div className="flex justify-between items-start mb-5">
+                    <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item.id}</span>
+                    <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">{item.title}</h4>
+                  <p className="text-slate-400 text-sm line-clamp-2 mb-6 font-medium leading-relaxed">{item.description || "Tài liệu học tập trên hệ thống QuizVibe AI."}</p>
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-700/60 pt-5">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
+                      <Clock className="w-3.5 h-3.5" /> ~15p đọc
+                    </span>
+                    <Link to={`/learn/${item.id}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
+                      Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
-                <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">Phân tích tác phẩm Truyện Kiều</h4>
-                <p className="text-slate-400 text-sm line-clamp-2 mb-6 font-medium leading-relaxed">Bộ tài liệu tổng hợp các phân tích chuyên sâu về nhân vật, nghệ thuật và giá trị hiện thực mà AI đã trích xuất lại một cách dễ hiểu nhất.</p>
-                <div className="mt-auto flex items-center justify-between border-t border-slate-700/60 pt-5">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
-                    <Clock className="w-3.5 h-3.5" /> ~15p đọc
-                  </span>
-                  <Link to={`/learn/${item}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
-                    Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="col-span-full text-center text-slate-400 py-10 font-medium">Hiện tại chưa có khóa học/bài giảng nào trên hệ thống.</p>
+            )}
           </div>
         </div>
       )}
@@ -462,6 +560,56 @@ export default function Home() {
           Nộp bài & Xem kết quả ngay 🚀
         </button>
       </div>
+
+      {/* --- CUSTOM OVERLAY: MODAL XÁC NHẬN XÓA --- */}
+      {deletingId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border inset-0 shadow-inner">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Xóa học liệu vĩnh viễn?</h3>
+              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                Sau khi xóa, học sinh sẽ không thể truy cập tài liệu này nữa. Bạn chắc chắn muốn tiếp tục chứ?
+              </p>
+              <div className="flex items-center gap-3 w-full">
+                <button 
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-600 font-bold text-slate-300 hover:bg-slate-800 transition-colors"
+                >
+                  Hủy thao tác
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 font-bold text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
+                >
+                  Xóa ngay
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOM OVERLAY: TOAST NOTIFICATIONS --- */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[110] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl shadow-black/50 border backdrop-blur-md ${
+            toast.type === 'error' ? 'bg-red-950/90 border-red-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
+          }`}>
+            {toast.type === 'error' ? (
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            ) : (
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+            )}
+            <span className="text-sm font-bold text-slate-200">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white p-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

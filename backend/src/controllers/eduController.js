@@ -1,6 +1,7 @@
 const { sequelize } = require('../config/database');
 const aiService = require('../services/aiService');
 const { QueryTypes } = require('sequelize');
+const { extractTextFromBuffer, extractTextFromUrl } = require('../services/fileParserService');
 
 /**
  * 1. AI xử lý học liệu: Tóm tắt và Trích xuất từ khóa
@@ -37,6 +38,49 @@ exports.processMaterialWithAI = async (req, res) => {
     } catch (error) {
         console.error("AI Process Error:", error);
         res.status(500).json({ message: "Lỗi xử lý AI hoặc kết nối Database" });
+    }
+};
+
+/**
+ * 1.5 AI Phân tích Nháp (Cho Upload Center)
+ */
+exports.analyzeDraftMaterial = async (req, res) => {
+    try {
+        const { source_type, content } = req.body; 
+        // source_type có thể là 'file' (content là tên file) hoặc 'link' (content là URL)
+        
+        const prompt = `Bạn là một trợ lý giáo dục AI. Hãy dựa vào tiêu đề/đường dẫn sau để nội suy và tóm tắt một đoạn giới thiệu học thuật ngắn gọn (tối đa 3 câu) và đưa ra 4 từ khóa quan trọng (tags).
+        Thay vì trả lời xin lỗi, hãy đưa ra nội dung giả định phù hợp giáo dục.
+        Nội dung phân tích: ${source_type === 'link' ? `Đường dẫn trang web: ${content}` : `Tài liệu: ${content}`}
+        
+        Vui lòng trả về kết quả theo chuẩn JSON như sau:
+        {
+           "summary": "Đoạn tóm tắt...",
+           "tags": ["Tag1", "Tag2", "Tag3", "Tag4"]
+        }`;
+
+        let aiResultText = await aiService.generateContent(prompt);
+        // Xóa các ký tự markdown JSON thừa nếu có
+        aiResultText = aiResultText.replace(/```json\n|\n```|```/g, '').trim();
+        
+        let parsedResult;
+        try {
+            parsedResult = JSON.parse(aiResultText);
+        } catch(e) {
+            // Fallback nếu AI không trả về JSON chuẩn
+            parsedResult = {
+                summary: "Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.",
+                tags: ["Giáo dục", "Học liệu", "Cơ bản", "Quan trọng"]
+            };
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: parsedResult
+        });
+    } catch (error) {
+        console.error("AI Draft Analyze Error:", error);
+        res.status(500).json({ message: "AI hiện không thể phân tích tài liệu này." });
     }
 };
 
@@ -100,9 +144,9 @@ exports.trackProgress = async (req, res) => {
  */
 exports.getAllMaterials = async (req, res) => {
     try {
-        // SỬA: Dùng sequelize.query
+        // SỬA: JOIN với bảng users để lấy tên người tạo
         const rows = await sequelize.query(
-            'SELECT * FROM materials ORDER BY created_at DESC',
+            'SELECT materials.*, users.name as creator_name FROM materials LEFT JOIN users ON materials.created_by = users.id ORDER BY materials.created_at DESC',
             { type: QueryTypes.SELECT }
         );
         res.status(200).json({ status: 'success', data: rows });
@@ -171,5 +215,69 @@ exports.chatWithAI = async (req, res) => {
     } catch (error) {
         console.error("AI Chat Error:", error);
         res.status(500).json({ message: "AI đang bận, vui lòng thử lại sau." });
+    }
+};
+
+/**
+ * 8. Trích xuất nội dung từ File (TXT, DOCX, PDF) hoặc URL
+ */
+exports.extractFileContent = async (req, res) => {
+    try {
+        let extractedText = null;
+        let sourceTitle = 'Tài liệu không tên';
+
+        if (req.file) {
+            const { buffer, mimetype, originalname } = req.file;
+            sourceTitle = originalname.split('.')[0];
+            extractedText = await extractTextFromBuffer(buffer, mimetype, originalname);
+
+            if (!extractedText) {
+                return res.status(415).json({
+                    message: `Định dạng file "${originalname}" chưa được hỗ trợ hoặc file rỗng.`
+                });
+            }
+        } else if (req.body.url) {
+            const { url } = req.body;
+            sourceTitle = url.replace(/https?:\/\/(www\.)?/, '').split('/')[0];
+            extractedText = await extractTextFromUrl(url);
+
+            if (!extractedText || extractedText.length < 50) {
+                return res.status(422).json({
+                    message: 'Không thể trích xuất nội dung từ URL này.'
+                });
+            }
+        } else {
+            return res.status(400).json({ message: 'Vui lòng gửi file hoặc URL.' });
+        }
+
+        // Gọi AI sinh Draft (summary/tags)
+        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung sau. Trả về đúng JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.
+        Nội dung: ${extractedText.substring(0, 3000)}`;
+
+        let aiDraftText = await aiService.generateContent(draftPrompt);
+        aiDraftText = aiDraftText.replace(/```json\n|\n```|```/g, '').trim();
+        let parsedDraft;
+        try { parsedDraft = JSON.parse(aiDraftText); } catch {
+            parsedDraft = { summary: "Tài liệu học thuật quan trọng.", tags: ["Học liệu", "Cơ bản"] };
+        }
+
+        // Gọi AI tạo Bài giảng đầy đủ
+        const lessonPrompt = `Bạn là giáo viên. Viết bài giảng chi tiết (3 phần lớn ##) dựa trên tài liệu sau về chủ đề ${sourceTitle}.
+        Nội dung tài liệu: ${extractedText.substring(0, 5000)}`;
+
+        const lessonContent = await aiService.generateContent(lessonPrompt);
+
+        return res.status(200).json({
+            status: 'success',
+            data: {
+                title: sourceTitle,
+                summary: parsedDraft.summary,
+                tags: parsedDraft.tags,
+                lessonContent
+            }
+        });
+    } catch (error) {
+        console.error('Extract Error:', error);
+        res.status(500).json({ message: 'Lỗi khi xử lý tài liệu.' });
     }
 };

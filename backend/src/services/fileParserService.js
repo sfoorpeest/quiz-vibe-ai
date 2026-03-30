@@ -1,0 +1,93 @@
+const mammoth = require('mammoth');
+const pdfParse = require('pdf-parse');
+const axios = require('axios');
+const cheerio = require('cheerio');
+
+/**
+ * Trích xuất text thuần túy từ Buffer theo từng loại file
+ */
+const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
+    const ext = (originalname || '').split('.').pop().toLowerCase();
+
+    // ---- TXT / CSV ----
+    if (ext === 'txt' || ext === 'csv' || (mimetype && mimetype.startsWith('text/'))) {
+        return buffer.toString('utf-8').substring(0, 10000);
+    }
+
+    // ---- DOCX (Word) ----
+    if (
+        ext === 'docx' ||
+        mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mimetype === 'application/msword'
+    ) {
+        try {
+            // mammoth cần nhận đúng kiểu Buffer của Node
+            const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+            const result = await mammoth.extractRawText({ buffer: nodeBuffer });
+            const text = result.value.trim();
+            if (!text || text.length < 10) {
+                throw new Error('mammoth returned empty content');
+            }
+            return text.substring(0, 10000);
+        } catch (err) {
+            console.error('Mammoth DOCX parse error:', err.message);
+            return null;
+        }
+    }
+
+    // ---- PDF ----
+    if (ext === 'pdf' || mimetype === 'application/pdf') {
+        try {
+            const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+            const data = await pdfParse(nodeBuffer);
+            const text = data.text.trim();
+            if (!text || text.length < 10) {
+                throw new Error('pdf-parse returned empty content');
+            }
+            return text.substring(0, 10000);
+        } catch (err) {
+            console.error('PDF parse error:', err.message);
+            return null;
+        }
+    }
+
+    // Định dạng không hỗ trợ
+    return null;
+};
+
+/**
+ * Scrape text từ URL (Web page)
+ */
+const extractTextFromUrl = async (url) => {
+    try {
+        const response = await axios.get(url, {
+            timeout: 12000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            responseType: 'text'
+        });
+
+        const $ = cheerio.load(response.data);
+
+        // Xóa thẻ không cần thiết
+        $('script, style, nav, footer, header, iframe, noscript, .ads, .sidebar, .menu').remove();
+
+        // Lấy text có ý nghĩa từ body (ưu tiên thẻ article, main, section)
+        let text = '';
+        const mainContent = $('article, main, .content, .post-content, #content');
+        if (mainContent.length > 0) {
+            text = mainContent.text();
+        } else {
+            text = $('body').text();
+        }
+
+        return text.replace(/\s+/g, ' ').trim().substring(0, 10000);
+    } catch (err) {
+        console.error('URL Scrape Error:', err.message);
+        return null;
+    }
+};
+
+module.exports = { extractTextFromBuffer, extractTextFromUrl };

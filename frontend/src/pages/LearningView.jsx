@@ -15,67 +15,115 @@ export default function LearningView() {
   const [isLoading, setIsLoading] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
   const [maxProgress, setMaxProgress] = useState(0); // Để biết đã đọc xa nhất tới đâu
+  const [lastSavedProgress, setLastSavedProgress] = useState(0); // Để hạn chế spam API
   const [showToc, setShowToc] = useState(false);
   
   const [chatHistory, setChatHistory] = useState([
     { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi Google Gemini. Bạn có thắc mắc gì về bài học "Nhập môn Trí tuệ Nhân tạo cơ bản" không?' }
   ]);
 
-  // Mock data for the study material
-  const material = {
-    title: 'Nhập môn Trí tuệ Nhân tạo cơ bản',
-    author: 'AI Generated',
-    readTime: '15 phút',
-    content: `
-      Trí tuệ nhân tạo (AI - Artificial Intelligence) không còn là khái niệm của tương lai mà đã trở thành nền tảng của công nghệ hiện đại. 
-      Về bản chất, AI là lĩnh vực khoa học máy tính hướng tới việc tạo ra các cỗ máy thông minh có khả năng thực hiện các nhiệm vụ thường đòi hỏi trí tuệ con người.
-      
-      ## 1. Machine Learning (Học máy) là gì?
-      Machine Learning là một tập con của AI, tập trung vào việc cấp quyền cho hệ thống học hỏi từ dữ liệu và cải thiện hiệu suất theo thời gian mà không cần được lập trình cụ thể.
-      Dữ liệu đóng vai trò như "thức ăn" cho các thuật toán. Thuật toán càng tiêu thụ nhiều dữ liệu chất lượng, khả năng dự đoán và ra quyết định của nó càng chính xác.
+  const [material, setMaterial] = useState(null);
 
-      ## 2. Deep Learning (Học sâu)
-      Đây là một kỹ thuật nâng cao của Machine Learning, sử dụng mạng nơ-ron nhân tạo lấy cảm hứng từ não bộ con người. 
-      Deep Learning đặc biệt xuất sắc trong nhận dạng hình ảnh, giọng nói và xử lý ngôn ngữ tự nhiên.
+  useEffect(() => {
+    if (!id) return;
+    
+    let isMounted = true;
+    const loadMaterial = async () => {
+      try {
+        const res = await api.post('/api/edu/materials/list');
+        if (isMounted && res.data && res.data.data) {
+          const allMates = res.data.data;
+          const found = allMates.find(m => m.id.toString() === id);
+          if (found) {
+            // Xây dựng TOC cơ bản dựa trên thẻ "##"
+            const toc = [];
+            let i = 1;
+            const contentLines = (found.content || '').split('\n');
+            contentLines.forEach(line => {
+               if (line.trim().startsWith('##')) {
+                  toc.push({ id: `sec-${i}`, title: line.replace('##', '').trim() });
+                  i++;
+               }
+            });
 
-      ## 3. Ứng dụng thực tế
-      - Trợ lý ảo: Siri, Alexa, Google Assistant.
-      - Gợi ý sản phẩm: Thuật toán của Netflix, Amazon.
-      - Xe tự lái: Hệ thống nhận diện đường và chướng ngại vật của Tesla.
-      - Y tế: Hỗ trợ chẩn đoán bệnh qua hình ảnh y khoa.
-    `,
-    summary: [
-      'AI là việc tạo ra máy móc có trí tuệ như con người.',
-      'Machine Learning (Học máy): Máy tự học từ dữ liệu thay vì được lập trình sẵn.',
-      'Deep Learning (Học sâu): Phương pháp nâng cao mô phỏng mạng nơ-ron não bộ (nhận diện ảnh, giọng nói).',
-      'Ứng dụng bao trùm từ giải trí (Netflix, Siri) đến y tế và xe tự lái.'
-    ],
-    toc: [
-      { id: "sec-1", title: "1. Machine Learning (Học máy) là gì?" },
-      { id: "sec-2", title: "2. Deep Learning (Học sâu)" },
-      { id: "sec-3", title: "3. Ứng dụng thực tế" }
-    ],
-    prevLesson: { id: 1, title: 'Tổng quan Khoa học Máy tính' },
-    nextLesson: { id: 3, title: 'Tương lai của Trí tuệ Nhân tạo' }
-  };
+            // Tách các câu tóm tắt (description)
+            const summaryArr = found.description 
+              ? found.description.split('.').filter(s => s.trim() !== '') 
+              : ['Chưa có tóm tắt.'];
+
+            setMaterial({
+              title: found.title,
+              author: 'Dr. John Doe',
+              readTime: '15 phút',
+              content: found.content || 'Chưa có nội dung cho bài giảng này.',
+              summary: summaryArr,
+              toc: toc,
+              prevLesson: null,
+              nextLesson: null
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải chi tiết bài học:", err);
+      }
+    };
+
+    loadMaterial();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
+
+  if (!material) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        <p className="font-bold text-slate-400 animate-pulse">Đang tải bài giảng từ AI...</p>
+      </div>
+    );
+  }
 
   // Tính toán phần trăm cuộn
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     if (scrollHeight - clientHeight <= 0) {
-      setReadingProgress(100);
-      setMaxProgress(100);
+      if (maxProgress < 100) {
+        setReadingProgress(100);
+        setMaxProgress(100);
+        saveProgress(100);
+        setLastSavedProgress(100);
+      }
       return;
     }
+    
     const currentProgress = (scrollTop / (scrollHeight - clientHeight)) * 100;
     const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
     
     setReadingProgress(roundedProgress);
+
+    // Chỉ cập nhật và lưu nếu vượt qua tiến độ cũ
     if (roundedProgress > maxProgress) {
       setMaxProgress(roundedProgress);
       
-      // Giả lập lưu API tiến độ người dùng nếu đọc thêm được 10%
-      // if (roundedProgress % 10 === 0) api.post('/api/edu/learning/track', ...)
+      // Gửi API chỉ khi đủ 5% chênh lệch so với lần vừa gửi HOẶC đạt 100%
+      if (roundedProgress - lastSavedProgress >= 5 || roundedProgress === 100) {
+        saveProgress(roundedProgress);
+        setLastSavedProgress(roundedProgress);
+      }
+    }
+  };
+
+  // Hàm gọi API lưu tiến độ
+  const saveProgress = async (val) => {
+    try {
+      await api.post('/api/edu/learning/track', {
+        material_id: id,
+        action: 'reading',
+        progress: val
+      });
+    } catch (err) {
+      console.warn("Lỗi lưu tiến độ:", err);
     }
   };
 
@@ -113,7 +161,7 @@ export default function LearningView() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 font-sans flex flex-col">
+    <div className="h-dvh bg-slate-950 text-slate-50 font-sans flex flex-col overflow-hidden">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 h-16 flex items-center px-4 sm:px-6">
         <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto">
@@ -142,10 +190,10 @@ export default function LearningView() {
       </header>
 
       {/* MAIN 2-COLUMN LAYOUT */}
-      <main className="flex-1 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
+      <main className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
         
         {/* LFET COLUMN: TÀI LIỆU HỌC TẬP */}
-        <div className="flex-2 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-[2] min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
           <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-10">
@@ -155,8 +203,8 @@ export default function LearningView() {
               </div>
               <h2 className="text-xl font-bold text-slate-100 flex items-center gap-3">
                 Nội dung chi tiết
-                <span className="text-xs font-semibold bg-blue-500/20 text-blue-300 px-2 py-1 rounded-md">
-                  Tiến độ: {readingProgress}%
+                <span className={`text-xs font-semibold px-2 py-1 rounded-md ${maxProgress >= 100 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                  {maxProgress >= 100 ? '✓ Hoàn thành' : `Tiến độ: ${maxProgress}%`}
                 </span>
               </h2>
             </div>
@@ -171,8 +219,18 @@ export default function LearningView() {
           
           {/* Progress bar line under header */}
           <div className="w-full h-1 bg-slate-800 z-10 relative">
-            <div className="h-full bg-linear-to-r from-blue-500 to-amber-500 transition-all duration-100" style={{ width: `${readingProgress}%` }}></div>
-            <div className="absolute top-0 left-0 h-full bg-slate-500/30 transition-all duration-300" style={{ width: `${maxProgress}%` }}></div>
+            {/* Track đã xem nhiều nhất (maxProgress - màu chính) */}
+            <div 
+              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`} 
+              style={{ width: `${maxProgress}%` }}
+            />
+            {/* Vị trí cuộn hiện tại (mờ hơn, chỉ hiện nếu đang cuộn ngược) */}
+            {readingProgress < maxProgress && (
+              <div 
+                className="absolute top-0 left-0 h-full bg-white/20 transition-all duration-100 pointer-events-none" 
+                style={{ width: `${readingProgress}%` }}
+              />
+            )}
           </div>
           
           <div className="flex-1 overflow-hidden flex relative">
@@ -228,7 +286,7 @@ export default function LearningView() {
         </div>
 
         {/* RIGHT COLUMN: AI SIDEBAR */}
-        <div className="flex-1 min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-1 min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative min-h-0">
           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-violet-500 to-amber-500"></div>
           
           <div className="px-6 py-5 border-b border-slate-800 bg-slate-900">
@@ -257,11 +315,11 @@ export default function LearningView() {
           </div>
 
           {/* TAB CONTENT */}
-          <div className="flex-1 overflow-y-auto bg-slate-900/50 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+          <div className="flex-1 min-h-0 flex flex-col bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
             
             {/* SUMMARY TAB */}
             {activeTab === 'summary' && (
-              <div className="p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="overflow-y-auto flex-1 custom-scrollbar p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-6">
                   <h3 className="flex items-center gap-2 text-amber-400 font-bold mb-3">
                     <Lightbulb className="w-5 h-5" /> Ý chính cốt lõi
@@ -286,9 +344,9 @@ export default function LearningView() {
 
             {/* CHAT TAB */}
             {activeTab === 'chat' && (
-              <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="flex-1 min-h-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
                 {/* Message List */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-5 flex flex-col">
+                <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5 flex flex-col custom-scrollbar">
                   {chatHistory.map((msg, index) => (
                     <div key={index} className={`flex max-w-[85%] ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}>
                       <div className={`p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${

@@ -12,8 +12,11 @@ import {
   Save, 
   Sparkles, 
   X,
-  FileQuestion
+  FileQuestion,
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
+import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
 
 export default function UploadCenter() {
@@ -35,12 +38,24 @@ export default function UploadCenter() {
     tagging: false
   });
 
-  // Giả lập Dữ liệu trả về từ AI (Mock Data)
+  // Dữ liệu Preview
   const [previewData, setPreviewData] = useState({
     title: '',
     summary: '',
     tags: []
   });
+
+  // Hiệu ứng "AI Cào Phím" cho Summary
+  const [displayedSummary, setDisplayedSummary] = useState('');
+
+  // Toast Notification
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    if (type === 'error') {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -66,41 +81,55 @@ export default function UploadCenter() {
     }
   };
 
-  // Giả lập luồng gọi API và Animation
-  const startProcessing = () => {
-    if (!file && !linkInput) return;
+  // 1. Phân tích thật (Gửi file/link lên Backend xử lý)
+  const startProcessing = async () => {
+    if (!file && !linkInput.trim()) return;
     setStatus('PROCESSING');
-    
-    // Đặt tên tạm
-    const tempTitle = file ? file.name.split('.')[0] : "Tài liệu trực tuyến";
-    
-    // Mock Delay 1: Đọc PDF / Text
-    setTimeout(() => {
-      setAiStages(prev => ({ ...prev, extract: true }));
-    }, 1500);
+    setAiStages({ extract: false, summary: false, tagging: false });
 
-    // Mock Delay 2: AI Tóm tắt
-    setTimeout(() => {
-      setAiStages(prev => ({ ...prev, summary: true }));
-    }, 3500);
+    try {
+      let response;
 
-    // Mock Delay 3: AI Tagging
-    setTimeout(() => {
-      setAiStages(prev => ({ ...prev, tagging: true }));
-      
-      // Hoàn tất -> Đẩy data vào Preview
-      setTimeout(() => {
-        setPreviewData({
-          title: tempTitle,
-          summary: "Đây là bản tóm tắt mẫu được AI sinh ra. Tài liệu này cung cấp cái nhìn tổng quan về sự phát triển của công nghệ ứng dụng trong thập kỷ qua, đặc biệt nhấn mạnh vào Trí tuệ Nhân tạo và Dữ liệu lớn. Học sinh cần nắm rõ 3 nguyên lý cốt lõi được đề cập trong chương 2.",
-          tags: ["Công nghệ", "AI", "Cơ bản", "2024"]
+      if (file) {
+        // --- Gửi file thật qua FormData ---
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Cập nhật trạng thái bóc tách
+        setTimeout(() => setAiStages(p => ({ ...p, extract: true })), 1000);
+
+        response = await api.post('/api/edu/extract-file', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
-        setStatus('PREVIEW');
-      }, 800);
-    }, 5500);
+      } else {
+        // --- Gửi URL ---
+        setTimeout(() => setAiStages(p => ({ ...p, extract: true })), 1000);
+        response = await api.post('/api/edu/extract-file', { url: linkInput.trim() });
+      }
+
+      // Xong thì bật hết cờ
+      setAiStages({ extract: true, summary: true, tagging: true });
+
+      const { title, summary, tags, lessonContent } = response.data.data;
+
+      // Đẩy vào Preview
+      setPreviewData({
+        title: title || file?.name || "Tài liệu mới",
+        summary: summary || "Tóm tắt không có sẵn.",
+        tags: tags || ["Học liệu"],
+        lessonContent: lessonContent || ""
+      });
+
+      setStatus('PREVIEW');
+
+    } catch (error) {
+      console.error("Lỗi xử lý tài liệu:", error);
+      const errorMsg = error.response?.data?.message || "Hệ thống AI hiện đang bận hoặc không thể đọc file này.";
+      showToast(errorMsg, "error");
+      setStatus('IDLE');
+    }
   };
 
-  // Xóa Tag bị click
   const removeTag = (tagToRemove) => {
     setPreviewData(prev => ({
       ...prev,
@@ -108,11 +137,43 @@ export default function UploadCenter() {
     }));
   };
 
-  const handleSaveToDB = () => {
-    // Sẽ gọi API thật tại đây. Giả lập Success:
-    alert("Lưu Học Liệu thành công! AI đã tạo xong 5 câu hỏi Quiz tuỳ chọn đính kèm.");
-    navigate('/');
+  // Logic gọi API lưu
+  const handleSaveToDB = async () => {
+    try {
+      await api.post('/api/edu/materials', {
+        title: previewData.title || "Tài liệu học tập mới",
+        description: previewData.summary || "Nội dung tóm tắt sẽ được cập nhật sau.",
+        content_url: file ? `https://file-server.local/uploads/temp_${file.name.replace(/\s+/g, '_')}` : (linkInput || "https://file-server.local/demo.pdf"),
+        content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống."
+      });
+      showToast("Đã phân tích xong và lưu học liệu thành công!", "success");
+      // Delay navigation a bit to let the user admire the toast animation
+      setTimeout(() => navigate('/'), 2000);
+    } catch (err) {
+      console.error(err);
+      if (err.response && err.response.data && err.response.data.message) {
+         showToast("Lỗi 400: " + err.response.data.message, "error");
+      } else {
+         showToast("Lỗi khi lưu học liệu", "error");
+      }
+    }
   };
+
+  // Hiệu ứng "AI Typing" khi vừa chuyển sang thẻ PREVIEW
+  useEffect(() => {
+    if (status === 'PREVIEW' && previewData.summary) {
+      let index = 0;
+      setDisplayedSummary('');
+      const typingInterval = setInterval(() => {
+        setDisplayedSummary((old) => old + previewData.summary.charAt(index));
+        index++;
+        if (index === previewData.summary.length) {
+          clearInterval(typingInterval);
+        }
+      }, 15); // Tốc độ gõ 15ms/ký tự
+      return () => clearInterval(typingInterval);
+    }
+  }, [status, previewData.summary]);
 
   return (
     <div className="relative min-h-screen text-slate-50 font-sans">
@@ -343,8 +404,11 @@ export default function UploadCenter() {
                     <label className="text-sm font-bold text-slate-200">AI Tóm tắt nội dung chính</label>
                  </div>
                  <textarea
-                    value={previewData.summary}
-                    onChange={(e) => setPreviewData({...previewData, summary: e.target.value})}
+                    value={displayedSummary}
+                    onChange={(e) => {
+                      setDisplayedSummary(e.target.value);
+                      setPreviewData({...previewData, summary: e.target.value});
+                    }}
                     rows="4"
                     className="w-full relative z-10 bg-slate-800/80 border border-slate-700 font-medium text-slate-300 text-sm leading-relaxed rounded-xl px-4 py-4 focus:border-violet-500 focus:outline-none transition-all resize-none shadow-inner"
                  />
@@ -396,6 +460,26 @@ export default function UploadCenter() {
         )}
 
       </main>
+
+      {/* --- CUSTOM OVERLAY: TOAST NOTIFICATIONS --- */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-110 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl shadow-black/50 border backdrop-blur-md ${
+            toast.type === 'error' ? 'bg-red-950/90 border-red-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
+          }`}>
+            {toast.type === 'error' ? (
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            ) : (
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+            )}
+            <span className="text-sm font-bold text-slate-200">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white p-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
