@@ -30,6 +30,15 @@ exports.processMaterialWithAI = async (req, res) => {
         
         const aiResult = await aiService.generateContent(prompt);
 
+        // Ghi nhận hành động xem tài liệu
+        await sequelize.query(
+            'INSERT INTO learning_history (user_id, material_id, action, progress) VALUES (?, ?, ?, ?)',
+            {
+                replacements: [req.user.id, materialId, 'VIEWED_MATERIAL', 100],
+                type: QueryTypes.INSERT
+            }
+        );
+
         res.status(200).json({
             status: 'success',
             material_title: material.title,
@@ -279,5 +288,69 @@ exports.extractFileContent = async (req, res) => {
     } catch (error) {
         console.error('Extract Error:', error);
         res.status(500).json({ message: 'Lỗi khi xử lý tài liệu.' });
+    }
+};
+
+/**
+ * 9. Lấy tiến độ học tập đã lưu của người dùng
+ */
+exports.getMaterialProgress = async (req, res) => {
+    try {
+        const { material_id } = req.params;
+        const userId = req.user.id;
+
+        const results = await sequelize.query(
+            'SELECT MAX(progress) as max_progress FROM learning_history WHERE user_id = ? AND material_id = ? AND action = "VIEWED_MATERIAL"',
+            { replacements: [userId, material_id], type: QueryTypes.SELECT }
+        );
+
+        res.status(200).json({
+            status: 'success',
+            progress: results[0]?.max_progress || 0
+        });
+    } catch (error) {
+        console.error('Get Progress Error:', error);
+        res.status(500).json({ message: 'Không thể tải tiến độ học tập.' });
+    }
+};
+
+/**
+ * 10. Lấy dữ liệu Dashboard cho trang Home
+ */
+exports.getUserDashboard = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // 1. Lấy bài học đang xem dở bài gần nhất
+        const lastMaterials = await sequelize.query(
+            `SELECT m.id, m.title, m.description, lh.progress, lh.created_at 
+             FROM learning_history lh
+             JOIN materials m ON lh.material_id = m.id
+             WHERE lh.user_id = ? AND lh.action = 'VIEWED_MATERIAL'
+             ORDER BY lh.created_at DESC LIMIT 1`,
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
+
+        // 2. Thống kê bài đã học (đếm material_id duy nhất)
+        const statsResult = await sequelize.query(
+            `SELECT COUNT(DISTINCT material_id) as total_learned 
+             FROM learning_history 
+             WHERE user_id = ? AND (action = 'VIEWED_MATERIAL' OR action = 'COMPLETED_QUIZ')`,
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                lastMaterial: lastMaterials[0] || null,
+                stats: {
+                    totalLearned: statsResult[0]?.total_learned || 0,
+                    avgScore: 8.5 
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard Error:', error);
+        res.status(500).json({ message: 'Không thể tải dữ liệu Dashboard.' });
     }
 };

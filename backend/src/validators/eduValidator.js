@@ -4,9 +4,9 @@ const Joi = require('joi');
 const materialValidator = (req, res, next) => {
     const schema = Joi.object({
         title: Joi.string().min(5).max(255).required(),
-        description: Joi.string().min(10).required(), // Thêm để tránh lỗi "not allowed"
-        content: Joi.string().min(20).required(),     // Nội dung chi tiết cho AI
-        content_url: Joi.string().uri().allow('', null), // Thêm để nhận link tài liệu
+        description: Joi.string().min(10).required(),
+        content: Joi.string().min(20).required(),
+        content_url: Joi.string().allow('', null).optional(),
         type: Joi.string().valid('DOCUMENT', 'VIDEO', 'LINK').default('DOCUMENT')
     });
 
@@ -15,11 +15,11 @@ const materialValidator = (req, res, next) => {
     next();
 };
 
-// Kiểm tra dữ liệu khi lưu lịch sử học tập (Giữ nguyên hoặc thêm quiz_id nếu cần)
+// Kiểm tra dữ liệu khi lưu lịch sử học tập
 const historyValidator = (req, res, next) => {
     const schema = Joi.object({
-        material_id: Joi.number().optional().allow(null), // Cho phép null nếu chỉ làm Quiz
-        quiz_id: Joi.number().optional().allow(null),     // Thêm để lưu kết quả Quiz
+        material_id: Joi.any().optional().allow(null), 
+        quiz_id: Joi.any().optional().allow(null),
         action: Joi.string().valid('VIEWED_MATERIAL', 'STARTED_QUIZ', 'COMPLETED_QUIZ').required(),
         progress: Joi.number().min(0).max(100).required() 
     });

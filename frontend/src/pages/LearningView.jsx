@@ -53,7 +53,7 @@ export default function LearningView() {
 
             setMaterial({
               title: found.title,
-              author: 'Dr. John Doe',
+              author: found.creator_name || 'Giảng viên QuizVibe',
               readTime: '15 phút',
               content: found.content || 'Chưa có nội dung cho bài giảng này.',
               summary: summaryArr,
@@ -61,6 +61,19 @@ export default function LearningView() {
               prevLesson: null,
               nextLesson: null
             });
+
+            // Fetch progress thực tế từ database
+            try {
+              const progressRes = await api.get(`/api/edu/learning/progress/${id}`);
+              if (progressRes.data && progressRes.data.status === 'success') {
+                const savedProgress = progressRes.data.progress || 0;
+                setMaxProgress(savedProgress);
+                setLastSavedProgress(savedProgress);
+                setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
+              }
+            } catch (pErr) { 
+              console.error("Lỗi khi tải tiến độ cũ:", pErr); 
+            }
           }
         }
       } catch (err) {
@@ -119,7 +132,7 @@ export default function LearningView() {
     try {
       await api.post('/api/edu/learning/track', {
         material_id: id,
-        action: 'reading',
+        action: 'VIEWED_MATERIAL',
         progress: val
       });
     } catch (err) {
@@ -193,7 +206,7 @@ export default function LearningView() {
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
         
         {/* LFET COLUMN: TÀI LIỆU HỌC TẬP */}
-        <div className="flex-[2] min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-2 min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
           
           <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-10">
@@ -241,9 +254,18 @@ export default function LearningView() {
                 <div className="p-4 border-b border-slate-800">
                   <h3 className="font-bold text-slate-200">Mục lục khóa học</h3>
                 </div>
-                <div className="flex-1 overflow-y-auto p-2">
+                <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
                   {material.toc.map((item) => (
-                    <button key={item.id} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors line-clamp-2 mb-1">
+                    <button 
+                      key={item.id} 
+                      onClick={() => {
+                        const element = document.getElementById(item.id);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors line-clamp-2 mb-1"
+                    >
                       {item.title}
                     </button>
                   ))}
@@ -254,8 +276,22 @@ export default function LearningView() {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
               <div className="prose prose-invert prose-lg max-w-[800px] mx-auto text-slate-300 leading-relaxed font-medium pb-10">
-                <h1 className="text-3xl font-extrabold mb-6 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400">{material.title}</h1>
-                <div className="whitespace-pre-line">{material.content}</div>
+                <h1 className="text-3xl font-extrabold mb-8 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400">{material.title}</h1>
+                
+                {/* Phân tách và render nội dung theo section để trỏ Mục lục */}
+                {(() => {
+                  const parts = material.content.split(/(?=## )/g);
+                  let secIdx = 0;
+                  return parts.map((part, pIdx) => {
+                    const isHeader = part.trim().startsWith('## ');
+                    const id = isHeader ? `sec-${++secIdx}` : null;
+                    return (
+                      <div key={pIdx} id={id} className={isHeader ? "mt-10 scroll-mt-6" : ""}>
+                        <div className="whitespace-pre-line">{part}</div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
               
               {/* Bài kế tiếp / Trước đó */}

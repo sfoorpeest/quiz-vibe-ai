@@ -28,7 +28,13 @@ router.post('/analyze-draft', auth, checkRole([2, 3]), eduController.analyzeDraf
 router.post('/extract-file', auth, checkRole([2, 3]), upload.single('file'), eduController.extractFileContent);
 
 // 4. Lưu lịch sử học tập (Dành cho Student)
-router.post('/learning/track', auth, checkRole([1]), historyValidator, eduController.trackProgress);
+router.post('/learning/track', auth, checkRole([1, 2, 3]), historyValidator, eduController.trackProgress);
+
+// 4.1 Lấy tiến độ hiện tại của một học liệu
+router.get('/learning/progress/:material_id', auth, eduController.getMaterialProgress);
+
+// 4.2 Lấy dữ liệu Dashboard cho trang Home
+router.get('/dashboard/stats', auth, eduController.getUserDashboard);
 
 // 4.5. Trợ lý AI giải đáp thắc mắc
 router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);

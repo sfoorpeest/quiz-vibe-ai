@@ -16,24 +16,33 @@ export default function Home() {
 
   // States lưu học liệu thật từ Database
   const [materials, setMaterials] = useState([]);
+  const [dashboardData, setDashboardData] = useState({ 
+    lastMaterial: null, 
+    stats: { totalLearned: 0, avgScore: 0 } 
+  });
 
-  // Kéo toàn bộ học liệu đã xử lý từ Database
+  // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
     let isMounted = true;
     
-    const loadData = async () => {
+    const loadDashboard = async () => {
       if (!user?.id) return;
       try {
-        const res = await api.post('/api/edu/materials/list');
-        if (isMounted && res.data && res.data.data) {
-          setMaterials(res.data.data);
+        const statsRes = await api.get('/api/edu/dashboard/stats');
+        if (isMounted && statsRes.data && statsRes.data.status === 'success') {
+          setDashboardData(statsRes.data.data);
+        }
+        
+        const materialsRes = await api.post('/api/edu/materials/list');
+        if (isMounted && materialsRes.data && materialsRes.data.data) {
+          setMaterials(materialsRes.data.data);
         }
       } catch (err) {
-        console.error("Lỗi khi tải học liệu:", err);
+        console.error("Lỗi khi tải dữ liệu Home:", err);
       }
     };
 
-    loadData();
+    loadDashboard();
 
     return () => {
       isMounted = false;
@@ -427,44 +436,54 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-            {/* Progress Card */}
-            <div className="lg:col-span-2 bg-linear-to-br from-blue-900/40 to-violet-900/40 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-8 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform duration-700">
-                <BrainCircuit className="w-48 h-48" />
-              </div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg uppercase tracking-wider">Đang xem dở</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">Nhập môn Trí tuệ Nhân tạo cơ bản</h2>
-              <p className="text-blue-200/80 text-sm mb-8 max-w-md relative z-10 line-clamp-2">Tìm hiểu về Machine Learning, Deep Learning và cách AI thay đổi thế giới. Bạn đã đọc được 60% bản tóm tắt.</p>
-              
-              <div className="mb-8 relative z-10 max-w-md">
-                <div className="flex justify-between text-sm font-bold text-slate-200 mb-2">
-                  <span>Tiến độ học tập</span>
-                  <span>60%</span>
+            {/* Progress Card - Chỉ hiện nếu có bài đang học dở */}
+            {dashboardData.lastMaterial && (
+              <div className="lg:col-span-2 bg-linear-to-br from-blue-900/40 to-violet-900/40 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform duration-700">
+                  <BrainCircuit className="w-48 h-48" />
                 </div>
-                <div className="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden shadow-inner">
-                  <div className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_var(--color-blue-500)]" style={{ width: '60%' }}></div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg uppercase tracking-wider">Đang xem dở</span>
                 </div>
+                <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">{dashboardData.lastMaterial.title}</h2>
+                <p className="text-blue-200/80 text-sm mb-8 max-w-md relative z-10 line-clamp-2">
+                  {dashboardData.lastMaterial.description || "Hãy tiếp tục hoàn thành bài học này để nắm vững kiến thức nhé!"}
+                </p>
+                
+                <div className="mb-8 relative z-10 max-w-md">
+                  <div className="flex justify-between text-sm font-bold text-slate-200 mb-2">
+                    <span>Tiến độ học tập</span>
+                    <span>{dashboardData.lastMaterial.progress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden shadow-inner">
+                    <div 
+                      className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_var(--color-blue-500)] transition-all duration-1000" 
+                      style={{ width: `${dashboardData.lastMaterial.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => navigate(`/learn/${dashboardData.lastMaterial.id}`)}
+                  className="relative z-10 flex items-center justify-center gap-2 bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 active:scale-95 w-full sm:w-auto"
+                >
+                  <Play className="w-5 h-5 fill-current" />
+                  Tiếp tục bài học
+                </button>
               </div>
-              
-              <button className="relative z-10 flex items-center justify-center gap-2 bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 active:scale-95 w-full sm:w-auto">
-                <Play className="w-5 h-5 fill-current" />
-                Tiếp tục bài học
-              </button>
-            </div>
+            )}
 
             {/* User Stats Card */}
-            <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 flex flex-col justify-center">
+            <div className={`bg-slate-800/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 flex flex-col justify-center ${!dashboardData.lastMaterial ? 'lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-8' : ''}`}>
               <h3 className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 text-center sm:text-left">Hồ sơ Của Bạn</h3>
               
-              <div className="space-y-6">
+              <div className={`space-y-6 ${!dashboardData.lastMaterial ? 'space-y-0 grid grid-cols-1 sm:grid-cols-2 gap-6' : ''}`}>
                 <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
                   <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
                     <CheckCircle className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-3xl font-extrabold text-white leading-none">12</p>
+                    <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.totalLearned}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Khóa/Bài đã học</p>
                   </div>
                 </div>
@@ -474,7 +493,7 @@ export default function Home() {
                     <Trophy className="w-7 h-7 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-3xl font-extrabold text-white leading-none">8.5</p>
+                    <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.avgScore}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Điểm trung bình Quiz</p>
                   </div>
                 </div>
@@ -563,7 +582,7 @@ export default function Home() {
 
       {/* --- CUSTOM OVERLAY: MODAL XÁC NHẬN XÓA --- */}
       {deletingId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border inset-0 shadow-inner">
@@ -594,7 +613,7 @@ export default function Home() {
 
       {/* --- CUSTOM OVERLAY: TOAST NOTIFICATIONS --- */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-[110] animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-6 right-6 z-110 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl shadow-black/50 border backdrop-blur-md ${
             toast.type === 'error' ? 'bg-red-950/90 border-red-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
           }`}>
