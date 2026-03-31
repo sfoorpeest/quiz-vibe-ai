@@ -7,6 +7,7 @@ const materialValidator = (req, res, next) => {
         description: Joi.string().min(10).required(),
         content: Joi.string().min(20).required(),
         content_url: Joi.string().allow('', null).optional(),
+        tags: Joi.array().items(Joi.string()).optional(),
         type: Joi.string().valid('DOCUMENT', 'VIDEO', 'LINK').default('DOCUMENT')
     });
 

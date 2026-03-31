@@ -140,9 +140,16 @@ export default function UploadCenter() {
   // Logic gọi API lưu
   const handleSaveToDB = async () => {
     try {
+      // MẸO: Vì không được sửa DB, chúng ta sẽ "giấu" Tag vào trong trường description 
+      // Định dạng: [TAGS:tag1,tag2,...]Mô tả thực tế
+      const tagString = previewData.tags && previewData.tags.length > 0 
+        ? `[TAGS:${previewData.tags.join(',')}]` 
+        : "";
+      const combinedDescription = tagString + (previewData.summary || "Nội dung tóm tắt sẽ được cập nhật sau.");
+
       await api.post('/api/edu/materials', {
         title: previewData.title || "Tài liệu học tập mới",
-        description: previewData.summary || "Nội dung tóm tắt sẽ được cập nhật sau.",
+        description: combinedDescription,
         content_url: file ? `https://file-server.local/uploads/temp_${file.name.replace(/\s+/g, '_')}` : (linkInput || "https://file-server.local/demo.pdf"),
         content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống."
       });

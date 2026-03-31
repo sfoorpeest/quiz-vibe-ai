@@ -101,11 +101,17 @@ exports.createMaterial = async (req, res) => {
         const { title, description, content_url, content } = req.body;
         const teacherId = req.user.id; 
 
-        // SỬA: Thêm trường 'content' vào câu lệnh INSERT và dùng sequelize.query
+        // QUAY LẠI CẤU TRÚC GỐC: Chỉ lưu các trường có sẵn trong database
         const [resultId] = await sequelize.query(
             'INSERT INTO materials (title, description, content_url, content, created_by) VALUES (?, ?, ?, ?, ?)',
                 {
-                    replacements: [title, description, content_url, content, teacherId],
+                    replacements: [
+                        title, 
+                        description, 
+                        content_url, 
+                        content, 
+                        teacherId
+                    ],
                     type: QueryTypes.INSERT
                 }
             );
@@ -237,8 +243,10 @@ exports.extractFileContent = async (req, res) => {
 
         if (req.file) {
             const { buffer, mimetype, originalname } = req.file;
-            sourceTitle = originalname.split('.')[0];
-            extractedText = await extractTextFromBuffer(buffer, mimetype, originalname);
+            // Sửa lỗi font tiếng Việt khi Multer đọc tên file (latin1 -> utf8)
+            const decodedName = Buffer.from(originalname, 'latin1').toString('utf8');
+            sourceTitle = decodedName.split('.')[0];
+            extractedText = await extractTextFromBuffer(buffer, mimetype, decodedName);
 
             if (!extractedText) {
                 return res.status(415).json({

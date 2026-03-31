@@ -390,6 +390,25 @@ export default function Home() {
                       <p className="text-slate-500 text-xs mt-1 font-medium">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
                     </div>
                   </div>
+
+                  {/* Hiển thị Tags từ AI (Trích xuất từ description) */}
+                  {(() => {
+                    const tagMatch = item.description?.match(/^\[TAGS:(.*?)\]/);
+                    if (tagMatch) {
+                      const tagList = tagMatch[1].split(',');
+                      return (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {tagList.slice(0, 3).map((tag, idx) => (
+                            <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700/50 text-blue-300 border border-blue-500/20">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <div className="mt-auto border-t border-slate-700/50 pt-4">
                     <div className="flex items-center gap-3 overflow-hidden">
                       <span className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 px-2.5 py-1.5 rounded-md shrink-0">
@@ -521,7 +540,29 @@ export default function Home() {
                     <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
                   </div>
                   <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">{item.title}</h4>
-                  <p className="text-slate-400 text-sm line-clamp-2 mb-6 font-medium leading-relaxed">{item.description || "Tài liệu học tập trên hệ thống QuizVibe AI."}</p>
+                  
+                  {/* Tách và hiển thị nội dung sạch + Tags */}
+                  {(() => {
+                    const tagMatch = item.description?.match(/^\[TAGS:(.*?)\]/);
+                    const cleanDesc = item.description?.replace(/^\[TAGS:.*?\]/, '') || "Tài liệu học tập trên hệ thống QuizVibe AI.";
+                    const tagList = tagMatch ? tagMatch[1].split(',') : [];
+                    
+                    return (
+                      <>
+                        <p className="text-slate-400 text-sm line-clamp-2 mb-4 font-medium leading-relaxed">{cleanDesc}</p>
+                        {tagList.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-6">
+                            {tagList.slice(0, 3).map((tag, idx) => (
+                              <span key={idx} className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 active:scale-95 transition-transform">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
                   <div className="mt-auto flex items-center justify-between border-t border-slate-700/60 pt-5">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
                       <Clock className="w-3.5 h-3.5" /> ~15p đọc
@@ -557,28 +598,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-      {/* Nút Xem kết quả (do user tự chèn) */}
-      <div style={{ textAlign: 'center', padding: '40px 0', position: 'relative', zIndex: 10 }}>
-        <button 
-          onClick={() => navigate('/result')}
-          style={{
-            padding: '14px 28px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            fontSize: '16px',
-            boxShadow: '0 10px 20px rgba(99, 102, 241, 0.3)',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => e.target.style.transform = 'translateY(-3px)'}
-          onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
-        >
-          Nộp bài & Xem kết quả ngay 🚀
-        </button>
-      </div>
 
       {/* --- CUSTOM OVERLAY: MODAL XÁC NHẬN XÓA --- */}
       {deletingId && (
