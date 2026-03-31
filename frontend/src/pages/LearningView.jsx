@@ -79,37 +79,71 @@ export default function LearningView() {
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!chatMessage.trim() || isLoading) return;
-
-    // Thêm tin nhắn của user
-    const newUserMsg = { sender: 'user', text: chatMessage };
-    setChatHistory(prev => [...prev, newUserMsg]);
-    setChatMessage('');
-    setIsLoading(true);
-
-    try {
-      const response = await api.post('/api/edu/chat', {
-        context: material.content,
-        question: newUserMsg.text
-      });
-
-      if (response.data && response.data.answer) {
-        setChatHistory(prev => [
-          ...prev, 
-          { sender: 'ai', text: response.data.answer }
-        ]);
+  const generateQuizQuestions = () => {
+    // Tạo 5 câu hỏi quiz dựa trên nội dung bài học AI
+    const questions = [
+      {
+        id: 1,
+        question: "Trí tuệ nhân tạo (AI) được định nghĩa như thế nào?",
+        options: [
+          "A. Một công cụ chỉ dùng để tính toán số học",
+          "B. Lĩnh vực khoa học máy tính tạo ra máy móc có trí tuệ như con người",
+          "C. Phần mềm quản lý cơ sở dữ liệu",
+          "D. Công cụ vẽ đồ họa 3D"
+        ],
+        correct: 1,
+        explanation: "AI là lĩnh vực khoa học máy tính hướng tới việc tạo ra các cỗ máy thông minh có khả năng thực hiện các nhiệm vụ đòi hỏi trí tuệ con người."
+      },
+      {
+        id: 2,
+        question: "Machine Learning khác với lập trình truyền thống như thế nào?",
+        options: [
+          "A. Không khác gì, vẫn cần lập trình chi tiết",
+          "B. Cho phép hệ thống học từ dữ liệu và cải thiện mà không cần lập trình cụ thể",
+          "C. Chỉ dùng để tạo giao diện người dùng",
+          "D. Chỉ hoạt động trên máy tính bảng"
+        ],
+        correct: 1,
+        explanation: "Machine Learning tập trung vào việc học từ dữ liệu và cải thiện hiệu suất theo thời gian mà không cần được lập trình cụ thể."
+      },
+      {
+        id: 3,
+        question: "Deep Learning lấy cảm hứng từ bộ phận nào của con người?",
+        options: [
+          "A. Tim mạch",
+          "B. Não bộ và mạng nơ-ron",
+          "C. Hệ tiêu hóa",
+          "D. Hệ cơ xương khớp"
+        ],
+        correct: 1,
+        explanation: "Deep Learning sử dụng mạng nơ-ron nhân tạo lấy cảm hứng từ cấu trúc và hoạt động của não bộ con người."
+      },
+      {
+        id: 4,
+        question: "Deep Learning đặc biệt hiệu quả trong lĩnh vực nào?",
+        options: [
+          "A. Chỉ xử lý văn bản thuần túy",
+          "B. Nhận dạng hình ảnh, giọng nói và ngôn ngữ tự nhiên",
+          "C. Chỉ tính toán số học cơ bản",
+          "D. Chỉ tạo biểu đồ thống kê"
+        ],
+        correct: 1,
+        explanation: "Deep Learning xuất sắc trong nhận dạng hình ảnh, xử lý giọng nói và ngôn ngữ tự nhiên nhờ khả năng học từ dữ liệu phức tạp."
+      },
+      {
+        id: 5,
+        question: "Ví dụ nào sau đây KHÔNG phải là ứng dụng thực tế của AI?",
+        options: [
+          "A. Trợ lý ảo như Siri, Alexa",
+          "B. Gợi ý sản phẩm trên Netflix, Amazon",
+          "C. Máy in laser thông thường",
+          "D. Hỗ trợ chẩn đoán bệnh trong y tế"
+        ],
+        correct: 2,
+        explanation: "Máy in laser thông thường không sử dụng AI, trong khi các ứng dụng khác đều tận dụng công nghệ trí tuệ nhân tạo."
       }
-    } catch (error) {
-      console.error("Chat error:", error);
-      setChatHistory(prev => [
-        ...prev, 
-        { sender: 'ai', text: "Xin lỗi, hiện tại hệ thống AI đang bận. Vui lòng thử lại sau vài giây nhé." }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    ];
+    return questions;
   };
 
   return (
@@ -277,7 +311,13 @@ export default function LearningView() {
                 </div>
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
                   <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
-                  <button className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 font-bold rounded-xl transition-colors text-sm">
+                  <button
+                    onClick={() => {
+                      const generatedQuestions = generateQuizQuestions();
+                      navigate('/quiz-play', { state: { questions: generatedQuestions } });
+                    }}
+                    className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 font-bold rounded-xl transition-colors text-sm"
+                  >
                     Sinh thêm 5 câu Quiz
                   </button>
                 </div>
