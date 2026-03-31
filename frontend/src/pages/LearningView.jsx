@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, List, CheckCircle2
 } from 'lucide-react';
 import api from '../api/axiosClient';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 export default function LearningView() {
   const { id } = useParams();
@@ -174,7 +175,8 @@ export default function LearningView() {
   };
 
   return (
-    <div className="h-dvh bg-slate-950 text-slate-50 font-sans flex flex-col overflow-hidden">
+    <div className="h-dvh relative text-slate-50 font-sans flex flex-col overflow-hidden">
+      <AnimatedBackground />
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 h-16 flex items-center px-4 sm:px-6">
         <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto">
@@ -191,14 +193,7 @@ export default function LearningView() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-sm font-bold text-slate-200 border border-slate-700">
-              <Maximize2 className="w-4 h-4" /> Toàn màn hình
-            </button>
-            <Link to="/quiz/start" className="flex items-center gap-2 px-5 py-2 bg-linear-to-r from-blue-600 to-violet-600 rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 text-sm font-bold text-white hover:scale-105">
-              Làm Quiz ngay <ArrowLeft className="w-4 h-4 rotate-180" />
-            </Link>
-          </div>
+
         </div>
       </header>
 
@@ -371,8 +366,11 @@ export default function LearningView() {
                 </div>
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
                   <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
-                  <button className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 font-bold rounded-xl transition-colors text-sm">
-                    Sinh thêm 5 câu Quiz
+                  <button 
+                    onClick={() => navigate('/quiz/start', { state: { topic: `Dựa vào nội dung tài liệu: ${material?.title}\n\nNội dung chi tiết:\n${material?.content}` } })}
+                    className="flex justify-center items-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] text-sm"
+                  >
+                    <Sparkles className="w-4 h-4" /> Sinh 5 câu Quiz từ học liệu này
                   </button>
                 </div>
               </div>

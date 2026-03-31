@@ -3,25 +3,13 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const quizController = require('../controllers/quizController');
 
+// 1. Tạo Quiz từ topic bằng AI
 router.post('/generate', auth, quizController.createAiQuiz);
 
-// Route này dùng để tạo câu hỏi từ AI
-router.post('/generate', async (req, res) => {
-    try {
-        const { topic, limit } = req.body;
+// 2. Lưu kết quả làm bài
+router.post('/submit', auth, quizController.saveQuizResult);
 
-        if (!topic) return res.status(400).json({ message: "Vui lòng nhập chủ đề" });
-
-        const quizData = await aiService.generateQuizFromAI(topic, limit);
-
-        res.json({
-            success: true,
-            topic: topic,
-            questions: quizData
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+// 3. Lấy bảng xếp hạng (Leaderboard)
+router.get('/leaderboard', auth, quizController.getLeaderboard);
 
 module.exports = router;

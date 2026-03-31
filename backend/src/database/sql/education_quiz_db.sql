@@ -1,18 +1,10 @@
--- 1. Tạo Database nếu chưa có
-CREATE DATABASE IF NOT EXISTS `education_quiz_db`;
-
--- 2. Chỉ định MySQL sử dụng database này cho các lệnh phía dưới
+CREATE DATABASE  IF NOT EXISTS `education_quiz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `education_quiz_db`;
-
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS `questions`;
-DROP TABLE IF EXISTS `quizzes`;
-SET FOREIGN_KEY_CHECKS = 1;
 -- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
 -- Host: localhost    Database: education_quiz_db
 -- ------------------------------------------------------
--- Server version	8.0.45
+-- Server version	9.6.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -24,6 +16,14 @@ SET FOREIGN_KEY_CHECKS = 1;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+SET @MYSQLDUMP_TEMP_LOG_BIN = @@SESSION.SQL_LOG_BIN;
+SET @@SESSION.SQL_LOG_BIN= 0;
+
+--
+-- GTID state at the beginning of the backup 
+--
+
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '1fe2f215-21d7-11f1-a02c-0a0027000003:1-262';
 
 --
 -- Table structure for table `api_logs`
@@ -35,340 +35,9 @@ DROP TABLE IF EXISTS `api_logs`;
 CREATE TABLE `api_logs` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int DEFAULT NULL,
-  `api_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `request_payload` text COLLATE utf8mb4_unicode_ci,
-  `response_text` text COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  CONSTRAINT `api_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `api_logs`
---
-
-LOCK TABLES `api_logs` WRITE;
-/*!40000 ALTER TABLE `api_logs` DISABLE KEYS */;
-INSERT INTO `api_logs` VALUES (1,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":2}','Thành công: Tạo Quiz ID 2','2026-03-18 02:54:22'),(2,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":2}','Thành công: Đã tạo Quiz ID 3 với 1 câu hỏi thật.','2026-03-23 02:36:07'),(3,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":2}','Thành công: Đã tạo Quiz ID 4 với 1 câu hỏi thật.','2026-03-23 02:39:50'),(4,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":3}','Thành công: Đã tạo Quiz ID 5 với 1 câu hỏi thật.','2026-03-23 02:40:15'),(5,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":3}','Thành công: Đã tạo Quiz ID 6 với 1 câu hỏi thật.','2026-03-23 02:42:33'),(6,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":3}','Thành công: Đã tạo Quiz ID 7 với 1 câu hỏi thật.','2026-03-23 02:44:49'),(7,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":4}','Thành công: Đã tạo Quiz ID 8 với 1 câu hỏi thật.','2026-03-23 02:48:41'),(8,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":4}','Thành công: Đã tạo Quiz ID 9 với 1 câu hỏi thật.','2026-03-23 02:51:03'),(9,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":4}','Thành công: Đã tạo Quiz ID 10 với 1 câu hỏi thật.','2026-03-23 02:52:39'),(10,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":4}','Thành công: Đã tạo Quiz ID 11 với 1 câu hỏi thật.','2026-03-23 03:00:03'),(11,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":4}','Thành công: Đã tạo Quiz ID 12 với 1 câu hỏi thật.','2026-03-23 03:18:28'),(12,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Thành công: Đã tạo Quiz ID 13 với 1 câu hỏi thật.','2026-03-23 03:27:39'),(13,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Thành công: Đã tạo Quiz ID 14 với 1 câu hỏi thật.','2026-03-23 03:31:10'),(14,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Thành công: Đã tạo Quiz ID 15 với 1 câu hỏi thật.','2026-03-23 03:32:21'),(15,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Thành công: Đã tạo Quiz ID 16 với 1 câu hỏi thật.','2026-03-23 03:33:52'),(16,3,'CREATE_QUIZ_AI','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Thành công: Đã tạo Quiz ID 17 với 1 câu hỏi thật.','2026-03-23 03:35:22'),(17,3,'CREATE_QUIZ_AI_ERROR','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Lỗi: Data too long for column \'correct_answer\' at row 1','2026-03-23 03:41:51'),(18,3,'CREATE_QUIZ_AI_ERROR','{\"topic\":\"Lập trình Node.js cơ bản\",\"limit\":8}','Lỗi: Data too long for column \'correct_answer\' at row 1','2026-03-23 03:42:21'),(19,3,'CREATE_QUIZ_AI_ERROR','{\"topic\":\"số pi\",\"limit\":8}','Lỗi: Data too long for column \'correct_answer\' at row 1','2026-03-23 03:43:47'),(20,3,'CREATE_QUIZ_AI_ERROR','{\"topic\":\"số pi\",\"limit\":8}','Lỗi: Data too long for column \'correct_answer\' at row 1','2026-03-23 03:44:49'),(21,3,'CREATE_QUIZ_AI','{\"topic\":\"số pi\",\"limit\":8}','Thành công: Đã tạo Quiz ID 22 với 8 câu hỏi thật.','2026-03-23 04:13:52');
-/*!40000 ALTER TABLE `api_logs` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `permissions`
---
-
-DROP TABLE IF EXISTS `permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `permissions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `permission_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `permission_name` (`permission_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `permissions`
---
-
-LOCK TABLES `permissions` WRITE;
-/*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `questions`
---
-
-DROP TABLE IF EXISTS `questions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `questions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `quiz_id` int DEFAULT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci,
-  `options` json NOT NULL,
-  `correct_answer` text COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`id`),
-  KEY `quiz_id` (`quiz_id`),
-  CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `questions`
---
-
-LOCK TABLES `questions` WRITE;
-/*!40000 ALTER TABLE `questions` DISABLE KEYS */;
-INSERT INTO `questions` VALUES (1,1,'Câu hỏi mẫu về Lập trình Node.js cơ bản 1','[\"A\", \"B\", \"C\", \"D\"]','A'),(2,1,'Câu hỏi mẫu về Lập trình Node.js cơ bản 2','[\"E\", \"F\", \"G\", \"H\"]','F'),(3,2,'Câu hỏi mẫu về Lập trình Node.js cơ bản 1','[\"A\", \"B\", \"C\", \"D\"]','A'),(4,2,'Câu hỏi mẫu về Lập trình Node.js cơ bản 2','[\"E\", \"F\", \"G\", \"H\"]','F'),(5,3,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(6,4,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(7,5,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(8,6,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(9,7,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (API đang bận)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(10,8,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang bảo trì)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(11,9,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang bảo trì)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(12,10,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Hệ thống AI đang phản hồi chậm)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(13,11,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(14,12,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(15,13,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(16,14,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(17,15,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(18,16,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(19,17,'Câu hỏi dự phòng về Lập trình Node.js cơ bản (Đang cập nhật Model 2.0)','[\"Đáp án 1\", \"Đáp án 2\", \"Đáp án 3\", \"Đáp án 4\"]','Đáp án 1'),(20,22,'Số pi (π) được định nghĩa là tỉ số giữa đại lượng nào của một đường tròn?','[\"A. Bán kính và đường kính\", \"B. Chu vi và bán kính\", \"C. Chu vi và đường kính\", \"D. Diện tích và bán kính\"]','C. Chu vi và đường kính'),(21,22,'Giá trị xấp xỉ phổ biến nhất của số pi thường được sử dụng trong các phép tính cơ bản là bao nhiêu?','[\"A. 2.71\", \"B. 3.00\", \"C. 3.14\", \"D. 3.16\"]','C. 3.14'),(22,22,'Trong toán học, số pi (π) được phân loại là loại số nào?','[\"A. Số nguyên\", \"B. Số hữu tỉ\", \"C. Số vô tỉ\", \"D. Số phức\"]','C. Số vô tỉ'),(23,22,'Số pi (π) là một số siêu việt (transcendental). Điều này có nghĩa là gì?','[\"A. Nó là nghiệm của một phương trình đa thức với hệ số nguyên.\", \"B. Nó có thể được biểu diễn dưới dạng phân số a/b.\", \"C. Nó không phải là nghiệm của bất kỳ phương trình đa thức nào với hệ số hữu tỉ (khác 0).\", \"D. Nó là một số phức.\"]','C. Nó không phải là nghiệm của bất kỳ phương trình đa thức nào với hệ số hữu tỉ (khác 0).'),(24,22,'Nhà toán học cổ đại nào nổi tiếng với việc tính toán giá trị của số pi bằng phương pháp hình học (phương pháp vét cạn) thông qua việc sử dụng các đa giác nội tiếp và ngoại tiếp đường tròn?','[\"A. Euclid\", \"B. Pythagoras\", \"C. Archimedes\", \"D. Thales\"]','C. Archimedes'),(25,22,'Ký hiệu \'π\' cho số pi được phổ biến rộng rãi bởi nhà toán học nào vào thế kỷ 18?','[\"A. Isaac Newton\", \"B. Gottfried Leibniz\", \"C. Leonhard Euler\", \"D. Carl Friedrich Gauss\"]','C. Leonhard Euler'),(26,22,'Công thức tính diện tích hình tròn là A = πr². Trong công thức này, \'r\' đại diện cho yếu tố nào của đường tròn?','[\"A. Chu vi\", \"B. Đường kính\", \"C. Bán kính\", \"D. Dây cung\"]','C. Bán kính'),(27,22,'Do tính chất là số vô tỉ, điều gì đúng về các chữ số thập phân của số pi?','[\"A. Chúng lặp lại theo một chu kỳ nhất định.\", \"B. Chúng kết thúc sau một số hữu hạn chữ số.\", \"C. Chúng kéo dài vô hạn và không lặp lại theo một chu kỳ nhất định.\", \"D. Chúng chỉ bao gồm các số chẵn.\"]','C. Chúng kéo dài vô hạn và không lặp lại theo một chu kỳ nhất định.');
-/*!40000 ALTER TABLE `questions` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `quizzes`
---
-
-DROP TABLE IF EXISTS `quizzes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `quizzes` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_by` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `created_by` (`created_by`),
-  CONSTRAINT `quizzes_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `quizzes`
---
-
-LOCK TABLES `quizzes` WRITE;
-/*!40000 ALTER TABLE `quizzes` DISABLE KEYS */;
-INSERT INTO `quizzes` VALUES (1,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-18 02:49:59'),(2,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-18 02:54:22'),(3,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:36:07'),(4,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:39:50'),(5,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:40:15'),(6,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:42:33'),(7,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:44:49'),(8,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:48:41'),(9,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:51:03'),(10,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 02:52:39'),(11,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:00:03'),(12,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:18:28'),(13,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:27:39'),(14,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:31:10'),(15,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:32:21'),(16,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:33:52'),(17,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:35:22'),(18,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:41:51'),(19,'Quiz về Lập trình Node.js cơ bản',NULL,3,'2026-03-23 03:42:21'),(20,'Quiz về số pi',NULL,3,'2026-03-23 03:43:47'),(21,'Quiz về số pi',NULL,3,'2026-03-23 03:44:49'),(22,'Quiz về số pi',NULL,3,'2026-03-23 04:13:52');
-/*!40000 ALTER TABLE `quizzes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `results`
---
-
-DROP TABLE IF EXISTS `results`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `results` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int DEFAULT NULL,
-  `quiz_id` int DEFAULT NULL,
-  `score` decimal(5,2) DEFAULT NULL,
-  `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `quiz_id` (`quiz_id`),
-  CONSTRAINT `results_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `results_ibfk_2` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `results`
---
-
-LOCK TABLES `results` WRITE;
-/*!40000 ALTER TABLE `results` DISABLE KEYS */;
-/*!40000 ALTER TABLE `results` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `role_permissions`
---
-
-DROP TABLE IF EXISTS `role_permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `role_permissions` (
-  `role_id` int NOT NULL,
-  `permission_id` int NOT NULL,
-  PRIMARY KEY (`role_id`,`permission_id`),
-  KEY `permission_id` (`permission_id`),
-  CONSTRAINT `role_permissions_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `role_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `role_permissions`
---
-
-LOCK TABLES `role_permissions` WRITE;
-/*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `roles`
---
-
-DROP TABLE IF EXISTS `roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `roles` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `role_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `role_name` (`role_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `roles`
---
-
-LOCK TABLES `roles` WRITE;
-/*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-INSERT INTO `roles` VALUES (1,'Student','Người học tham gia giải đố'),(2,'Teacher','Người tạo đề và quản lý lớp học'),(3,'Admin','Quản trị viên hệ thống');
-/*!40000 ALTER TABLE `roles` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `users`
---
-
-DROP TABLE IF EXISTS `users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `users` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role_id` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`),
-  KEY `role_id` (`role_id`),
-  CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `users`
---
-
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10$6jxTwIoF0ukmkmjkxJczpeKtyjg6WGeyAvqr2fNK.flRtZaim9bZ2',1,'2026-03-17 10:25:40');
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-USE `education_quiz_db`;
-
--- 1. Bảng Tags (Để phân loại Quiz và Tài liệu)
-CREATE TABLE IF NOT EXISTS `tags` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `tag_name` VARCHAR(50) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_tag_name` (`tag_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 2. Bảng Materials (Học liệu: PDF, Link bài giảng, Video)
-CREATE TABLE IF NOT EXISTS `materials` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `title` VARCHAR(255) NOT NULL,
-  `content_url` VARCHAR(500), -- link tài liệu/video/pdf
-  `description` TEXT,
-  `created_by` INT,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_material_user`
-    FOREIGN KEY (`created_by`)
-    REFERENCES `users`(`id`)
-    ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 3. Bảng trung gian gắn Tag cho Quiz (Quan hệ n-n)
-CREATE TABLE IF NOT EXISTS `quiz_tags` (
-  `quiz_id` INT NOT NULL,
-  `tag_id` INT NOT NULL,
-  PRIMARY KEY (`quiz_id`, `tag_id`),
-  CONSTRAINT `fk_qt_quiz`
-    FOREIGN KEY (`quiz_id`)
-    REFERENCES `quizzes`(`id`)
-    ON DELETE CASCADE,
-  CONSTRAINT `fk_qt_tag`
-    FOREIGN KEY (`tag_id`)
-    REFERENCES `tags`(`id`)
-    ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 4. Bảng Learning_History (Lịch sử học tập chi tiết)
-CREATE TABLE IF NOT EXISTS `learning_history` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `user_id` INT NOT NULL,
-  `material_id` INT DEFAULT NULL,
-  `quiz_id` INT DEFAULT NULL,
-
-  `action` ENUM(
-    'VIEWED_MATERIAL',
-    'STARTED_QUIZ',
-    'COMPLETED_QUIZ'
-  ) NOT NULL,
-
-  `progress` TINYINT DEFAULT 0, -- 0 → 100 (%)
-
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (`id`),
-
-  CONSTRAINT `fk_lh_user`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `users`(`id`)
-    ON DELETE CASCADE,
-
-  CONSTRAINT `fk_lh_material`
-    FOREIGN KEY (`material_id`)
-    REFERENCES `materials`(`id`)
-    ON DELETE SET NULL,
-
-  CONSTRAINT `fk_lh_quiz`
-    FOREIGN KEY (`quiz_id`)
-    REFERENCES `quizzes`(`id`)
-    ON DELETE SET NULL,
-
-  CONSTRAINT `chk_progress`
-    CHECK (`progress` >= 0 AND `progress` <= 100)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2026-03-23 14:55:39
-CREATE DATABASE  IF NOT EXISTS `education_quiz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `education_quiz_db`;
--- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
---
--- Host: localhost    Database: education_quiz_db
--- ------------------------------------------------------
--- Server version	8.0.45
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `api_logs`
---
-
-DROP TABLE IF EXISTS `api_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `api_logs` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int DEFAULT NULL,
-  `api_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `request_payload` text COLLATE utf8mb4_unicode_ci,
-  `response_text` text COLLATE utf8mb4_unicode_ci,
+  `api_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `request_payload` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `response_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
@@ -409,7 +78,7 @@ CREATE TABLE `learning_history` (
   CONSTRAINT `fk_lh_quiz` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_lh_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_progress` CHECK (((`progress` >= 0) and (`progress` <= 100)))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=66 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -418,6 +87,7 @@ CREATE TABLE `learning_history` (
 
 LOCK TABLES `learning_history` WRITE;
 /*!40000 ALTER TABLE `learning_history` DISABLE KEYS */;
+INSERT INTO `learning_history` VALUES (1,6,14,NULL,'VIEWED_MATERIAL',5,'2026-03-30 09:18:50'),(2,6,14,NULL,'VIEWED_MATERIAL',10,'2026-03-30 09:18:50'),(3,6,14,NULL,'VIEWED_MATERIAL',15,'2026-03-30 09:18:51'),(4,6,14,NULL,'VIEWED_MATERIAL',20,'2026-03-30 09:18:51'),(5,6,14,NULL,'VIEWED_MATERIAL',26,'2026-03-30 09:18:51'),(6,6,14,NULL,'VIEWED_MATERIAL',31,'2026-03-30 09:18:51'),(7,6,14,NULL,'VIEWED_MATERIAL',36,'2026-03-30 09:18:51'),(8,6,14,NULL,'VIEWED_MATERIAL',41,'2026-03-30 09:18:52'),(9,6,14,NULL,'VIEWED_MATERIAL',46,'2026-03-30 09:18:52'),(10,6,14,NULL,'VIEWED_MATERIAL',51,'2026-03-30 09:18:52'),(11,6,14,NULL,'VIEWED_MATERIAL',56,'2026-03-30 09:18:52'),(12,6,14,NULL,'VIEWED_MATERIAL',61,'2026-03-30 09:18:52'),(13,6,14,NULL,'VIEWED_MATERIAL',66,'2026-03-30 09:18:52'),(14,6,14,NULL,'VIEWED_MATERIAL',71,'2026-03-30 09:18:52'),(15,6,14,NULL,'VIEWED_MATERIAL',76,'2026-03-30 09:18:52'),(16,6,14,NULL,'VIEWED_MATERIAL',81,'2026-03-30 09:18:53'),(17,6,14,NULL,'VIEWED_MATERIAL',86,'2026-03-30 09:18:53'),(18,6,14,NULL,'VIEWED_MATERIAL',91,'2026-03-30 09:18:53'),(19,6,14,NULL,'VIEWED_MATERIAL',96,'2026-03-30 09:18:53'),(20,6,14,NULL,'VIEWED_MATERIAL',100,'2026-03-30 09:18:53'),(21,6,12,NULL,'VIEWED_MATERIAL',5,'2026-03-30 09:21:21'),(22,6,12,NULL,'VIEWED_MATERIAL',13,'2026-03-30 09:21:21'),(23,6,12,NULL,'VIEWED_MATERIAL',20,'2026-03-30 09:21:21'),(24,6,12,NULL,'VIEWED_MATERIAL',25,'2026-03-30 09:21:21'),(25,6,12,NULL,'VIEWED_MATERIAL',32,'2026-03-30 09:21:21'),(26,6,12,NULL,'VIEWED_MATERIAL',37,'2026-03-30 09:21:21'),(27,6,12,NULL,'VIEWED_MATERIAL',42,'2026-03-30 09:21:21'),(28,6,12,NULL,'VIEWED_MATERIAL',48,'2026-03-30 09:27:46'),(29,6,12,NULL,'VIEWED_MATERIAL',61,'2026-03-30 09:27:46'),(30,5,15,NULL,'VIEWED_MATERIAL',5,'2026-03-30 09:46:42'),(31,5,15,NULL,'VIEWED_MATERIAL',10,'2026-03-30 09:46:42'),(32,5,15,NULL,'VIEWED_MATERIAL',15,'2026-03-30 10:48:48'),(33,5,15,NULL,'VIEWED_MATERIAL',20,'2026-03-30 10:48:48'),(34,5,15,NULL,'VIEWED_MATERIAL',25,'2026-03-30 10:48:48'),(35,5,15,NULL,'VIEWED_MATERIAL',30,'2026-03-30 10:48:49'),(36,5,15,NULL,'VIEWED_MATERIAL',35,'2026-03-30 10:48:49'),(37,5,15,NULL,'VIEWED_MATERIAL',41,'2026-03-30 10:49:04'),(38,5,15,NULL,'VIEWED_MATERIAL',46,'2026-03-30 10:49:04'),(39,5,15,NULL,'VIEWED_MATERIAL',51,'2026-03-30 10:49:06'),(40,5,15,NULL,'VIEWED_MATERIAL',56,'2026-03-30 10:49:06'),(41,5,15,NULL,'VIEWED_MATERIAL',61,'2026-03-30 10:49:07'),(42,5,15,NULL,'VIEWED_MATERIAL',66,'2026-03-30 10:49:07'),(43,5,15,NULL,'VIEWED_MATERIAL',71,'2026-03-30 10:49:08'),(44,5,15,NULL,'VIEWED_MATERIAL',77,'2026-03-30 10:49:08'),(45,5,15,NULL,'VIEWED_MATERIAL',82,'2026-03-30 10:49:08'),(46,5,15,NULL,'VIEWED_MATERIAL',88,'2026-03-30 10:49:08'),(47,5,15,NULL,'VIEWED_MATERIAL',93,'2026-03-30 10:49:08'),(48,5,15,NULL,'VIEWED_MATERIAL',98,'2026-03-30 10:49:09'),(49,5,15,NULL,'VIEWED_MATERIAL',100,'2026-03-30 10:49:09'),(50,6,12,NULL,'VIEWED_MATERIAL',70,'2026-03-31 02:41:40'),(51,6,12,NULL,'VIEWED_MATERIAL',90,'2026-03-31 02:41:40'),(52,6,12,NULL,'VIEWED_MATERIAL',100,'2026-03-31 02:41:40'),(53,6,16,NULL,'VIEWED_MATERIAL',6,'2026-03-31 02:42:01'),(54,6,16,NULL,'VIEWED_MATERIAL',11,'2026-03-31 02:42:01'),(55,6,16,NULL,'VIEWED_MATERIAL',16,'2026-03-31 02:42:02'),(56,6,16,NULL,'VIEWED_MATERIAL',21,'2026-03-31 02:42:10'),(57,6,16,NULL,'VIEWED_MATERIAL',26,'2026-03-31 02:42:11'),(58,6,16,NULL,'VIEWED_MATERIAL',31,'2026-03-31 02:42:11'),(59,6,16,NULL,'VIEWED_MATERIAL',36,'2026-03-31 02:42:11'),(60,6,16,NULL,'VIEWED_MATERIAL',41,'2026-03-31 02:42:11'),(61,6,17,NULL,'VIEWED_MATERIAL',6,'2026-03-31 03:23:37'),(62,6,17,NULL,'VIEWED_MATERIAL',11,'2026-03-31 03:23:38'),(63,6,17,NULL,'VIEWED_MATERIAL',16,'2026-03-31 03:23:38'),(64,6,17,NULL,'VIEWED_MATERIAL',21,'2026-03-31 03:23:45'),(65,6,17,NULL,'VIEWED_MATERIAL',26,'2026-03-31 03:23:46');
 /*!40000 ALTER TABLE `learning_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -433,12 +103,13 @@ CREATE TABLE `materials` (
   `title` varchar(255) NOT NULL,
   `content_url` varchar(500) DEFAULT NULL,
   `description` text,
+  `content` text,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_material_user` (`created_by`),
   CONSTRAINT `fk_material_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -447,6 +118,7 @@ CREATE TABLE `materials` (
 
 LOCK TABLES `materials` WRITE;
 /*!40000 ALTER TABLE `materials` DISABLE KEYS */;
+INSERT INTO `materials` VALUES (6,'Nginx as a Reverse Proxy on Ubuntu 20 (1)','https://file-server.local/uploads/temp_Nginx_as_a_Reverse_Proxy_on_Ubuntu_20_(1).docx','Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.','## 1. Mở đầu về Nginx as a Reverse Proxy on Ubuntu 20 (1)\n\nHôm nay chúng ta sẽ tìm hiểu về Nginx as a Reverse Proxy on Ubuntu 20 (1). Đây là một khái niệm cực kỳ quan trọng đòi hỏi bạn phải nắm vững nền tảng gốc rễ để áp dụng vào thực tế.\n\n## 2. Các điểm cốt lõi của Nginx as a Reverse Proxy on Ubuntu 20 (1)\n\n- Bản chất vật lý / kỹ thuật nền tảng.\n- Những trường hợp sử dụng cơ bản.\n- So sánh ưu nhược điểm so với các hệ thống hoặc khái niệm tương đương.\n\n## 3. Tổng kết bài giảng\n\nNắm được lý thuyết của Nginx as a Reverse Proxy on Ubuntu 20 (1) sẽ giúp bạn có lợi thế lớn khi bắt tay vào triển khai. Hãy giữ vững tinh thần tự học thật tốt (Lưu ý: API Gemini hiện tại đang quá tải hoặc giới hạn đọc nội dung file cục bộ, vì vậy đây là phần phân tích giả lập từ tiêu đề file).',5,'2026-03-30 07:29:26'),(7,'IAM Policies_Completed','https://file-server.local/uploads/temp_IAM_Policies_Completed.pdf','Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.','## 1. Mở đầu về IAM Policies_Completed\n\nHôm nay chúng ta sẽ tìm hiểu về IAM Policies_Completed. Đây là một khái niệm cực kỳ quan trọng đòi hỏi bạn phải nắm vững nền tảng gốc rễ để áp dụng vào thực tế.\n\n## 2. Các điểm cốt lõi của IAM Policies_Completed\n\n- Bản chất vật lý / kỹ thuật nền tảng.\n- Những trường hợp sử dụng cơ bản.\n- So sánh ưu nhược điểm so với các hệ thống hoặc khái niệm tương đương.\n\n## 3. Tổng kết bài giảng\n\nNắm được lý thuyết của IAM Policies_Completed sẽ giúp bạn có lợi thế lớn khi bắt tay vào triển khai. Hãy giữ vững tinh thần tự học thật tốt (Lưu ý: API Gemini hiện tại đang quá tải hoặc giới hạn đọc nội dung file cục bộ, vì vậy đây là phần phân tích giả lập từ tiêu đề file).',5,'2026-03-30 07:58:09'),(12,'AWS lab practice guide by www','https://file-server.local/uploads/temp_AWS_lab_practice_guide_by_www.server-computer.com_v1.pdf','Tài liệu này là một nguồn học thuật toàn diện về quản trị Red Hat Enterprise Linux (RHEL), được thiết kế để trang bị cho người dùng các kỹ năng thực tế trong việc quản lý môi trường Linux cấp doanh nghiệp. Nó trình bày có hệ thống các khía cạnh chính từ các khái niệm cơ bản đến cấu hình và bảo trì hệ thống nâng cao. Nội dung hướng tới việc xây dựng sự hiểu biết sâu sắc về RHEL, điều cần thiết cho các vai trò hạ tầng CNTT chuyên nghiệp.','Chào bạn! Rất vui được đồng hành cùng bạn trong buổi học hôm nay. Dựa trên tài liệu bạn đã cung cấp, chúng ta hãy cùng khám phá xem tài liệu này tiết lộ những gì nhé!\n\n### **1. Tổng quan về Cấu trúc và Định dạng Tài liệu**\n\nĐầu tiên, tài liệu chúng ta đang xem là một phần của tệp PDF, cụ thể là phiên bản 1.5. Đây là một định dạng tài liệu phổ biến, cho thấy khả năng chứa văn bản, hình ảnh và các yếu tố tương tác khác. Tài liệu này được cấu trúc để có tổng cộng 86 trang, điều này cho thấy đây có thể là một tài liệu khá toàn diện hoặc một cuốn sách hướng dẫn. Ngôn ngữ mặc định được thiết lập cho tài liệu là tiếng Anh (Ấn Độ), và nó sử dụng các phông chữ quen thuộc như Calibri và Calibri Bold để trình bày nội dung, mang lại sự rõ ràng và dễ đọc.\n\n### **2. Các Nguồn Tài nguyên Liên kết và Chủ đề có thể có**\n\nĐiều thú vị là tài liệu này chứa nhiều liên kết được nhúng, đưa chúng ta đến các nền tảng trực tuyến khác. Các liên kết này bao gồm:\n*   Trang Facebook \"Linuxarkit\".\n*   Blog \"Redhat Enterprise Linux Step by Step Guide\" trên Google+.\n*   Tài khoản Twitter \"@aravikumar48\".\n*   Cộng đồng \"r/techtutorial\" trên Reddit.\n*   Hồ sơ LinkedIn của \"Ravi Kumar\".\n\nNhững liên kết này gợi ý rằng tài liệu có thể liên quan đến các chủ đề về Linux, Red Hat Enterprise Linux và các hướng dẫn kỹ thuật nói chung. \"Ravi Kumar\" có vẻ là người tạo hoặc quản lý các nguồn tài nguyên này, cho thấy đây có thể là một phần trong bộ sưu tập hoặc tác phẩm của anh ấy về công nghệ thông tin.\n\n### **3. Về Chủ đề \"AWS Lab Practice Guide\"**\n\nTuy nhiên, có một điểm quan trọng cần lưu ý là dựa trên *nội dung tài liệu bạn đã cung cấp*, **chúng ta không tìm thấy bất kỳ thông tin trực tiếp nào hay đề cập đến \"AWS\" (Amazon Web Services)**. Tài liệu chủ yếu hiển thị cấu trúc PDF, thông tin về phông chữ và các liên kết đến các chủ đề liên quan đến Linux, Red Hat và các hướng dẫn công nghệ tổng quát khác. Do đó, một bài giảng chi tiết *chuyên sâu về \"AWS lab practice guide\"* không thể được xây dựng chỉ từ dữ liệu này.\n\nHy vọng những thông tin này hữu ích cho bạn! Nếu có thêm tài liệu hoặc câu hỏi khác, đừng ngần ngại hỏi nhé! ?',5,'2026-03-30 08:23:44'),(13,'Chuong_09_Updated_Red','https://file-server.local/uploads/temp_Chuong_09_Updated_Red.docx','Tài liệu học thuật quan trọng.','Trí tuệ nhân tạo (AI) là lĩnh vực máy tính mô phỏng trí thông minh con người. Trong bài học này, chúng ta tập trung vào Machine Learning và Deep Learning - hai trụ cột giúp máy tính tự học hỏi.',5,'2026-03-30 08:33:46'),(14,'Chuong_09_Updated_Red','https://file-server.local/uploads/temp_Chuong_09_Updated_Red.docx','Chương này nhấn mạnh tầm quan trọng của các thực hành kỹ thuật trong Scrum, coi chúng là yếu tố cần thiết để một nhóm đạt được năng suất cao, mặc dù Scrum không trực tiếp định nghĩa. Nội dung giải thích tại sao các thực hành này lại quan trọng và cách chúng giúp nhóm vượt qua trở ngại trong quá trình phát triển sản phẩm. Câu chuyện của Patrick, một ScrumMaster mới, minh họa tình trạng một lập trình viên tài năng từ chối áp dụng các thực hành như Lập trình hướng kiểm thử (TDD) do cho rằng tốn thời gian, dẫn đến những khó khăn tiềm ẩn cho nhóm.','Chào mừng tất cả các bạn đến với buổi học ngày hôm nay! Tôi là [Tên giáo viên - ví dụ: Minh/Lan], và tôi rất vui được cùng các bạn khám phá một chủ đề vô cùng quan trọng nhưng cũng thường bị hiểu lầm trong thế giới Scrum: **\"Tại sao các Thực hành Kỹ thuật quan trọng trong Scrum.\"**\n\nScrum là một khung làm việc (framework) linh hoạt, nhẹ nhàng, tập trung vào việc quản lý quy trình và con người. Tuy nhiên, sự \"nhẹ nhàng\" này đôi khi lại dẫn đến một hiểu lầm tai hại: nhiều người cho rằng Scrum không đòi hỏi hoặc không quan tâm đến các thực hành kỹ thuật chi tiết. Họ nghĩ rằng chỉ cần tuân thủ các sự kiện, vai trò, tạo ra Backlog, và... điều kỳ diệu sẽ xảy ra.\n\nKhông phải vậy! Scrum mong muốn rằng một nhóm, khi bắt đầu làm theo Agile, sẽ sớm nhận ra rằng **các thực hành kỹ thuật là yếu tố then chốt để trở thành một nhóm Scrum năng suất cao thực sự.** Chúng không phải là điều xa xỉ mà là **phép thuật, là sức mạnh, là liều thuốc tiên** cần có để tạo ra sản phẩm chất lượng một cách bền vững.\n\nHôm nay, chúng ta sẽ không đi sâu vào định nghĩa từng thực hành kỹ thuật cụ thể – đã có rất nhiều tài liệu tuyệt vời nói về chúng. Thay vào đó, chúng ta sẽ tập trung vào **lý do TẠI SAO chúng ta cần các thực hành kỹ thuật, và làm thế nào chúng có thể giúp nhóm phát triển vượt qua những trở ngại tưởng chừng như không thể.** Để làm sáng tỏ điều này, chúng ta sẽ cùng nghe câu chuyện về Patrick, một lập trình viên lành nghề chuyển qua làm quản lý dự án, và những khám phá của anh ấy tại một công ty mới.\n\n---\n\n## Phần 1: Giới thiệu - Khẳng định tầm quan trọng không thể thiếu của các Thực hành Kỹ thuật trong Scrum\n\n**Mục tiêu của phần này:** Giúp học viên hiểu rõ một cách khái quát về mối quan hệ giữa Scrum và các thực hành kỹ thuật, phá bỏ những lầm tưởng phổ biến.\n\n### **1.1. Lầm tưởng phổ biến về Scrum và Kỹ thuật**\n\n*   **Scrum là khung làm việc nhẹ nhàng, không quy định chi tiết kỹ thuật.**\n    *   Đúng vậy, Scrum không ra lệnh bạn phải sử dụng TDD, CI/CD, Refactoring hay Pair Programming. Đây là một điểm mạnh, giúp Scrum linh hoạt và phù hợp với nhiều ngữ cảnh khác nhau.\n*   **Hiểu lầm:** Vì Scrum không nói, nên các thực hành kỹ thuật là \"tùy chọn,\" \"không quan trọng,\" hoặc thậm chí là \"lãng phí thời gian.\"\n    *   Nhiều nhóm mới bắt đầu với Scrum thường bỏ qua khía cạnh này, tập trung vào các sự kiện (Sprint Planning, Daily Scrum, Review, Retrospective) và các vai trò (Product Owner, Scrum Master, Development Team). Họ kỳ vọng rằng chỉ cần tuân thủ các quy tắc này, sản phẩm sẽ tự động được tạo ra một cách hiệu quả.\n\n### **1.2. Thực tế và kỳ vọng của Scrum về Kỹ thuật**\n\n*   **Scrum mong đợi sự trưởng thành của nhóm:** Khung làm việc Scrum được thiết kế để một nhóm, qua quá trình tự kiểm tra và thích nghi (Inspection & Adaptation), sẽ dần nhận ra những gì mình cần để cải thiện. Và rất nhanh chóng, các nhóm sẽ nhận ra rằng để đạt được sự \"hoàn thành\" (Done) thực sự, để có thể liên tục chuyển giao các phần tăng trưởng có giá trị, chất lượng cao, các thực hành kỹ thuật là **không thể thiếu.**\n*   **Các thực hành kỹ thuật là \"phép thuật\" của đội phát triển:**\n    *   Hãy hình dung Product Owner mong muốn một sản phẩm có giá trị và liên tục được cải tiến. Để biến ý tưởng thành hiện thực, để những \"User Story\" trở thành \"Phần tăng trưởng (Increment)\" thực sự, đội phát triển cần những công cụ, kỹ năng và quy trình kỹ thuật vững chắc.\n    *   Chúng ta có thể ví các thực hành kỹ thuật như là \"phép thuật,\" \"sức mạnh,\" hay \"liều thuốc tiên\" mà đội phát triển cần để tạo ra sản phẩm một cách hiệu quả, chất lượng và bền vững.\n*   **Tại sao chúng ta cần quan tâm?**\n    *   Việc thiếu các thực hành kỹ thuật tốt sẽ dẫn đến tình trạng nợ kỹ thuật (technical debt) chồng chất, chất lượng sản phẩm kém, tốc độ phát triển chậm lại theo thời gian, và cuối cùng là sự thất vọng của cả nhóm và khách hàng.\n    *   Các thực hành kỹ thuật giúp nhóm **tăng cường khả năng thích ứng (adaptability)** với thay đổi, **đảm bảo chất lượng (quality assurance)**, và **duy trì tốc độ phát triển (sustainable pace)**.\n\n### **1.3. Giới thiệu câu chuyện Patrick - Góc nhìn thực tế**\n\n*   Để minh họa rõ hơn cho những điều này, chúng ta sẽ cùng tìm hiểu câu chuyện của Patrick. Patrick là một lập trình viên giỏi, có kinh nghiệm với cả Scrum và XP (Extreme Programming - một phương pháp Agile rất chú trọng thực hành kỹ thuật). Anh ấy chuyển đến làm Scrum Master tại một công ty mới và đã có những quan sát bất ngờ về nhóm Scrum mà anh ấy tham gia.\n*   Câu chuyện của Patrick sẽ cho chúng ta thấy rõ những hậu quả của việc bỏ qua các thực hành kỹ thuật, và cách chúng ta có thể nhận diện, khắc phục những vấn đề này.\n\n---\n\n## Phần 2: Phân tích các trường hợp thực tế - Học hỏi từ câu chuyện của Patrick\n\n**Mục tiêu của phần này:** Thông qua câu chuyện của Patrick, học viên sẽ nhận diện được các vấn đề cụ thể phát sinh do thiếu các thực hành kỹ thuật và hiểu được tác động tiêu cực của chúng.\n\n### **2.1. Patrick và kỳ vọng ban đầu**\n\n*   Patrick rất phấn khởi khi nhận lời làm việc tại Helix, một công ty nổi tiếng, và anh được giao vai trò Scrum Master. Với kinh nghiệm dày dặn của mình về Scrum và XP, anh tin rằng nhóm dự án đã làm việc cùng nhau một thời gian tại Helix hẳn phải đang hoạt động rất hiệu quả.\n*   **Nhưng, Patrick đã nhầm.** Điều này là một lời nhắc nhở rằng việc \"làm Scrum\" (làm đúng quy trình) chưa chắc đã đồng nghĩa với việc \"trở nên Agile\" (linh hoạt và hiệu quả thực sự).\n\n### **2.2. Trường hợp của Niall - Vấn đề với Lập trình Hướng kiểm thử (TDD) và \"Gold Plating\"**\n\n*   **Giới thiệu Niall:** Niall là một lập trình viên giỏi, nhưng có những quan điểm sai lầm về cách làm việc hiệu quả.\n*   **Vấn đề 1: Kháng cự TDD (Test-Driven Development)**\n    *   **Thái độ của Niall:** \"Quá nhiều việc phải chuẩn bị và quá nhiều code phải bỏ đi,\" \"lãng phí thời gian,\" \"chỉ có sáu tháng để hoàn thành dự án này.\" Anh ta tin rằng debugger và nhóm kiểm thử đã đủ để xử lý lỗi.\n    *   **Phân tích Patrick:**\n        *   Patrick thừa nhận TDD *có vẻ* tốn thời gian ban đầu và có thể làm tăng lượng code.\n        *   **Lợi ích bị bỏ qua của TDD:**\n            *   **Thiết kế sáng sủa hơn nhiều:** TDD buộc lập trình viên phải suy nghĩ về giao diện và hành vi của code *trước* khi viết code. Điều này dẫn đến thiết kế mô-đun hơn, dễ bảo trì hơn.\n            *   **Giảm thiểu lỗi ngay từ đầu:** Viết test trước giúp phát hiện và ngăn chặn lỗi ngay lập tức, thay vì phải tìm kiếm và sửa chữa chúng sau này.\n            *   **Tiết kiệm thời gian gỡ lỗi:** Patrick chỉ ra rằng Niall dành nhiều thời gian cho trình gỡ lỗi, điều này cũng là \"mất thời gian\" và không hiệu quả bằng việc ngăn ngừa lỗi bằng TDD.\n            *   **Tạo ra tài liệu sống:** Các bài kiểm thử chính là tài liệu về cách code hoạt động.\n        *   **Hậu quả khi thiếu TDD:** Tốn thời gian gỡ lỗi, thiết kế kém tối ưu, lỗi lặp đi lặp lại, khó thay đổi code sau này.\n*   **Vấn đề 2: \"Gold Plating\" (làm thêm tính năng không yêu cầu)**\n    *   **Hành động của Niall:** Tự ý viết code tạo ra các drop-down box không nằm trong tiêu chí chấp nhận (Acceptance Criteria) của Story, với suy nghĩ \"khách hàng sẽ thích nó\" và \"tôi muốn cung cấp thêm chút gì đó.\"\n    *   **Phân tích Patrick:**\n        *   Patrick khẳng định: \"Chúng ta phải viết code vừa đủ để hoàn thành story. Không hơn. Không kém.\"\n        *   **Hậu quả của Gold Plating:**\n            *   **Lãng phí thời gian và tài nguyên:** Thời gian dùng để viết code thừa thãi có thể được dùng cho các Story có giá trị thực sự cho khách hàng, hoặc dùng để thực hiện các thực hành kỹ thuật quan trọng như TDD.\n            *   **Tăng nợ kỹ thuật:** Các tính năng không yêu cầu có thể không được kiểm thử kỹ lưỡng, gây ra lỗi hoặc khó bảo trì sau này.\n            *   **Không tuân thủ giá trị Agile:** Tập trung vào việc cung cấp giá trị cao nhất cho khách hàng, chứ không phải các tính năng \"ngẫu hứng.\"\n    *   **Bài học từ Niall:** Sự nhầm lẫn giữa nỗ lực cá nhân và hiệu quả của nhóm, giữa việc làm \"nhiều\" và làm \"đúng.\"\n\n### **2.3. Trường hợp của Claire - Vấn đề với Tích hợp Liên tục (Continuous Integration - CI)**\n\n*   **Giới thiệu Claire:** Claire là một thành viên kinh nghiệm, có khả năng hoàn thành công việc nhanh chóng.\n*   **Vấn đề: Không đưa code lên hệ thống quản lý mã nguồn (Source Code Management - SCM) thường xuyên.**\n    *   **Tuyên bố của Claire:** \"Story 1822 đã hoàn thành.\"\n    *   **Thực tế:** Code chưa được đưa vào SCM. \"Tôi dự định sẽ đưa lên sau. Tôi còn đang chạy thử trên máy của mình.\" Cô ấy thường chỉ đưa code lên 2-3 lần mỗi tuần.\n    *   **Phân tích Patrick:**\n        *   **Câu hỏi thách thức:** \"Làm thế nào bạn biết rằng code của bạn hoạt động với code của những người khác trong nhóm?\" và \"Nếu có vấn đề thì sao? Bạn sẽ tìm kiếm ở đâu?\"\n        *   **Hậu quả khi thiếu Tích hợp Liên tục (CI):**\n            *   **Nguy cơ xung đột code (Merge Conflicts):** Khi code chỉ được đưa lên định kỳ (ví dụ: vài ngày một lần), khả năng cao sẽ có xung đột lớn với code của các thành viên khác, dẫn đến thời gian tốn kém để giải quyết.\n            *   **Lỗi tích hợp (Integration Bugs):** Các lỗi chỉ xuất hiện khi các phần code khác nhau được kết hợp. Nếu không tích hợp thường xuyên, những lỗi này sẽ bị phát hiện muộn, khó gỡ lỗi hơn rất nhiều.\n            *   **Thiếu minh bạch và làm chậm nhóm:** Các thành viên khác không biết chính xác code của Claire đã được tích hợp và hoạt động ổn định hay chưa, gây ra sự phụ thuộc và chậm trễ.\n            *   **Ngăn cản việc đạt được \"Done\" thực sự:** Một Story chỉ thực sự \"Done\" khi code đã được tích hợp, kiểm thử và sẵn sàng triển khai. Nếu code vẫn nằm trên máy cá nhân, nó chưa \"Done.\"\n            *   **Khả năng mất code:** Nếu có sự cố với máy tính cá nhân, code chưa được check-in có thể bị mất.\n    *   **Bài học từ Claire:** Tốc độ cá nhân không có ý nghĩa nếu không được tích hợp vào tổng thể của nhóm. Tích hợp liên tục là nền tảng để nhóm làm việc ăn ý và phát hiện sớm vấn đề.\n\n### **2.4. Tổng kết từ câu chuyện Patrick**\n\n*   Qua những cuộc nói chuyện của Patrick với Niall và Claire, chúng ta thấy rõ rằng **việc bỏ qua các thực hành kỹ thuật không chỉ là vấn đề \"chọn làm hay không làm,\" mà là vấn đề sống còn đối với năng suất, chất lượng và khả năng thích ứng của một nhóm Scrum.**\n*   Những lập trình viên giỏi như Niall và Claire có thể có kỹ năng cá nhân tốt, nhưng nếu thiếu các thực hành kỹ thuật phù hợp, họ sẽ trở thành nút thắt cổ chai, tạo ra nợ kỹ thuật và cản trở sự phát triển chung của nhóm.\n*   Patrick không chỉ ra các vấn đề mà còn khơi gợi suy nghĩ ở từng thành viên, giúp họ nhận ra sự thiếu sót trong cách làm việc của mình. Đây cũng chính là vai trò của một Scrum Master hiệu quả: thúc đẩy sự cải tiến liên tục, bao gồm cả ở khía cạnh kỹ thuật.\n\n---\n\n## Phần 3: Các Thực hành Kỹ thuật cốt lõi và Lợi ích chung trong Scrum\n\n**Mục tiêu của phần này:** Tổng hợp các thực hành kỹ thuật quan trọng và giải thích lợi ích tổng thể của chúng đối với việc xây dựng sản phẩm chất lượng cao trong môi trường Scrum.\n\nSau khi đã nhìn thấy những vấn đề cụ thể qua câu chuyện của Patrick, bây giờ chúng ta hãy tổng hợp lại và xem xét các thực hành kỹ thuật cốt lõi mà một nhóm Scrum năng suất cao cần có, cùng với những lợi ích chung mà chúng mang lại.\n\n### **3.1. Các Thực hành Kỹ thuật cốt lõi cần có trong Scrum**\n\nDù Scrum không bắt buộc, nhưng để đạt được sự \"Done\" thực sự và duy trì tốc độ phát triển bền vững, các nhóm Agile/Scrum thường áp dụng các thực hành từ các phương pháp như Extreme Programming (XP):\n\n*   **1. Test-Driven Development (TDD) - Phát triển Hướng Kiểm thử:**\n    *   **Mô tả:** Viết bài kiểm thử tự động (automated test) trước khi viết code chức năng. Đảm bảo test thất bại, sau đó viết code để test vượt qua, rồi tái cấu trúc (refactor).\n    *   **Lợi ích:** Cải thiện chất lượng thiết kế, giảm thiểu lỗi, tăng cường sự tự tin khi thay đổi code, tạo ra hệ thống kiểm thử tự động vững chắc.\n*   **2. Continuous Integration (CI) - Tích hợp Liên tục:**\n    *   **Mô tả:** Các lập trình viên đưa code của mình vào kho mã nguồn chung ít nhất một lần mỗi ngày (thường là nhiều lần trong ngày). Mỗi lần tích hợp được kiểm thử tự động.\n    *   **Lợi ích:** Phát hiện sớm các lỗi tích hợp, giảm thiểu xung đột code, đảm bảo code luôn trong trạng thái có thể triển khai được, tăng cường sự minh bạch và phối hợp nhóm.\n*   **3. Refactoring (Tái cấu trúc mã):**\n    *   **Mô tả:** Liên tục cải thiện cấu trúc bên trong của code mà không làm thay đổi hành vi bên ngoài của nó. Giúp code sạch hơn, dễ hiểu hơn và dễ bảo trì hơn.\n    *   **Lợi ích:** Giảm nợ kỹ thuật, tăng cường khả năng mở rộng và bảo trì, giúp code dễ đọc và dễ thay đổi, hỗ trợ cho việc phát triển nhanh chóng và bền vững.\n*   **4. Simple Design (Thiết kế Đơn giản) / Just Enough Code:**\n    *   **Mô tả:** Tập trung vào việc tạo ra thiết kế đơn giản nhất có thể để đáp ứng yêu cầu hiện tại, tránh \"gold plating\" hay thiết kế quá mức (over-engineering).\n    *   **Lợi ích:** Giảm thiểu lãng phí thời gian và tài nguyên, giúp code dễ hiểu và dễ thay đổi hơn, giữ cho hệ thống linh hoạt để thích nghi với các yêu cầu mới.\n*   **5. Pair Programming (Lập trình cặp):**\n    *   **Mô tả:** Hai lập trình viên làm việc cùng nhau trên một máy tính, một người viết code (driver), một người xem xét và định hướng (navigator).\n    *   **Lợi ích:** Chia sẻ kiến thức, giảm lỗi, tăng cường chất lượng code, cải thiện giao tiếp và xây dựng tinh thần đồng đội.\n*   **6. Collective Code Ownership (Sở hữu mã chung):**\n    *   **Mô tả:** Mọi thành viên trong nhóm đều có quyền và trách nhiệm thay đổi bất kỳ phần nào của code.\n    *   **Lợi ích:** Giảm thiểu \"silos\" kiến thức, tăng cường sự linh hoạt và khả năng phục hồi của nhóm khi một thành viên vắng mặt, thúc đẩy sự chia sẻ kiến thức.\n\n### **3.2. Lợi ích tổng thể của các Thực hành Kỹ thuật trong Scrum**\n\nKhi một nhóm Scrum áp dụng các thực hành kỹ thuật này một cách nhuần nhuyễn, họ sẽ gặt hái được những lợi ích to lớn:\n\n*   **1. Chất lượng sản phẩm vượt trội:**\n    *   Với TDD và CI, lỗi được phát hiện và sửa chữa sớm nhất có thể, dẫn đến sản phẩm ít lỗi hơn, ổn định hơn.\n    *   Refactoring liên tục giữ cho code luôn \"sạch,\" dễ bảo trì và mở rộng.\n*   **2. Giảm thiểu nợ kỹ thuật (Technical Debt):**\n    *   Nợ kỹ thuật là những \"lối tắt\" hoặc thiết kế kém chất lượng mà chúng ta chấp nhận hôm nay, để rồi phải trả giá bằng công sức trong tương lai. Các thực hành kỹ thuật giúp giảm thiểu và kiểm soát nợ kỹ thuật, đảm bảo tốc độ phát triển không bị chậm lại theo thời gian.\n*   **3. Tăng cường khả năng thích ứng với thay đổi:**\n    *   Với một codebase sạch, được kiểm thử tốt và tích hợp liên tục, nhóm có thể thay đổi, thêm hoặc bớt tính năng một cách nhanh chóng và tự tin hơn, phù hợp với tinh thần Agile.\n*   **4. Tăng tốc độ chuyển giao giá trị (Deliver Value Faster):**\n    *   Khi chất lượng được đảm bảo từ sớm, các lỗi lớn được ngăn chặn, và code luôn trong trạng thái sẵn sàng triển khai, nhóm có thể tự tin chuyển giao các phần tăng trưởng có giá trị đến khách hàng thường xuyên hơn.\n*   **5. Nâng cao sự tự tin và tinh thần của nhóm:**\n    *   Không còn nỗi sợ hãi khi thay đổi code, không còn những buổi gỡ lỗi kéo dài mệt mỏi, không còn lo lắng về các lỗi tích hợp bất ngờ. Nhóm trở nên tự tin hơn, làm việc hiệu quả hơn và có tinh thần tốt hơn.\n*   **6. Minh bạch và Kiểm tra tốt hơn:**\n    *   Các hệ thống kiểm thử tự động và CI cung cấp phản hồi liên tục về trạng thái của hệ thống, giúp toàn bộ nhóm và các bên liên quan có cái nhìn minh bạch về tiến độ và chất lượng.\n\n### **3.3. Kết luận: Thực hành Kỹ thuật - Nền tảng của Scrum hiệu quả**\n\nCác bạn thân mến,\n\nQua bài giảng ngày hôm nay, chúng ta đã cùng nhau làm rõ một điều: **Các thực hành kỹ thuật không phải là điều xa xỉ hay tùy chọn trong Scrum.** Chúng là **nền tảng cốt lõi** để một nhóm Scrum có thể thực sự trở thành một đội ngũ hiệu suất cao, có khả năng liên tục cung cấp các sản phẩm chất lượng, thích ứng nhanh chóng với sự thay đổi và duy trì tốc độ phát triển bền vững.\n\nNếu không có những thực hành kỹ thuật vững chắc, một nhóm Scrum dù có tuân thủ đúng các nghi thức đến đâu, cũng chỉ có thể đạt được một phần nhỏ tiềm năng của mình. Họ sẽ phải vật lộn với nợ kỹ thuật, chất lượng kém, và tốc độ phát triển ngày càng chậm lại.\n\nHãy nhớ câu chuyện của Patrick, Niall và Claire. Hãy luôn tìm cách nâng cao kỹ năng và thực hành kỹ thuật của bản thân và của nhóm. Bởi vì, chính những \"phép thuật\" kỹ thuật đó sẽ là chìa khóa để mở ra cánh cửa dẫn đến thành công thực sự trong thế giới Agile và Scrum.\n\nTôi hy vọng bài giảng này đã cung cấp cho các bạn một góc nhìn sâu sắc hơn về tầm quan trọng của các thực hành kỹ thuật. Cảm ơn các bạn đã chú ý lắng nghe! Bây giờ, chúng ta sẽ dành thời gian cho phần hỏi đáp. Có ai có câu hỏi hay muốn chia sẻ điều gì không?',5,'2026-03-30 08:36:23'),(15,'Chuong 07 - Làm thế nào để biết đã hoàn thành','https://file-server.local/uploads/temp_Chuong_07_-_Làm_thế_nào_để_biết_đã_hoàn_thành_(1).docx','Chương này nhấn mạnh tầm quan trọng của việc thiết lập một khái niệm chung về \"sự hoàn thành\" trong các dự án phần mềm nhằm tránh sự mơ hồ và lãng phí thời gian. Sự thiếu rõ ràng về \"đã xong\" có thể dẫn đến mất lòng tin và các vấn đề phát sinh. Thông qua câu chuyện của Product Owner Mary Anne, nội dung minh họa cách thiết lập và quản lý định nghĩa hoàn thành có thể giúp thống nhất các bên liên quan và tăng giá trị dự án.','Chào mừng các em đến với buổi học ngày hôm nay!\n\nHôm nay, chúng ta sẽ cùng nhau khám phá một chủ đề cực kỳ quan trọng trong mọi dự án, đặc biệt là các dự án phần mềm, đó là: **LÀM THẾ NÀO ĐỂ BIẾT ĐÃ HOÀN THÀNH?** hay còn gọi là **Khái niệm \"Sự Hoàn Thành\" (Definition of Done - DoD)**.\n\nCâu hỏi \"Bạn xong chưa?\" – một câu hỏi tưởng chừng đơn giản, nhưng lại ẩn chứa rất nhiều thách thức và rủi ro nếu chúng ta không có một câu trả lời thống nhất, rõ ràng. Bài giảng này sẽ giúp các em hiểu rõ tầm quan trọng của việc định nghĩa \"hoàn thành\" là gì, cách thức xây dựng nó và quản lý nó một cách hiệu quả trong suốt vòng đời dự án.\n\n---\n\n## Phần 1: Giới thiệu chung và Vấn đề phát sinh từ sự mơ hồ\n\n**Chào các em!**\nHãy thử nghĩ xem, bao nhiêu lần các em đã nghe hoặc tự hỏi câu này: \"Bạn xong chưa?\" trong các dự án nhóm, bài tập lớn, hay thậm chí là trong cuộc sống hàng ngày? Và câu trả lời thường là gì? Có thể là \"Rồi!\", hoặc \"Chưa, còn một chút nữa!\", hay \"Gần xong rồi!\".\n\nThoạt nghe thì đơn giản, nhưng trong bối cảnh một dự án phần mềm, sự mơ hồ trong câu trả lời này có thể dẫn đến những hệ quả nghiêm trọng mà chúng ta cần phải giải quyết.\n\n### 1.1. Câu hỏi \"Bạn xong chưa?\" - Sự phức tạp đằng sau sự đơn giản\n\n*   **Tình huống thường gặp:** Trong hầu hết các dự án phần mềm, câu hỏi này được hỏi và trả lời vô số lần.\n*   **Các kịch bản và hệ quả:**\n    *   **Nếu câu trả lời là \"Xong rồi\":** Có thể bạn sẽ nhận thêm nhiều việc khác, nhưng liệu công việc đó có thực sự \"xong\" theo đúng nghĩa của tất cả mọi người không? Hay nó chỉ \"xong\" theo định nghĩa của riêng bạn?\n    *   **Nếu câu trả lời là \"Chưa xong\":** Bạn có thể bị coi là không hoàn thành nhiệm vụ, chậm trễ, gây áp lực cho bản thân và nhóm.\n    *   **Nếu các thành viên trong nhóm có câu trả lời khác nhau:** Đây là kịch bản nguy hiểm nhất. Nó sẽ dẫn đến sự mất lòng tin từ các bên liên quan, gây ra mâu thuẫn nội bộ, và làm giảm chất lượng tổng thể của dự án. Người này nghĩ \"xong\", người kia thì thấy chưa đạt yêu cầu.\n\n### 1.2. Tại sao sự mơ hồ lại là kẻ thù của dự án?\n\nSự mơ hồ về khái niệm \"hoàn thành\" gây ra:\n*   **Lãng phí thời gian và nguồn lực:** Nhóm phải dành thời gian xử lý các công việc không rõ ràng, sửa chữa những lỗi phát sinh do hiểu lầm, hoặc làm lại các phần việc đã tưởng chừng \"xong\".\n*   **Giảm chất lượng sản phẩm:** Nếu không có tiêu chí rõ ràng, sản phẩm có thể được bàn giao khi còn thiếu sót, chưa đạt chuẩn, dẫn đến sự không hài lòng của khách hàng.\n*   **Mất lòng tin:** Các bên liên quan (khách hàng, quản lý, các phòng ban khác) sẽ mất niềm tin vào khả năng của nhóm khi nhận thấy sự thiếu thống nhất và chất lượng không đảm bảo.\n*   **Tăng rủi ro dự án:** Các công việc \"tiềm ẩn phát sinh\" sẽ liên tục xuất hiện, đẩy dự án vào tình trạng luôn phải phản ứng, khó kiểm soát.\n\n### 1.3. Mục tiêu bài giảng\n\nQua bài giảng này, các em sẽ:\n*   Hiểu rõ khái niệm \"Sự Hoàn Thành\" (Definition of Done - DoD) là gì.\n*   Nắm được tầm quan trọng và giá trị mà DoD mang lại cho dự án và các bên liên quan.\n*   Biết cách xây dựng một danh sách DoD hiệu quả.\n*   Học hỏi kinh nghiệm quản lý DoD theo thời gian trong suốt dự án thông qua một ví dụ thực tế.\n\n---\n\n## Phần 2: Khái niệm \"Sự Hoàn Thành\" và Giá trị của nó\n\nĐể giải quyết vấn đề sự mơ hồ mà chúng ta vừa thảo luận, chúng ta cần một công cụ mạnh mẽ: đó chính là **Khái niệm \"Sự Hoàn Thành\" (Definition of Done - DoD)**.\n\n### 2.1. \"Sự Hoàn Thành\" (Definition of Done - DoD) là gì?\n\n*   **Định nghĩa:** Khái niệm \"Sự Hoàn Thành\" (DoD) là một **tập hợp các tiêu chí và điều kiện được thống nhất rõ ràng** mà một phần việc (có thể là một user story, một sprint, một bản phát hành, hoặc một tính năng) phải đáp ứng để được coi là \"hoàn thành\" một cách thực sự và không thể bàn cãi.\n*   **Bản chất:** DoD là một hợp đồng ngầm, hoặc thậm chí là một bản cam kết công khai, giữa tất cả các thành viên trong nhóm và các bên liên quan về chất lượng và phạm vi của công việc.\n\n### 2.2. Giá trị và tầm quan trọng của DoD\n\nViệc thiết lập một cách hiểu chung về khái niệm sự hoàn thành mang lại nhiều lợi ích to lớn:\n\n*   **Tăng giá trị cho dự án:**\n    *   **Minh bạch và rõ ràng:** Loại bỏ sự mơ hồ, mọi người đều biết chính xác những gì cần phải làm để một công việc được coi là \"xong\".\n    *   **Đảm bảo chất lượng:** Buộc nhóm phải tuân thủ các tiêu chuẩn chất lượng đã định, từ đó sản phẩm được bàn giao có chất lượng cao hơn.\n    *   **Giảm thiểu rework và lỗi phát sinh:** Khi các tiêu chí hoàn thành được định nghĩa rõ ràng từ đầu, khả năng phải làm lại hoặc sửa lỗi sẽ giảm đi đáng kể.\n*   **Tiết kiệm thời gian và nguồn lực:**\n    *   **Tối ưu hóa quy trình:** Các công việc được thực hiện một cách có tổ chức, ít gián đoạn hơn.\n    *   **Tránh các cuộc tranh luận không cần thiết:** Không còn lãng phí thời gian tranh cãi \"đã xong hay chưa xong\".\n*   **Xây dựng lòng tin với các bên liên quan:**\n    *   Khi khách hàng và quản lý thấy nhóm cam kết với các tiêu chuẩn chất lượng rõ ràng và thực hiện đúng như cam kết, niềm tin sẽ được củng cố.\n    *   **Quản lý kỳ vọng:** DoD giúp các bên liên quan hiểu rõ hơn về những gì họ sẽ nhận được và khi nào.\n*   **Tăng cường sự hợp tác nhóm:**\n    *   Khi có một DoD chung, các thành viên trong nhóm sẽ có cùng một mục tiêu chất lượng và làm việc ăn ý hơn.\n    *   **Tăng trách nhiệm cá nhân:** Mỗi cá nhân đều biết trách nhiệm của mình trong việc đáp ứng các tiêu chí hoàn thành.\n\n### 2.3. Vai trò của DoD đối với các bên liên quan\n\n*   **Với Product Owner (PO) / Quản lý sản phẩm:** DoD giúp PO quản lý kỳ vọng của khách hàng, ưu tiên công việc hiệu quả và đảm bảo sản phẩm bàn giao đúng chất lượng.\n*   **Với Nhóm Phát triển (Developers, Testers):** DoD cung cấp hướng dẫn rõ ràng về những gì cần làm, giúp họ tập trung vào việc tạo ra sản phẩm chất lượng, giảm thiểu sự không chắc chắn và tăng hiệu suất.\n*   **Với Khách hàng / Người dùng cuối:** DoD đảm bảo rằng họ sẽ nhận được sản phẩm đúng như mong đợi, đã được kiểm tra kỹ lưỡng và sẵn sàng sử dụng.\n*   **Với Quản lý dự án:** DoD giúp theo dõi tiến độ chính xác hơn, đánh giá rủi ro và đưa ra quyết định kịp thời.\n\n### 2.4. DoD không phải là một danh sách cố định!\n\nMột điểm cực kỳ quan trọng: **Khái niệm \"Sự Hoàn Thành\" không phải là một danh sách tĩnh, bất biến.** Nó cần được xây dựng và **quản lý theo thời gian**, có thể thay đổi và mở rộng qua các giai đoạn khác nhau của dự án, hoặc khi có thêm thông tin mới.\n\n---\n\n## Phần 3: Ví dụ Thực tế và Cách Áp dụng\n\nĐể minh họa rõ hơn về cách xây dựng và áp dụng Khái niệm \"Sự Hoàn Thành\", chúng ta hãy cùng đến với câu chuyện của Mary Anne, một Product Owner tài năng.\n\n### 3.1. Câu chuyện của Mary Anne: Xây dựng DoD trong thực tế\n\nMary Anne đang phụ trách một dự án lớn về cơ sở hạ tầng văn phòng. Cô tổ chức một buổi thảo luận để xây dựng backlog sản phẩm với gần 20 người từ nhiều phòng ban khác nhau: kỹ sư hệ thống, nhà quản lý, nhà phát triển, người tiếp thị, quản lý sản phẩm và bán hàng. Mỗi người đều có mối quan tâm riêng và cho rằng phần việc của mình là quan trọng nhất.\n\n**Chiến lược của Mary Anne:**\nMary Anne đã chuẩn bị sẵn một danh sách các tiêu chí hoàn thành. Tuy nhiên, cô quyết định không đưa ra ngay từ đầu cuộc họp.\n1.  **Lý do 1:** Cô muốn mọi người cảm thấy thoải mái đóng góp ý kiến, không bị giới hạn bởi một danh sách có sẵn.\n2.  **Lý do 2:** Cô không muốn họ nghĩ rằng danh sách này được đưa ra để thỏa hiệp, mà là để bổ sung và làm rõ.\n\nSau hai giờ thảo luận sôi nổi, nhóm đã điểm qua danh sách 200 user story – một thành công lớn! Tuy nhiên, ngay lập tức, các bên bắt đầu tranh luận về thứ tự ưu tiên và cách thức hoàn thành:\n*   **Kỹ sư hệ thống:** Muốn ưu tiên hệ thống giám sát, an ninh, phần cứng và mạng lưới cơ sở hạ tầng.\n*   **Người tiếp thị:** Chỉ quan tâm đến ngày phát hành sản phẩm.\n*   **Nhà phát triển và kiểm thử:** Muốn đi sâu vào làm rõ chi tiết từng story.\n\n**Đây chính là thời điểm vàng để Mary Anne tiết lộ danh sách DoD của mình!** Danh sách này bao gồm những việc cần làm và tiêu chí \"hoàn thành\" cho các cấp độ khác nhau: một story, một sprint, một bản phát hành tích hợp, và một bản phát hành ra môi trường sản xuất.\n\n### 3.2. Ví dụ danh sách \"Sự Hoàn Thành\" của Mary Anne (Hình 7-1)\n\nĐây là một phần danh sách mà Mary Anne đã trình bày:\n\n**A. Cho một Story (Tính năng nhỏ / Yêu cầu cụ thể)**\n*   Tất cả mã nguồn đã hoàn tất và đăng ký lên server (kiểm soát phiên bản, sẵn sàng tích hợp).\n*   Tất cả các kiểm thử mức đơn vị đều thành công (chất lượng cơ bản của mã).\n*   Kiểm thử mức chấp nhận của người dùng được xác định, ghi ra và thành công (đảm bảo đáp ứng yêu cầu người dùng).\n*   Đã tạo ra các file trợ giúp (hướng dẫn sử dụng ban đầu, tích hợp tài liệu từ sớm).\n*   Kiểm thử chức năng thành công (tính năng hoạt động đúng như mong đợi).\n\n**B. Cho một Sprint (Chu kỳ phát triển ngắn hạn, thường 2-4 tuần)**\n*   **Tất cả điều kiện của Story (ở mục A) đã được đáp ứng** *cho tất cả các story trong sprint đó*.\n*   Bản sao lưu sản phẩm được cập nhật (đảm bảo khả năng phục hồi).\n*   Kiểm thử hiệu suất hệ thống được thực hiện (kiểm tra khả năng chịu tải ngay từ sớm, không đợi đến cuối).\n*   Các sơ đồ kiến trúc, sơ đồ lớp và sơ đồ đóng gói được cập nhật (duy trì tài liệu kiến trúc sống).\n*   Tất cả các lỗi đã đóng hoặc hoãn lại (đảm bảo không có lỗi tồn đọng nghiêm trọng).\n*   Độ bao phủ dòng lệnh của kiểm thử đơn vị ở mức 80% (mục tiêu chất lượng mã rõ ràng).\n\n**C. Cho Phát hành Tích hợp (Bản release nội bộ, tiền sản xuất)**\n*   **Tất cả điều kiện của Sprint (ở mục B) đã được đáp ứng** *cho tất cả các sprint trong bản release này*.\n*   Bộ đóng gói cài đặt đã được tạo ra (sẵn sàng triển khai).\n*   Tài liệu hướng dẫn vận hành đã được tạo ra (hướng dẫn cho đội ngũ vận hành).\n*   Tài liệu chẩn đoán sự cố được cập nhật (hỗ trợ xử lý lỗi).\n*   Kế hoạch phục hồi khi có sự cố phát sinh (chuẩn bị cho tình huống xấu).\n*   Tất cả các bộ kiểm thử đều thành công (kiểm thử tích hợp, hệ thống toàn diện).\n\n**D. Cho việc Phát hành ra Môi trường Sản xuất (Live Release)**\n*   **Tất cả điều kiện Phát hành Tích hợp (ở mục C) đã được đáp ứng.**\n*   Kiểm thử sức ép được thực hiện (đảm bảo hệ thống ổn định dưới tải cao).\n*   Điều chỉnh hiệu suất hệ thống (tối ưu hóa để hoạt động tốt nhất).\n*   Sơ đồ mạng được cập nhật (tài liệu hạ tầng).\n*   Kiểm tra mức độ bảo mật (đảm bảo an toàn thông tin).\n*   Kiểm tra các nguy cơ (phân tích và giảm thiểu rủi ro).\n*   Kiểm tra kế hoạch phục hồi khi có sự cố phát sinh (thử nghiệm và xác nhận kế hoạch).\n\n### 3.3. Phản ứng của các bên liên quan và bài học rút ra\n\n*   **Sự ngạc nhiên:** Các bên liên quan đã bị sốc! Họ chưa bao giờ thấy những chi tiết cụ thể như vậy và cũng chưa bao giờ thấy cam kết rõ ràng về chất lượng như vậy.\n*   **Câu hỏi của Bill:** \"Mary Anne, điều này có vẻ khá toàn diện. Bạn có nói rằng với mỗi sprint, bạn sẽ làm kiểm thử hiệu suất hệ thống?\" Bill hỏi.\n*   **Câu trả lời của Mary Anne:** \"Có và hơn nữa. Chúng tôi có kế hoạch để làm tất cả mọi thứ cần thiết để chuyển giao hệ thống khi nó đang được xây dựng thay vì chờ đợi cho đến khi kết thúc.\"\n    *   Mary Anne giải thích rằng DoD sẽ **thể hiện trong suốt vòng đời của dự án**. Ví dụ, hướng dẫn xử lý sự cố sẽ được viết dần qua từng story, chứ không phải đợi đến giai đoạn cuối cùng mới viết tài liệu. Điều này đảm bảo tài liệu luôn cập nhật và không bị tồn đọng.\n\n**Bài học cốt lõi từ câu chuyện của Mary Anne:**\n\n1.  **Quan trọng là sự tham gia của các bên liên quan:** Mặc dù Mary Anne có danh sách chuẩn bị sẵn, việc để mọi người thảo luận và đưa ra ý kiến trước giúp họ cảm thấy được lắng nghe, sau đó mới giới thiệu DoD để định hình và thống nhất.\n2.  **Định nghĩa \"Hoàn Thành\" cần có nhiều cấp độ:** Một \"story xong\" khác với \"sprint xong\", và khác với \"bản phát hành sản xuất xong\". Việc phân cấp giúp quản lý chất lượng và phạm vi ở từng giai đoạn.\n3.  **Cam kết chất lượng ngay từ đầu và liên tục:** Mary Anne không chờ đến cuối dự án để kiểm thử hiệu suất, viết tài liệu, hay kiểm tra bảo mật. Các hoạt động này được tích hợp vào mỗi sprint, mỗi giai đoạn, giúp phát hiện sớm vấn đề và giảm rủi ro.\n4.  **DoD là một tài liệu sống:** Nó có thể được điều chỉnh, mở rộng khi dự án tiến triển, ví dụ như thêm các tiêu chí cho \"môi trường\" như Bill gợi ý.\n5.  **Minh bạch tạo lòng tin:** Việc trình bày DoD một cách chi tiết và rõ ràng giúp các bên liên quan hiểu rõ cam kết về chất lượng của nhóm, từ đó xây dựng lòng tin vững chắc.\n\n### 3.4. Cách các em có thể áp dụng DoD vào dự án của mình\n\n*   **Bắt đầu đơn giản:** Không nhất thiết phải có một danh sách đồ sộ ngay từ đầu. Hãy bắt đầu với những tiêu chí cơ bản nhất mà nhóm cho là \"xong\" một công việc.\n*   **Thảo luận với nhóm và các bên liên quan:** DoD phải là một sự thống nhất chung, không phải là quy định áp đặt từ một phía.\n*   **Công khai và dễ tiếp cận:** Danh sách DoD nên được đặt ở nơi mà mọi thành viên trong nhóm và các bên liên quan dễ dàng nhìn thấy và tham khảo.\n*   **Kiểm tra và cập nhật định kỳ:** Khi dự án phát triển, yêu cầu thay đổi, hãy cùng nhau xem xét và cập nhật DoD để nó luôn phù hợp.\n*   **Huấn luyện và truyền đạt:** Đảm bảo mọi người trong nhóm đều hiểu rõ và cam kết tuân thủ DoD.\n\n---\n\n**Kết luận:**\n\nCác em thấy đó, khái niệm \"Sự Hoàn Thành\" (Definition of Done) không chỉ là một danh sách kiểm tra đơn thuần. Nó là một công cụ chiến lược, giúp chúng ta chuyển đổi từ sự mơ hồ và thiếu tin cậy sang sự rõ ràng, minh bạch và chất lượng cao trong mọi dự án. Bằng cách thiết lập và tuân thủ một DoD rõ ràng, chúng ta có thể tối ưu hóa quy trình làm việc, giảm thiểu rủi ro, và xây dựng lòng tin vững chắc với tất cả các bên liên quan.\n\nHãy luôn nhớ rằng, một sản phẩm \"hoàn thành\" thực sự không phải là khi chúng ta nghĩ nó đã xong, mà là khi nó đã đáp ứng tất cả các tiêu chí chất lượng và yêu cầu mà chúng ta đã thống nhất từ đầu.\n\nCảm ơn các em đã chú ý lắng nghe. Bây giờ, các em có câu hỏi nào không?',5,'2026-03-30 09:46:36'),(16,'Chương 1:  -Scum - Đơn giản, nhưng không dễ','https://file-server.local/uploads/temp_Chương_01_-_Scrum-_Đơn_giản,_nhưng_không_dễ_(1).docx','Scrum rất dễ hiểu nhưng cực kỳ khó thực hiện tốt, thường bị hiểu lầm là dễ do sự đơn giản của nó và đòi hỏi nhiều thời gian để thực hành thành thạo. Nhiều nhóm gặp vấn đề khi cố gắng điều chỉnh Scrum mà không có nền tảng vững chắc về các nguyên tắc Agile cốt lõi. Câu chuyện minh họa một nhóm thực hiện Scrum sáu tháng nhưng vẫn đối mặt với vấn đề chất lượng mã nguồn do hiểu sai các sự kiện Scrum cơ bản, như việc có \"tuần lên kế hoạch\" thay vì các Sprint Planning được quy định.','Tuyệt vời! Chào mừng tất cả các em đến với buổi học ngày hôm nay. Thầy rất vui được đồng hành cùng các em trên hành trình khám phá thế giới của Scrum – một trong những khung làm việc phát triển phần mềm linh hoạt được áp dụng rộng rãi nhất hiện nay.\n\n**Chủ đề của chúng ta ngày hôm nay là: CHƯƠNG 01 - SCRUM: ĐƠN GIẢN, NHƯNG KHÔNG DỄ.**\n\nNghe có vẻ mâu thuẫn phải không nào? Làm sao một thứ vừa \"đơn giản\" lại vừa \"không dễ\" được? Đây chính là điểm cốt lõi mà chúng ta sẽ cùng nhau mổ xẻ và thấu hiểu trong bài giảng này. Thầy muốn các em không chỉ hiểu *cơ chế* của Scrum, mà còn phải hiểu được *tinh thần* và *lý do* đằng sau từng quy tắc của nó.\n\nChúng ta sẽ đi qua ba phần chính:\n\n---\n\n## PHẦN 1: GIỚI THIỆU & KHÁI QUÁT VẤN ĐỀ - VÌ SAO SCRUM LẠI \"ĐƠN GIẢN NHƯNG KHÔNG DỄ\"?\n\nChào các em,\n\nĐầu tiên, chúng ta hãy cùng nhau nhìn nhận một thực tế: **Scrum rất dễ bị hiểu sai.** Nó là một trong những khung làm việc dễ hiểu nhất về mặt cơ chế, nhưng lại là một trong những khung làm việc khó nhất để *thực hiện tốt*. Tại sao lại như vậy?\n\n1.  **Sự đơn giản dễ gây hiểu lầm:**\n    *   Scrum chỉ có một vài vai trò, sự kiện và tạo tác cốt lõi. Tài liệu hướng dẫn Scrum (Scrum Guide) rất ngắn gọn, chỉ vài chục trang. Điều này khiến nhiều người lầm tưởng rằng chỉ cần đọc qua là đã \"hiểu Scrum như lòng bàn tay\" và có thể áp dụng ngay lập tức.\n    *   Tuy nhiên, sự đơn giản vốn có của Scrum lại ẩn chứa một chiều sâu lớn. Giống như một công cụ cơ bản, ai cũng có thể cầm lên và dùng, nhưng để dùng nó một cách *thành thạo* và đạt hiệu quả tối ưu thì lại cần cả một quá trình.\n\n2.  **Thói quen cũ từ mô hình thác nước (Waterfall):**\n    *   Phần lớn chúng ta đã được đào tạo hoặc quen thuộc với cách phát triển phần mềm theo mô hình thác nước truyền thống trong nhiều năm. Mô hình này với các giai đoạn tuần tự, tài liệu hóa chặt chẽ, và sự phân chia công việc rõ ràng (phân tích, thiết kế, lập trình, kiểm thử, triển khai) đã ăn sâu vào tiềm thức và quy trình làm việc.\n    *   Scrum, với triết lý Agile của nó, lại đi ngược lại nhiều thói quen này. Nó khuyến khích làm việc lặp đi lặp lại (iterative), tăng trưởng (incremental), tự tổ chức (self-organizing) và liên tục thích nghi với thay đổi.\n    *   Việc chuyển đổi từ Waterfall sang Scrum không chỉ là thay đổi quy trình, mà là thay đổi *tư duy*, thay đổi *văn hóa*, và điều này thực sự rất khó khăn. Chúng ta cần thời gian để \"bỏ đi những thói quen xấu\" và điều chỉnh mình phù hợp với thực tế.\n\n3.  **Thiếu hiểu biết về các điểm cốt lõi của Agile:**\n    *   Scrum không phải là một phương pháp riêng lẻ, mà là một khung làm việc cụ thể để *thực hành* triết lý Agile. Để Scrum đạt hiệu quả, đội ngũ phải thấu hiểu và thực hành các giá trị và nguyên tắc cốt lõi của Agile, như: ưu tiên cá nhân và tương tác hơn quy trình và công cụ; phần mềm chạy được hơn tài liệu đầy đủ; hợp tác với khách hàng hơn đàm phán hợp đồng; và phản hồi với thay đổi hơn tuân thủ kế hoạch.\n    *   Nếu chỉ áp dụng các \"cơ chế\" bề nổi của Scrum mà không có nền tảng vững chắc về Agile, các đội ngũ rất dễ gặp vấn đề, dẫn đến một phiên bản \"Scrum tự chế\" (Scrumbut) không mang lại hiệu quả mong muốn.\n\nĐể minh họa cho những điều thầy vừa nói, chúng ta sẽ cùng nhau đến với một câu chuyện thực tế. Đây là một tình huống điển hình cho việc mọi thứ trở nên khó khăn hơn rất nhiều khi thực hiện Scrum mà không có sự hiểu biết và nền tảng vững chắc về những thứ làm cho Scrum đạt hiệu quả.\n\n---\n\n## PHẦN 2: PHÂN TÍCH TÌNH HUỐNG THỰC TẾ - \"SCRUM TỰ CHẾ\" VÀ NHỮNG HẬU QUẢ\n\nCác em thân mến,\n\nBây giờ chúng ta sẽ cùng nghe câu chuyện về Jeff, một huấn luyện viên Agile, và nhóm của Suzy tại một công ty phần mềm lớn.\n\n**Bối cảnh:** Nhóm của Suzy đã làm Scrum được khoảng sáu tháng nhưng chất lượng mã nguồn không được cải thiện. Suzy liên hệ với Jeff để nhờ anh chia sẻ về phương pháp lập trình đôi (pair programming), nghĩ rằng đây là giải pháp.\n\n**Cờ Đỏ (Red Flags) ban đầu của Jeff:**\n*   Email của Suzy có cụm từ \"Tuần lên kế hoạch\" (Planning Week). Jeff lập tức nhận ra một điểm bất thường: Scrum chỉ có cuộc họp Lập kế hoạch Sprint (Sprint Planning) và cuộc họp này được giới hạn thời gian (time-boxed) không quá bốn giờ cho một Sprint bốn tuần. \"Một tuần\" để lên kế hoạch là quá dài so với quy định của Scrum. Điều này báo hiệu rằng nhóm có thể đang gặp vấn đề sâu xa hơn là chỉ kỹ thuật lập trình.\n\n**Tại cuộc họp:**\n*   Jeff và Julie (một lập trình viên tài năng, thực hành Agile thành thạo) đã đến và gặp gỡ nhóm.\n*   Mike, trưởng nhóm kiểm thử, đã thẳng thắn nêu vấn đề: \"Lý do mà mã nguồn của chúng tôi chất lượng kém là vì chúng tôi không có thời gian để kiểm tra. Các lập trình viên viết mã nguồn tới tận ngày cuối cùng trong thời gian Sprint bốn tuần. Lập trình và kiểm thử trong Sprint vốn nên được thực hiện cùng lúc. Tuy nhiên việc kiểm thử của chúng tôi được thực hiện ngay cuối Sprint hoặc phải chuyển qua *Sprint tích hợp*.\"\n*   Ngay lập tức, Julie đã phải cắt ngang: \"Xin lỗi, Mike, anh đang nói đến Sprint tích hợp?\" Đây là một khái niệm hoàn toàn xa lạ với Scrum chuẩn mực.\n\n**\"Cải tiến\" Scrum của Suzy:**\n*   Suzy thừa nhận họ đã \"thay đổi Scrum để phù hợp với quy trình và thực trạng của chúng tôi.\" Cô ấy đã viết lên bảng một quy trình như sau:\n    *   **Tuần 1:** Lập kế hoạch (Planning Week)\n    *   **Tuần 2-5:** Lập trình viên lập trình; Kiểm thử viên viết những tình huống và thực hiện kiểm tra sơ bộ (Development & Preliminary Testing)\n    *   **Tuần 6-7:** Tích hợp (Integration Sprint)\n    *   **Tuần 8:** Triển khai lên trang web thật (Deployment)\n    *   **Tuần 9:** Tuần dự trù, nếu cần (Contingency Week)\n\n**Phân tích những sai lầm nghiêm trọng trong \"Scrum tự chế\" của Suzy:**\n\nHãy cùng phân tích từng điểm một để thấy rõ quy trình này đã vi phạm những nguyên tắc cốt lõi nào của Scrum và Agile:\n\n1.  **Thời lượng Sprint quá dài và thiếu định nghĩa \"Hoàn thành\" (Definition of Done):**\n    *   Theo Scrum Guide, một Sprint tối đa là **bốn tuần**. Mục tiêu là tạo ra một phần tăng trưởng sản phẩm **\"Hoàn thành\"** và **có khả năng phát hành** vào cuối mỗi Sprint.\n    *   Trong quy trình của Suzy, cái gọi là \"Sprint\" thực chất kéo dài tới **8-9 tuần**. Và quan trọng hơn, sau tuần thứ 5 (kết thúc giai đoạn lập trình), sản phẩm vẫn *chưa Hoàn thành*. Nó cần thêm 2 tuần tích hợp, 1 tuần triển khai, và thậm chí có thể cả tuần dự trù.\n    *   Điều này cho thấy định nghĩa \"Hoàn thành\" của nhóm rất lỏng lẻo hoặc bị trì hoãn. Sản phẩm không \"Hoàn thành\" cho đến tận cuối tuần thứ 8 (hoặc 9), đồng nghĩa với việc họ không có một sản phẩm có thể phát hành được sau mỗi 4 tuần như Scrum đòi hỏi.\n\n2.  **Thiếu sự phối hợp và làm việc chéo chức năng (Cross-functional Team):**\n    *   Scrum nhấn mạnh việc các thành viên trong nhóm (Lập trình viên, Kiểm thử viên, UX/UI,...) làm việc cùng nhau, song song để tạo ra một phần tăng trưởng \"Hoàn thành\" trong Sprint.\n    *   Quy trình của Suzy lại phân chia công việc theo pha như mô hình thác nước: Lập trình xong mới đến kiểm thử, kiểm thử xong mới đến tích hợp. Lập trình viên lập trình tuần 2-5, trong khi kiểm thử viên chỉ \"viết tình huống và kiểm tra sơ bộ\". Việc kiểm thử thực sự bị dồn vào cuối Sprint, hoặc thậm chí sang \"Sprint tích hợp\" riêng biệt.\n    *   Điều này dẫn đến tình trạng \"chất lượng mã nguồn kém\" vì không có thời gian kiểm thử đúng mức, và các vấn đề chỉ được phát hiện muộn, gây khó khăn và tốn kém hơn trong việc sửa chữa.\n\n3.  **Thiếu khả năng Kiểm tra và Thích nghi (Inspect & Adapt):**\n    *   Mục đích của Sprint ngắn là cung cấp cơ hội thường xuyên để kiểm tra sản phẩm đang được xây dựng (thông qua Sprint Review) và quy trình làm việc (thông qua Sprint Retrospective), từ đó nhanh chóng thích nghi với phản hồi và thay đổi.\n    *   Với một \"Sprint\" kéo dài 8-9 tuần, nhóm của Suzy chỉ có thể nhận được phản hồi về sản phẩm sau gần 2 tháng. Các vấn đề về quy trình cũng chỉ được nhìn nhận sau một thời gian dài. Điều này làm giảm đáng kể khả năng phản hồi nhanh chóng với thay đổi và cải tiến liên tục.\n\n4.  **Lãng phí thời gian và nguồn lực:**\n    *   \"Tuần lên kế hoạch\" kéo dài quá mức là lãng phí tài nguyên.\n    *   Việc tách biệt \"Sprint tích hợp\" cho thấy sự thiếu sót trong việc áp dụng liên tục tích hợp (Continuous Integration) và liên tục triển khai (Continuous Delivery) – những thực hành quan trọng trong Agile. Tích hợp nên diễn ra liên tục, hàng ngày, chứ không phải là một \"pha\" riêng biệt.\n\n5.  **Hiểu sai về \"phù hợp hóa\" Scrum:**\n    *   Suzy nói \"chúng tôi đã thay đổi Scrum để phù hợp với quy trình và thực trạng của chúng tôi.\" Đây chính là một ví dụ điển hình cho việc **nhầm tưởng họ “hiểu Scrum như lòng bàn tay” và tin rằng có thể ngay lập tức điều chỉnh Scrum để phù hợp hơn với thực trạng.**\n    *   Scrum là một khung làm việc tối giản và có tính ràng buộc cao. Các quy tắc của nó tồn tại là có lý do, nhằm tạo ra sự minh bạch, kiểm tra và thích nghi. Việc thay đổi các quy tắc cốt lõi mà không hiểu sâu sắc triết lý đằng sau sẽ phá vỡ cơ chế của nó và dẫn đến kết quả tệ hại. Đây không phải là \"tùy chỉnh\" mà là \"bóp méo\" Scrum.\n\n**Kết luận từ tình huống:** Nhóm của Suzy đang gặp phải vấn đề chất lượng không phải do thiếu \"lập trình đôi\", mà là do họ đang thực hành một phiên bản Scrum bị biến dạng, không tuân thủ các nguyên tắc cơ bản, dẫn đến việc thiếu tích hợp liên tục, thiếu phản hồi sớm, và không tạo ra sản phẩm \"Hoàn thành\" một cách đều đặn.\n\n---\n\n## PHẦN 3: BÀI HỌC VÀ HƯỚNG ĐI ĐÚNG - LÀM THẾ NÀO ĐỂ THỰC HIỆN SCRUM MỘT CÁCH HIỆU QUẢ?\n\nCác em thân mến,\n\nSau khi phân tích kỹ lưỡng câu chuyện của Suzy và nhóm, chúng ta đã rút ra được rất nhiều bài học quý giá.\n\n1.  **Bài học cốt lõi: Đừng chỉ hiểu cơ chế, hãy hiểu tinh thần và lý do!**\n    *   Scrum không phải là một tập hợp các quy tắc khô khan để tuân theo một cách máy móc. Mỗi vai trò, sự kiện và tạo tác trong Scrum đều có một mục đích cụ thể, phục vụ cho các giá trị và nguyên tắc của Agile (minh bạch, kiểm tra, thích nghi, cam kết, tập trung, cởi mở, tôn trọng, dũng cảm).\n    *   Việc \"làm Scrum\" mà không hiểu *tại sao* Sprint lại ngắn, *tại sao* cần làm việc chéo chức năng, *tại sao* cần \"Hoàn thành\" trong mỗi Sprint, sẽ dẫn đến những phiên bản \"Scrum lai tạp\" không mang lại hiệu quả.\n    *   Nhóm của Suzy đã cố gắng \"điều chỉnh Scrum\" mà không thực sự hiểu các nguyên tắc nền tảng của nó. Họ thay đổi cấu trúc để phù hợp với *thói quen cũ* thay vì thay đổi thói quen để phù hợp với *tinh thần* của Scrum.\n\n2.  **Để thực hiện Scrum tốt, chúng ta cần làm gì?**\n\n    *   **Nắm vững Scrum Guide:** Đây là tài liệu gốc, tối thiểu và chuẩn mực nhất. Bắt đầu bằng việc đọc và hiểu rõ từng dòng của nó.\n    *   **Ưu tiên Định nghĩa Hoàn thành (Definition of Done) chuẩn xác:** Đây là nền tảng. Một Increment chỉ được coi là \"Hoàn thành\" khi nó đạt tất cả các tiêu chí chất lượng cần thiết và có khả năng phát hành. Điều này có nghĩa là công việc kiểm thử, tích hợp, và đôi khi cả triển khai phải được thực hiện *trong Sprint*, chứ không phải sau đó.\n    *   **Thúc đẩy làm việc chéo chức năng (Cross-functional) và tự tổ chức (Self-organizing):**\n        *   Các thành viên trong Development Team (nhóm phát triển) cần phối hợp chặt chẽ, hỗ trợ lẫn nhau để hoàn thành công việc. Lập trình viên không chỉ lập trình, kiểm thử viên không chỉ kiểm thử. Họ cùng nhau chịu trách nhiệm cho việc tạo ra một Increment \"Hoàn thành\".\n        *   Nhóm tự tổ chức để tìm ra cách tốt nhất để hoàn thành công việc của Sprint Goal, không chờ đợi chỉ đạo từ bên ngoài.\n    *   **Thực hành Kiểm tra và Thích nghi (Inspect & Adapt) liên tục:**\n        *   Sử dụng các sự kiện của Scrum (Sprint Review, Sprint Retrospective) một cách hiệu quả để liên tục đánh giá sản phẩm và quy trình, từ đó đưa ra các cải tiến.\n        *   Thời lượng Sprint ngắn (1-4 tuần) là chìa khóa để có phản hồi nhanh và khả năng thích nghi cao.\n    *   **Thoát ly khỏi tư duy Waterfall:**\n        *   Hãy từ bỏ thói quen phân chia công việc theo giai đoạn tuần tự. Thay vào đó, hãy nghĩ về việc tạo ra các phần tăng trưởng nhỏ, có giá trị, và \"Hoàn thành\" một cách liên tục.\n        *   Sẵn sàng đón nhận thay đổi, học hỏi từ thất bại và liên tục cải tiến.\n    *   **Tìm kiếm sự giúp đỡ từ các chuyên gia:** Giống như Jeff trong câu chuyện, một Scrum Master hoặc Agile Coach giàu kinh nghiệm có thể đóng vai trò cực kỳ quan trọng trong việc hướng dẫn, đào tạo và giúp nhóm vượt qua những khó khăn ban đầu.\n\n**Lời kết của thầy:**\n\nScrum thực sự **đơn giản** ở cấp độ cơ chế, nhưng lại **không dễ** để thực hiện tốt. Nó đòi hỏi sự kiên nhẫn, một tâm thế học hỏi liên tục, và sẵn sàng bỏ đi những thói quen cũ. Hành trình áp dụng Scrum hiệu quả là một cuộc cách mạng văn hóa và tư duy, chứ không chỉ là thay đổi quy trình.\n\nThầy hy vọng câu chuyện về Suzy và những phân tích vừa rồi đã giúp các em có cái nhìn sâu sắc hơn về Scrum, không chỉ dừng lại ở các quy tắc mà còn ở tinh thần và triết lý mà nó đại diện. Hãy luôn nhớ rằng, mục tiêu cuối cùng của Scrum là mang lại giá trị cho khách hàng một cách hiệu quả và bền vững nhất.\n\nCảm ơn các em đã chú ý lắng nghe! Hẹn gặp lại các em trong các buổi học tiếp theo.',5,'2026-03-30 09:49:02'),(17,'Chuong 07 - Làm thế nào để biết đã hoàn thành','https://file-server.local/uploads/temp_Chuong_07_-_Làm_thế_nào_để_biết_đã_hoàn_thành_(1).docx','[TAGS:Definition of Done,Quản lý sản phẩm,Scrum/Agile,Hiểu biết chung]Vấn đề mơ hồ về khái niệm \"đã hoàn thành\" thường gây lãng phí thời gian và làm mất lòng tin trong các dự án phần mềm. Việc thiết lập một \"Định nghĩa hoàn thành\" (Definition of Done) chung là rất quan trọng để tăng giá trị dự án và quản lý hiệu quả kỳ vọng của các bên liên quan. Thông qua ví dụ của Product Owner Mary Anne, nội dung minh họa cách áp dụng DoD giúp thống nhất một nhóm đa dạng các bên liên quan về tiến độ và mục tiêu dự án.','Chào mừng các em đến với bài giảng hôm nay!\n\nHôm nay, chúng ta sẽ cùng nhau tìm hiểu một chủ đề cực kỳ quan trọng trong mọi dự án, đặc biệt là trong phát triển phần mềm: \"Làm thế nào để biết đã hoàn thành?\" hay còn gọi là \"Khái niệm về sự hoàn thành\" (Definition of Done - DoD). Đây không chỉ là một danh sách kiểm tra, mà là một yếu tố cốt lõi giúp đội nhóm làm việc hiệu quả, xây dựng lòng tin với các bên liên quan và đảm bảo chất lượng sản phẩm.\n\n---\n\n## **PHẦN 1: GIỚI THIỆU & VẤN ĐỀ CỦA SỰ MƠ HỒ**\n\n### **1.1. Câu hỏi tưởng chừng vô hại và những hệ lụy**\n\nCác em đã bao giờ nghe câu hỏi \"Bạn xong chưa?\" trong quá trình làm việc nhóm hay một dự án nào đó chưa? Chắc chắn rồi, đây là một câu hỏi rất phổ biến. Tuy nhiên, đằng sau câu hỏi tưởng chừng vô hại này lại tiềm ẩn rất nhiều vấn đề nếu không có một sự thống nhất rõ ràng:\n\n*   **Thiếu lòng tin:** Nếu mỗi thành viên trong nhóm, hay mỗi bộ phận liên quan có một định nghĩa khác nhau về \"hoàn thành,\" thì làm sao các bên liên quan có thể tin tưởng vào tiến độ và chất lượng công việc? Người phát triển có thể nghĩ \"hoàn thành\" là code chạy được, nhưng người kiểm thử lại nghĩ \"hoàn thành\" là không còn lỗi, còn người quản lý thì \"hoàn thành\" là đã triển khai được.\n*   **Lãng phí thời gian và công sức:** Khi không có khái niệm rõ ràng, nhóm có thể phải làm lại, sửa chữa những công việc mà họ nghĩ là đã xong nhưng thực chất chưa đáp ứng được kỳ vọng. Các công việc mơ hồ, các vấn đề tiềm ẩn sẽ liên tục phát sinh, gây tốn kém thời gian và chi phí.\n*   **Hiểu lầm và xung đột:** Sự không rõ ràng về \"hoàn thành\" có thể dẫn đến tranh cãi, hiểu lầm giữa các thành viên, giữa nhóm phát triển và khách hàng, làm giảm tinh thần làm việc và hiệu suất tổng thể.\n\n### **1.2. Khái niệm về sự hoàn thành (Definition of Done - DoD): Chìa khóa giải quyết vấn đề**\n\nĐể giải quyết triệt để những vấn đề trên, chúng ta cần thiết lập một **cách hiểu chung về khái niệm sự hoàn thành**. Hay còn gọi là **Definition of Done (DoD)**. DoD là một tập hợp các tiêu chí mà một hạng mục công việc (ví dụ: một tính năng, một câu chuyện người dùng - user story, một sprint, một bản phát hành) phải đáp ứng để được coi là \"hoàn thành\".\n\n### **1.3. Giá trị của DoD**\n\nViệc thiết lập và duy trì DoD mang lại nhiều giá trị to lớn:\n\n*   **Tiết kiệm thời gian và nguồn lực:** Giảm thiểu công việc mơ hồ, tránh phát sinh lỗi hoặc yêu cầu thay đổi muộn.\n*   **Tăng giá trị sản phẩm:** Đảm bảo mỗi phần công việc được hoàn thành đều đạt chất lượng nhất định, thực sự mang lại giá trị.\n*   **Tăng cường sự minh bạch và lòng tin:** Mọi người đều biết chính xác một công việc được coi là \"xong\" khi nào, từ đó tạo ra sự minh bạch về tiến độ và xây dựng lòng tin giữa các bên.\n*   **Định hướng làm việc:** Cung cấp một bộ hướng dẫn rõ ràng cho nhóm, giúp họ tập trung vào những gì thực sự cần thiết để hoàn thành công việc một cách chất lượng.\n\n---\n\n## **PHẦN 2: XÂY DỰNG KHÁI NIỆM HOÀN THÀNH - CÂU CHUYỆN CỦA MARY ANNE**\n\nĐể hiểu rõ hơn về cách xây dựng và áp dụng DoD, chúng ta hãy cùng đến với câu chuyện của Mary Anne – một Product Owner tài năng.\n\n### **2.1. Bối cảnh và Thách thức**\n\nMary Anne tổ chức một buổi thảo luận để xây dựng backlog sản phẩm cho một dự án lớn về cơ sở hạ tầng văn phòng. Cô tập hợp gần 20 người từ nhiều bộ phận khác nhau: kỹ sư hệ thống, nhà quản lý, nhà phát triển, tiếp thị, quản lý sản phẩm và bán hàng. Mỗi người đều có mối quan tâm riêng và cho rằng phần việc của mình là quan trọng nhất. Đây là một thách thức lớn vì sự đa dạng này có thể dẫn đến sự phân tán và khó thống nhất.\n\n### **2.2. Chiến lược của Mary Anne**\n\nMary Anne đã chuẩn bị sẵn một danh sách các việc cần làm và định nghĩa về sự hoàn thành cho từng loại công việc. Tuy nhiên, cô quyết định không đưa danh sách này ra ngay từ đầu buổi họp vì hai lý do thông minh:\n\n1.  **Khuyến khích sự cởi mở:** Cô muốn mọi người cảm thấy thoải mái chia sẻ ý tưởng mà không bị giới hạn bởi một danh sách định trước.\n2.  **Tránh ấn tượng thỏa hiệp:** Cô không muốn các bên liên quan nghĩ rằng danh sách này được đưa ra để thỏa hiệp, mà là một cam kết về chất lượng chung.\n\nSau hai giờ thảo luận sôi nổi, nhóm đã lập được một danh sách 200 story - một thành công lớn! Nhưng sau đó, họ bắt đầu tranh luận về thứ tự ưu tiên: kỹ sư hệ thống muốn hạ tầng trước, người tiếp thị quan tâm ngày phát hành, còn nhà phát triển và kiểm thử muốn làm rõ chi tiết từng story.\n\nĐây chính là **thời điểm vàng** để Mary Anne công bố danh sách DoD đã chuẩn bị từ trước của mình.\n\n### **2.3. Ví dụ về danh sách Khái niệm Hoàn thành của Mary Anne (Hình 7-1)**\n\nMary Anne đã trình bày một danh sách DoD được phân loại theo từng cấp độ, từ chi tiết nhỏ nhất đến tổng thể lớn nhất. Điều này rất quan trọng vì nó thể hiện rằng \"hoàn thành\" không phải là một khái niệm đơn nhất, mà là một tập hợp các tiêu chí tăng dần theo phạm vi công việc.\n\n**a. Cho một Story (Câu chuyện người dùng):**\nĐây là cấp độ chi tiết nhất, tập trung vào việc hoàn thành một tính năng hoặc một phần nhỏ của sản phẩm.\n\n*   **Tất cả mã nguồn đã hoàn tất và đăng ký lên server:** Đảm bảo code đã được viết xong và đưa vào hệ thống quản lý phiên bản (version control) để theo dõi và tích hợp.\n*   **Tất cả các kiểm thử mức đơn vị đều thành công:** Đảm bảo các thành phần code nhỏ nhất đã được kiểm thử độc lập và hoạt động đúng.\n*   **Kiểm thử mức chấp nhận của người dùng được xác định, ghi ra và thành công:** Đảm bảo tính năng đáp ứng yêu cầu của người dùng từ góc độ trải nghiệm và nghiệp vụ.\n*   **Đã tạo ra các file trợ giúp:** Đảm bảo người dùng có thể hiểu và sử dụng tính năng một cách dễ dàng.\n*   **Kiểm thử chức năng thành công:** Đảm bảo tính năng hoạt động đúng theo các yêu cầu chức năng.\n\n**b. Cho một Sprint (Chu kỳ phát triển ngắn):**\nMột sprint bao gồm nhiều story. DoD cho sprint sẽ bao gồm tất cả điều kiện của story và bổ sung thêm các tiêu chí tổng thể hơn.\n\n*   **Tất cả điều kiện của story và thêm:** Tất cả các story trong sprint phải đạt DoD của story.\n*   **Bản sao lưu sản phẩm được cập nhật:** Đảm bảo dữ liệu và hệ thống có thể được khôi phục nếu có sự cố.\n*   **Kiểm thử hiệu suất hệ thống được thực hiện:** Đảm bảo hệ thống đáp ứng được yêu cầu về tốc độ và khả năng chịu tải.\n*   **Các sơ đồ kiến trúc, sơ đồ lớp và sơ đồ đóng gói được cập nhật:** Đảm bảo tài liệu kỹ thuật được duy trì, phản ánh đúng trạng thái hiện tại của hệ thống.\n*   **Tất cả các lỗi đã đóng hoặc hoãn lại:** Đảm bảo không có lỗi nghiêm trọng tồn đọng.\n*   **Độ bao phủ dòng lệnh của kiểm thử đơn vị ở mức 80%:** Đảm bảo chất lượng kiểm thử code cao, giảm thiểu rủi ro lỗi trong tương lai.\n\n**c. Cho Phát hành Tích hợp (Integrated Release):**\nĐây là một bản phát hành có thể chạy được, tích hợp các sprint đã hoàn thành, sẵn sàng cho các kiểm thử tổng thể hơn.\n\n*   **Tất cả điều kiện của sprint và thêm:** Tất cả các sprint cấu thành bản phát hành phải đạt DoD của sprint.\n*   **Bộ đóng gói cài đặt đã được tạo ra:** Đảm bảo sản phẩm có thể được cài đặt dễ dàng.\n*   **Tài liệu hướng dẫn vận hành đã được tạo ra:** Hướng dẫn đội vận hành (operations team) cách quản lý và duy trì hệ thống.\n*   **Tài liệu chẩn đoán sự cố được cập nhật:** Giúp nhanh chóng xác định và giải quyết vấn đề khi chúng phát sinh.\n*   **Kế hoạch phục hồi khi có sự cố phát sinh:** Chuẩn bị sẵn sàng cho các tình huống xấu nhất (ví dụ: mất dữ liệu, hệ thống ngừng hoạt động).\n*   **Tất cả các bộ kiểm thử đều thành công:** Đảm bảo tất cả các loại kiểm thử (hồi quy, tích hợp...) đều vượt qua.\n\n**d. Cho việc Phát hành ra Môi trường Sản xuất (Production Release):**\nĐây là bản phát hành cuối cùng, sẵn sàng để khách hàng sử dụng trực tiếp. Nó bao gồm tất cả các điều kiện của bản phát hành tích hợp và bổ sung các tiêu chí quan trọng để đảm bảo hoạt động ổn định, an toàn trong môi trường thực tế.\n\n*   **Tất cả điều kiện phát hành tích hợp và thêm:** Tất cả các bản phát hành tích hợp cấu thành sản phẩm cuối cùng phải đạt DoD của phát hành tích hợp.\n*   **Kiểm thử sức ép được thực hiện:** Đảm bảo hệ thống có thể xử lý lượng lớn người dùng hoặc dữ liệu trong điều kiện tải nặng.\n*   **Điều chỉnh hiệu suất hệ thống:** Tối ưu hóa hệ thống để đạt hiệu suất tốt nhất.\n*   **Sơ đồ mạng được cập nhật:** Đảm bảo tài liệu về cơ sở hạ tầng mạng là chính xác.\n*   **Kiểm tra mức độ bảo mật:** Đảm bảo hệ thống an toàn trước các mối đe dọa.\n*   **Kiểm tra các nguy cơ:** Đánh giá và giảm thiểu các rủi ro tiềm ẩn khác.\n*   **Kiểm tra kế hoạch phục hồi khi có sự cố phát sinh:** Thử nghiệm thực tế kế hoạch phục hồi để đảm bảo nó hoạt động hiệu quả.\n\n### **2.4. Phản ứng của các bên liên quan và Giải thích của Mary Anne**\n\nCác bên liên quan đã bị sốc! Họ chưa bao giờ thấy một danh sách chi tiết đến vậy và một cam kết mạnh mẽ như thế về chất lượng sản phẩm. Điều này chứng tỏ sự mơ hồ về \"hoàn thành\" là vấn đề chung.\n\nBill, một trong các bên liên quan, đã hỏi: \"Mary Anne, điều này có vẻ khá toàn diện. Bạn có nói rằng với mỗi sprint, bạn sẽ làm kiểm thử hiệu suất hệ thống?\"\n\nMary Anne đã khẳng định: \"Có và hơn nữa. Chúng tôi có kế hoạch để làm tất cả mọi thứ cần thiết để chuyển giao hệ thống **khi nó đang được xây dựng** thay vì chờ đợi cho đến khi kết thúc.\" Đây là một điểm cực kỳ quan trọng, nó thể hiện tư duy phát triển Agile và liên tục, tích hợp chất lượng vào từng bước nhỏ.\n\nKhi Bill hỏi thêm về việc tạo môi trường và lý do không được đề cập, Mary Anne đã giải thích rằng: \"Khái niệm về sự hoàn thành của chúng tôi sẽ thể hiện **trong suốt vòng đời của dự án**. Ví dụ, hướng dẫn xử lý sự cố sẽ được viết cho bạn và sẽ được mở rộng qua từng story, có nghĩa là chúng ta sẽ không có một giai đoạn viết tài liệu vào cuối dự án. Chúng ta sẽ làm...\"\n\nĐiều này cho thấy DoD không phải là một danh sách tĩnh, mà nó có thể **tiến hóa và phát triển** theo thời gian, phù hợp với từng giai đoạn của dự án.\n\n---\n\n## **PHẦN 3: GIÁ TRỊ THỰC VÀ CÁCH QUẢN LÝ KHÁI NIỆM HOÀN THÀNH**\n\n### **3.1. Giá trị cốt lõi của việc áp dụng DoD**\n\nTừ câu chuyện của Mary Anne, chúng ta thấy được những giá trị cốt lõi mà việc áp dụng một DoD rõ ràng mang lại:\n\n*   **Chất lượng được tích hợp ngay từ đầu:** Thay vì \"đổ lỗi\" cho giai đoạn kiểm thử cuối cùng, DoD khuyến khích việc xây dựng chất lượng vào từng bước nhỏ. \"Chúng tôi làm mọi thứ cần thiết để chuyển giao hệ thống khi nó đang được xây dựng.\"\n*   **Minh bạch và tin cậy:** Mọi bên liên quan đều hiểu rõ điều gì cần phải xảy ra để một công việc được coi là xong, từ đó tạo dựng lòng tin.\n*   **Giảm thiểu rủi ro:** Phát hiện và giải quyết các vấn đề (lỗi, hiệu suất, bảo mật, tài liệu) sớm hơn, tránh tích tụ rủi ro đến cuối dự án.\n*   **Tăng khả năng dự đoán:** Khi DoD rõ ràng, việc ước tính thời gian và nguồn lực trở nên chính xác hơn.\n*   **Khuyến khích làm việc nhóm hiệu quả:** Nhóm có mục tiêu chung rõ ràng, giúp họ tự tổ chức và chịu trách nhiệm cao hơn.\n*   **Sẵn sàng cho việc triển khai:** Mỗi phần việc được hoàn thành theo DoD đều là một bước tiến vững chắc hướng tới một sản phẩm sẵn sàng triển khai.\n\n### **3.2. Quản lý Khái niệm Hoàn thành theo thời gian**\n\nMary Anne cũng nhấn mạnh rằng DoD không phải là một tài liệu cố định, mà nó **tiến hóa và được quản lý trong suốt vòng đời của dự án**.\n\n*   **Bắt đầu đơn giản:** Không cần phải có một DoD hoàn hảo ngay từ đầu. Hãy bắt đầu với những tiêu chí cơ bản nhất và bổ sung dần.\n*   **Thảo luận và thống nhất:** DoD phải được thống nhất giữa toàn bộ nhóm phát triển và các bên liên quan chính. Đây không phải là danh sách của riêng Product Owner hay Team Lead, mà là cam kết chung của tất cả mọi người.\n*   **Kiểm tra và cập nhật định kỳ:** Khi dự án phát triển, công nghệ thay đổi hoặc yêu cầu mới xuất hiện, DoD cần được xem xét và điều chỉnh để luôn phù hợp.\n*   **Đảm bảo mọi người hiểu và tuân thủ:** DoD cần được công bố, giải thích rõ ràng và được mọi người áp dụng một cách nhất quán. Nó nên được hiển thị ở nơi dễ thấy (ví dụ: trên bảng Scrum, trong các công cụ quản lý dự án).\n*   **Sử dụng để kiểm tra công việc:** Trước khi một story, sprint hoặc release được tuyên bố là \"hoàn thành,\" hãy luôn kiểm tra lại với DoD tương ứng.\n\n### **3.3. Lời khuyên cho các em**\n\nKhi tham gia vào bất kỳ dự án nào, hãy luôn đặt câu hỏi: \"Khi nào thì chúng ta biết là chúng ta đã hoàn thành?\" và chủ động cùng nhóm xây dựng một DoD phù hợp. Điều này sẽ giúp các em không chỉ làm việc hiệu quả hơn mà còn đóng góp vào sự thành công chung của dự án.\n\n---\n\n**Tóm lại:** \"Khái niệm về sự hoàn thành\" (DoD) là một công cụ mạnh mẽ giúp chuyển đổi sự mơ hồ thành sự rõ ràng, từ đó xây dựng lòng tin, nâng cao chất lượng và tối ưu hóa hiệu suất trong mọi dự án. Nó là một cam kết về chất lượng, được xây dựng, thảo luận và điều chỉnh trong suốt vòng đời của dự án.\n\nBài giảng của chúng ta đến đây là kết thúc. Các em có câu hỏi nào không?',5,'2026-03-31 03:21:22');
 /*!40000 ALTER TABLE `materials` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -459,8 +131,8 @@ DROP TABLE IF EXISTS `permissions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `permissions` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `permission_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `permission_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `permission_name` (`permission_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -486,9 +158,9 @@ DROP TABLE IF EXISTS `questions`;
 CREATE TABLE `questions` (
   `id` int NOT NULL AUTO_INCREMENT,
   `quiz_id` int DEFAULT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `options` json NOT NULL,
-  `correct_answer` text COLLATE utf8mb4_unicode_ci,
+  `correct_answer` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   KEY `quiz_id` (`quiz_id`),
   CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE CASCADE
@@ -540,8 +212,8 @@ DROP TABLE IF EXISTS `quizzes`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quizzes` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -626,8 +298,8 @@ DROP TABLE IF EXISTS `roles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `roles` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `role_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `role_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `role_name` (`role_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -676,16 +348,16 @@ DROP TABLE IF EXISTS `users`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `role_id` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `role_id` (`role_id`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -694,7 +366,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10$6jxTwIoF0ukmkmjkxJczpeKtyjg6WGeyAvqr2fNK.flRtZaim9bZ2',2,'2026-03-17 10:25:40'),(4,'Super Admin','admin@quizai.com','aim9bZ2',3,'2026-03-23 09:36:26');
+INSERT INTO `users` VALUES (3,'Nguyễn Văn Làm','hoanthanh@gmail.com','$2b$10$6jxTwIoF0ukmkmjkxJczpeKtyjg6WGeyAvqr2fNK.flRtZaim9bZ2',2,'2026-03-17 10:25:40'),(4,'Super Admin','admin@quizai.com','aim9bZ2',3,'2026-03-24 03:58:53'),(5,'minh44','minh2@gmail.com','$2b$10$VqaauiC7nvSSRlCnA5Mo8OEDvhiCo85vsfcY0Vtc9Yy3qaEO9/gD6',2,'2026-03-24 04:07:05'),(6,'minh1','minh1@gmail.com','$2b$10$KfPejkloMr8vGfYD9PFedeHu/RxpjTil6NsQ9UwCCG6gyswxoyJYC',1,'2026-03-24 08:15:08'),(7,'minhh','minh7@gmail.com','$2b$10$8qvLL0KrUvKMYZDY0X/34eNUeX4teIuXyog012SQYSSTe64MYgcPe',1,'2026-03-25 02:01:13'),(8,'minhhh','minh8@gmail.com','$2b$10$picObq4VIFvxBQjMi7ClkuFiW4A/eBhfUfN61Gowzcz3EbHDhEVzO',2,'2026-03-25 02:02:27'),(9,'admin','admin@gmail.com','$2b$10$WWGXYmX2vGK1KHrdBOHHiOKAjSrV0wgVrM5Wuu2yqgEQAOApCKd5m',3,'2026-03-25 05:04:13'),(10,'nhan','nhan1@gmail.com','$2b$10$V3KgmuEojdD0gGTupKx7WOGuExbcudyhLzj3avh6IH7K2dmQGEODO',2,'2026-03-30 09:00:30');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -705,6 +377,7 @@ UNLOCK TABLES;
 --
 -- Dumping routines for database 'education_quiz_db'
 --
+SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -715,4 +388,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-24 10:52:00
+-- Dump completed on 2026-03-31 11:21:20

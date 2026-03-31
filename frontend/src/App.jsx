@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ResultPage from './pages/ResultPage/ResultPage';
 import LearningView from './pages/LearningView';
 import AdminDashboard from './pages/AdminDashboard';
+import QuizPage from './pages/QuizPage';
 
 function App() {
   return (
@@ -40,6 +41,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <LearningView />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/quiz/start" 
+            element={
+              <ProtectedRoute>
+                <QuizPage />
               </ProtectedRoute>
             } 
           />

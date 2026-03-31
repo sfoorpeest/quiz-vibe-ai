@@ -22,7 +22,7 @@ const Draggable3DItem = ({ children, className, initialY, initialX, initialRotat
         repeat: Infinity,
         delay: delay,
       }}
-      className={`absolute z-10 flex items-center justify-center bg-slate-900/70 backdrop-blur-xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] border border-slate-700/50 p-5 lg:p-6 transform-3d ${className}`}
+      className={`absolute z-0 flex items-center justify-center bg-slate-900/70 backdrop-blur-xl rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] border border-slate-700/50 p-5 lg:p-6 transform-3d pointer-events-auto ${className}`}
       style={{ touchAction: "none" }}
     >
       <div className="filter drop-shadow-md text-inherit" style={{ transform: 'translateZ(40px)' }}>
@@ -36,7 +36,7 @@ const AnimatedBackground = () => {
   const containerRef = useRef(null);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 -z-20 w-full h-full overflow-hidden bg-slate-950 perspective-1000 overflow-y-hidden">
+    <div ref={containerRef} className="fixed inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 perspective-1000 overflow-y-hidden pointer-events-none">
       
       {/* Brighter and larger background glowing blobs (blue & purple palette) */}
       <div className="absolute top-[-5%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-cyan-600/20 blur-[130px] animate-blob" />
@@ -60,7 +60,7 @@ const AnimatedBackground = () => {
       {/* Draggable 3D Cubes/Rings */}
       <motion.div 
         drag dragConstraints={containerRef} whileHover={{ scale: 1.1 }} whileDrag={{ scale: 1.2 }} dragElastic={0.2}
-        className="absolute top-[15%] right-[25%] opacity-90 cursor-grab active:cursor-grabbing z-0"
+        className="absolute top-[15%] right-[25%] opacity-90 cursor-grab active:cursor-grabbing z-0 pointer-events-auto"
         animate={{ rotateX: [30, 390], rotateY: [0, 360], rotateZ: [15, 375] }}
         transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
       >
@@ -69,7 +69,7 @@ const AnimatedBackground = () => {
 
       <motion.div 
         drag dragConstraints={containerRef} whileHover={{ scale: 1.1 }} whileDrag={{ scale: 1.2 }} dragElastic={0.2}
-        className="absolute bottom-[20%] left-[25%] opacity-90 cursor-grab active:cursor-grabbing z-0"
+        className="absolute bottom-[20%] left-[25%] opacity-90 cursor-grab active:cursor-grabbing z-0 pointer-events-auto"
         animate={{ rotateX: [30, 390], rotateY: [360, 0], rotateZ: [15, 375] }}
         transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
       >
