@@ -20,7 +20,7 @@ export default function LearningView() {
   const [showToc, setShowToc] = useState(false);
   
   const [chatHistory, setChatHistory] = useState([
-    { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi Google Gemini. Bạn có thắc mắc gì về bài học "Nhập môn Trí tuệ Nhân tạo cơ bản" không?' }
+    { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi DeepSeek. Bạn có thắc mắc gì về nội dung bài học này không?' }
   ]);
 
   const [material, setMaterial] = useState(null);

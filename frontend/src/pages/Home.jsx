@@ -344,8 +344,12 @@ export default function Home() {
           {/* === TEACHER DASHBOARD === */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold text-slate-50">Chào mừng Thầy/Cô, {user.name}</h1>
-              <p className="text-slate-400 mt-2 text-lg">Hôm nay Thầy/Cô muốn chuẩn bị tài liệu gì mới?</p>
+              <h1 className="text-3xl font-extrabold text-slate-50">
+                Chào mừng {user.role_id === 3 ? 'Quản trị viên' : 'Thầy/Cô'}, {user.name}
+              </h1>
+              <p className="text-slate-400 mt-2 text-lg">
+                Hôm nay {user.role_id === 3 ? 'Quản trị viên' : 'Thầy/Cô'} muốn chuẩn bị tài liệu gì mới?
+              </p>
             </div>
             <Link to="/upload" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
               <UploadCloud className="w-5 h-5" />

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login, token } = useAuth();
+  const { login, token, user } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -17,10 +17,10 @@ export default function Register() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (token) {
-      navigate('/', { replace: true });
+    if (token && user) {
+      navigate(user.role_id === 3 ? '/admin' : '/', { replace: true });
     }
-  }, [token, navigate]);
+  }, [token, user, navigate]);
 
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -88,8 +88,9 @@ export default function Register() {
       // Auto đăng nhập
       login(loginResponse.user, loginResponse.token);
 
-      // Chuyển hướng về trang chủ
-      navigate('/', { replace: true });
+      // Admin → Admin Dashboard, otherwise → Home
+      const destination = loginResponse.user.role_id === 3 ? '/admin' : '/';
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message || 
