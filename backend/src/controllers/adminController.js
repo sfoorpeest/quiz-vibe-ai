@@ -196,6 +196,91 @@ exports.getRecentActivity = async (req, res) => {
 };
 
 /**
+ * GET /api/admin/quizzes
+ * Danh sách toàn bộ quiz kèm tên người tạo và số câu hỏi
+ */
+exports.getAllQuizzesAdmin = async (req, res) => {
+    try {
+        const quizzes = await sequelize.query(`
+            SELECT
+                q.id,
+                q.title,
+                q.subject,
+                q.created_at,
+                u.name AS creator_name,
+                COUNT(qu.id) AS question_count,
+                COALESCE(lh.attempt_count, 0) AS attempt_count
+            FROM quizzes q
+            LEFT JOIN users u ON q.created_by = u.id
+            LEFT JOIN questions qu ON qu.quiz_id = q.id
+            LEFT JOIN (
+                SELECT quiz_id, COUNT(*) AS attempt_count
+                FROM learning_history
+                WHERE quiz_id IS NOT NULL
+                GROUP BY quiz_id
+            ) lh ON lh.quiz_id = q.id
+            GROUP BY q.id, q.title, q.subject, q.created_at, u.name, lh.attempt_count
+            ORDER BY q.created_at DESC
+        `, { type: QueryTypes.SELECT });
+
+        res.json({ status: 'success', data: quizzes });
+    } catch (error) {
+        console.error('getAllQuizzesAdmin error:', error);
+        res.status(500).json({ message: 'Lỗi lấy danh sách quiz', error: error.message });
+    }
+};
+
+/**
+ * GET /api/admin/materials
+ * Danh sách toàn bộ học liệu kèm tên người tạo và lượt xem
+ */
+exports.getAllMaterialsAdmin = async (req, res) => {
+    try {
+        const materials = await sequelize.query(`
+            SELECT
+                m.id,
+                m.title,
+                m.description,
+                m.created_at,
+                u.name AS creator_name,
+                COALESCE(lh.view_count, 0) AS view_count
+            FROM materials m
+            LEFT JOIN users u ON m.created_by = u.id
+            LEFT JOIN (
+                SELECT material_id, COUNT(*) AS view_count
+                FROM learning_history
+                WHERE material_id IS NOT NULL AND action = 'VIEWED_MATERIAL'
+                GROUP BY material_id
+            ) lh ON lh.material_id = m.id
+            ORDER BY m.created_at DESC
+        `, { type: QueryTypes.SELECT });
+
+        res.json({ status: 'success', data: materials });
+    } catch (error) {
+        console.error('getAllMaterialsAdmin error:', error);
+        res.status(500).json({ message: 'Lỗi lấy danh sách học liệu', error: error.message });
+    }
+};
+
+/**
+ * DELETE /api/admin/materials/:id
+ * Xoá học liệu (chỉ Admin)
+ */
+exports.deleteMaterialAdmin = async (req, res) => {
+    try {
+        const materialId = req.params.id;
+        await sequelize.query('DELETE FROM materials WHERE id = ?', {
+            replacements: [materialId],
+            type: QueryTypes.DELETE
+        });
+        res.json({ status: 'success', message: 'Đã xoá học liệu' });
+    } catch (error) {
+        console.error('deleteMaterialAdmin error:', error);
+        res.status(500).json({ message: 'Lỗi xoá học liệu', error: error.message });
+    }
+};
+
+/**
  * DELETE /api/admin/users/:id
  * Xoá user (chỉ Admin)
  */

@@ -17,6 +17,11 @@ router.delete('/users/:id', auth, checkRole([3]), adminController.deleteUser);
 router.get('/top-quizzes',   auth, checkRole([3]), adminController.getTopQuizzes);
 router.get('/subject-stats', auth, checkRole([3]), adminController.getSubjectStats);
 
+// Danh sách quiz & học liệu đầy đủ
+router.get('/quizzes',   auth, checkRole([3]), adminController.getAllQuizzesAdmin);
+router.get('/materials', auth, checkRole([3]), adminController.getAllMaterialsAdmin);
+router.delete('/materials/:id', auth, checkRole([3]), adminController.deleteMaterialAdmin);
+
 // Hoạt động gần đây
 router.get('/activity', auth, checkRole([3]), adminController.getRecentActivity);
 

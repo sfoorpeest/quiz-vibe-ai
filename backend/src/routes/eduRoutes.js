@@ -15,6 +15,9 @@ const upload = multer({
 // 1. Quản lý học liệu (Chỉ Teacher/Admin được đăng)
 router.post('/materials', auth, checkRole([2, 3]), materialValidator, eduController.createMaterial);
 
+// 1.5 Tìm kiếm học liệu theo tiêu đề hoặc tag (@tag / #tag)
+router.get('/materials/search', auth, eduController.searchMaterials);
+
 // 2. Lấy danh sách học liệu qua POST (tránh Cache 304)
 router.post('/materials/list', auth, eduController.getAllMaterials);
 

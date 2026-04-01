@@ -36,4 +36,22 @@ export const adminService = {
     const res = await api.get('/api/admin/activity');
     return res.data.data;
   },
+
+  /** Danh sách tất cả quiz (admin) */
+  getQuizzes: async () => {
+    const res = await api.get('/api/admin/quizzes');
+    return res.data.data;
+  },
+
+  /** Danh sách tất cả học liệu (admin) */
+  getMaterials: async () => {
+    const res = await api.get('/api/admin/materials');
+    return res.data.data;
+  },
+
+  /** Xoá học liệu */
+  deleteMaterial: async (id) => {
+    const res = await api.delete(`/api/admin/materials/${id}`);
+    return res.data;
+  },
 };

@@ -78,6 +78,27 @@ function DeleteModal({ user: target, onConfirm, onCancel }) {
   );
 }
 
+/* ─── Delete Material Confirm Modal ─── */
+function DeleteMaterialModal({ material: target, onConfirm, onCancel }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'rgba(15,15,35,0.98)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 20, padding: 28, maxWidth: 380, width: '90%', boxShadow: '0 30px 80px rgba(0,0,0,0.7)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <Trash2 size={22} color="#ef4444" />
+        </div>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: '0 0 8px' }}>Xoá học liệu?</h3>
+        <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5, margin: '0 0 20px' }}>
+          Bạn sắp xoá học liệu <strong style={{ color: '#f87171' }}>{target?.title}</strong>. Hành động này không thể hoàn tác.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid rgba(99,102,241,.2)', background: 'rgba(99,102,241,.07)', color: '#a5b4fc', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Huỷ</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Xác nhận xoá</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── CSS ─── */
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -161,6 +182,7 @@ export default function AdminDashboard() {
   const [statsAnimated, setStatsAnimated] = useState(false);
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteType, setDeleteType] = useState('user'); // 'user' hoặc 'material'
 
   // ── Real data ──
   const [stats, setStats]         = useState(null);
@@ -168,6 +190,8 @@ export default function AdminDashboard() {
   const [topQuizzes, setTopQuizzes] = useState([]);
   const [subjectStats, setSubjectStats] = useState([]);
   const [activity, setActivity]   = useState([]);
+  const [adminQuizzes, setAdminQuizzes] = useState([]);
+  const [adminMaterials, setAdminMaterials] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
@@ -183,18 +207,22 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [s, u, q, sub, act] = await Promise.all([
+      const [s, u, q, sub, act, aq, am] = await Promise.all([
         adminService.getStats(),
         adminService.getUsers(),
         adminService.getTopQuizzes(),
         adminService.getSubjectStats(),
         adminService.getActivity(),
+        adminService.getQuizzes(),
+        adminService.getMaterials(),
       ]);
       setStats(s);
       setUsers(u);
       setTopQuizzes(q);
       setSubjectStats(sub);
       setActivity(act);
+      setAdminQuizzes(aq);
+      setAdminMaterials(am);
       setTimeout(() => setStatsAnimated(true), 100);
     } catch (err) {
       console.error(err);
@@ -226,6 +254,20 @@ export default function AdminDashboard() {
       await adminService.deleteUser(deleteTarget.id);
       setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
       showToast(`Đã xoá người dùng "${deleteTarget.name}"`);
+    } catch {
+      showToast('Xoá thất bại!', 'error');
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  // ── Delete material ──
+  const handleDeleteMaterial = async () => {
+    if (!deleteTarget) return;
+    try {
+      await adminService.deleteMaterial(deleteTarget.id);
+      setAdminMaterials(prev => prev.filter(m => m.id !== deleteTarget.id));
+      showToast(`Đã xoá học liệu "${deleteTarget.title}"`);
     } catch {
       showToast('Xoá thất bại!', 'error');
     } finally {
@@ -576,7 +618,10 @@ export default function AdminDashboard() {
                               <button className="ad-icon-btn" style={{ width:30, height:30 }}><Eye size={14} /></button>
                               {u.role_id !== 3 && (
                                 <button 
-                                  onClick={() => setDeleteTarget(u)}
+                                  onClick={() => {
+                                    setDeleteType('user');
+                                    setDeleteTarget(u);
+                                  }}
                                   className="ad-icon-btn" 
                                   style={{ width:30, height:30, color:'#f87171' }}
                                 >
@@ -595,26 +640,160 @@ export default function AdminDashboard() {
 
             {/* Quản lý Quiz Tab */}
             {activeNav === 'quiz' && (
-              <div className="ad-card" style={{ padding: 40, textAlign:'center' }}>
-                <div style={{ width:64, height:64, borderRadius:20, background:'rgba(99,102,241,.1)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
-                  <BookOpen size={32} color="#6366f1" />
+              <div className="ad-card" style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(99,102,241,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Quản lý Quiz</h2>
+                    <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>Tổng cộng {adminQuizzes.length} bộ quiz trong hệ thống</p>
+                  </div>
+                  <button className="ad-icon-btn" onClick={fetchAll}><RefreshCw size={16} /></button>
                 </div>
-                <h2 style={{ color:'#f1f5f9' }}>Quản lý Quiz</h2>
-                <p style={{ color:'#6b7280', maxWidth:400, margin:'10px auto' }}>Tính năng đang được phát triển. Bạn có thể xem danh sách Quiz và số lượt làm tại tab Overview.</p>
-                <button onClick={() => setActiveNav('overview')} style={{ marginTop:20, padding:'10px 24px', borderRadius:12, background:'#6366f1', border:'none', color:'white', fontWeight:700, cursor:'pointer' }}>Quay lại Tổng quan</button>
+                <div className="ad-scroll" style={{ overflowX:'auto' }}>
+                  <table className="ad-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Tên Quiz</th>
+                        <th>Chủ đề</th>
+                        <th>Người tạo</th>
+                        <th>Số câu hỏi</th>
+                        <th>Lượt làm</th>
+                        <th>Ngày tạo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr><td colSpan={7} style={{ textAlign:'center', padding:40 }}><Skeleton h={20} w="60%" /></td></tr>
+                      ) : adminQuizzes.length === 0 ? (
+                        <tr><td colSpan={7} style={{ textAlign:'center', padding:40, color:'#6b7280' }}>Chưa có quiz nào.</td></tr>
+                      ) : adminQuizzes.map(q => (
+                        <tr key={q.id}>
+                          <td style={{ fontWeight:700, color:'#818cf8' }}>#{q.id}</td>
+                          <td style={{ fontWeight:600, maxWidth:260, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{q.title}</td>
+                          <td><span className="ad-badge ad-badge-teacher">{q.subject || 'Chung'}</span></td>
+                          <td>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:11 }}>
+                                {(q.creator_name || 'S').charAt(0).toUpperCase()}
+                              </div>
+                              <span style={{ fontSize:13 }}>{q.creator_name || 'Hệ thống'}</span>
+                            </div>
+                          </td>
+                          <td style={{ fontWeight:700 }}>{q.question_count}</td>
+                          <td>
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <Eye size={13} color="#6b7280" />
+                              <span style={{ fontWeight:600 }}>{q.attempt_count}</span>
+                            </div>
+                          </td>
+                          <td style={{ color:'#6b7280', fontSize:12 }}>{new Date(q.created_at).toLocaleDateString('vi-VN')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Quản lý Học liệu Tab */}
+            {activeNav === 'materials' && (
+              <div className="ad-card" style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(99,102,241,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Quản lý Học liệu</h2>
+                    <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>Tổng cộng {adminMaterials.length} tài liệu trong hệ thống</p>
+                  </div>
+                  <button className="ad-icon-btn" onClick={fetchAll}><RefreshCw size={16} /></button>
+                </div>
+                <div className="ad-scroll" style={{ overflowX:'auto' }}>
+                  <table className="ad-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Tên tài liệu</th>
+                        <th>Tags</th>
+                        <th>Người tạo</th>
+                        <th>Lượt xem</th>
+                        <th>Ngày tạo</th>
+                        <th>Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr><td colSpan={7} style={{ textAlign:'center', padding:40 }}><Skeleton h={20} w="60%" /></td></tr>
+                      ) : adminMaterials.length === 0 ? (
+                        <tr><td colSpan={7} style={{ textAlign:'center', padding:40, color:'#6b7280' }}>Chưa có học liệu nào.</td></tr>
+                      ) : adminMaterials.map(m => {
+                        const tagMatch = m.description?.match(/^\[TAGS:(.*?)\]/);
+                        const tags = tagMatch ? tagMatch[1].split(',').map(t => t.trim()) : [];
+                        return (
+                          <tr key={m.id}>
+                            <td style={{ fontWeight:700, color:'#818cf8' }}>#{m.id}</td>
+                            <td style={{ fontWeight:600, maxWidth:280, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.title}</td>
+                            <td>
+                              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                                {tags.length > 0 ? tags.slice(0,3).map((tag, i) => (
+                                  <span key={i} className="ad-badge ad-badge-student" style={{ fontSize:10 }}>#{tag}</span>
+                                )) : <span style={{ color:'#6b7280', fontSize:12 }}>—</span>}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:11 }}>
+                                  {(m.creator_name || 'S').charAt(0).toUpperCase()}
+                                </div>
+                                <span style={{ fontSize:13 }}>{m.creator_name || 'Hệ thống'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                <Eye size={13} color="#6b7280" />
+                                <span style={{ fontWeight:600 }}>{m.view_count}</span>
+                              </div>
+                            </td>
+                            <td style={{ color:'#6b7280', fontSize:12 }}>{new Date(m.created_at).toLocaleDateString('vi-VN')}</td>
+                            <td>
+                              <div style={{ display:'flex', gap:8 }}>
+                                <button className="ad-icon-btn" style={{ width:30, height:30 }}><Eye size={14} /></button>
+                                <button 
+                                  onClick={() => {
+                                    setDeleteType('material');
+                                    setDeleteTarget(m);
+                                  }}
+                                  className="ad-icon-btn" 
+                                  style={{ width:30, height:30, color:'#f87171' }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
           </main>
         </div>
 
-        {/* ── Delete confirmation modal ── */}
+        {/* ── Delete confirmation modals ── */}
         {deleteTarget && (
-          <DeleteModal
-            user={deleteTarget}
-            onConfirm={handleDeleteUser}
-            onCancel={() => setDeleteTarget(null)}
-          />
+          deleteType === 'user' ? (
+            <DeleteModal
+              user={deleteTarget}
+              onConfirm={handleDeleteUser}
+              onCancel={() => setDeleteTarget(null)}
+            />
+          ) : (
+            <DeleteMaterialModal
+              material={deleteTarget}
+              onConfirm={handleDeleteMaterial}
+              onCancel={() => setDeleteTarget(null)}
+            />
+          )
         )}
 
         {/* ── Toast ── */}

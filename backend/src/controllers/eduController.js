@@ -171,6 +171,72 @@ exports.getAllMaterials = async (req, res) => {
 };
 
 /**
+ * 3.5. Tìm kiếm học liệu theo tiêu đề hoặc theo tag
+ * - Tìm theo tiêu đề: query bình thường
+ * - Tìm theo tag: query bắt đầu bằng @ hoặc # (VD: @vũ trụ hoặc #vũ trụ)
+ */
+exports.searchMaterials = async (req, res) => {
+    try {
+        const rawQuery = req.query.q || '';
+        const trimmed = rawQuery.trim();
+
+        if (!trimmed) {
+            // Trả về toàn bộ nếu không có từ khóa
+            const rows = await sequelize.query(
+                'SELECT materials.*, users.name as creator_name FROM materials LEFT JOIN users ON materials.created_by = users.id ORDER BY materials.created_at DESC',
+                { type: QueryTypes.SELECT }
+            );
+            return res.status(200).json({ status: 'success', data: rows });
+        }
+
+        const isTagSearch = trimmed.startsWith('@') || trimmed.startsWith('#');
+        const keyword = trimmed.replace(/^[@#]/, '').trim(); // Bỏ ký tự đặc biệt đầu
+
+        let rows;
+        if (isTagSearch) {
+            // Tìm theo tag: tag được nhúng trong description dạng [TAGS:tag1, tag2]
+            rows = await sequelize.query(
+                `SELECT materials.*, users.name as creator_name 
+                 FROM materials 
+                 LEFT JOIN users ON materials.created_by = users.id 
+                 WHERE materials.description LIKE ? 
+                 ORDER BY materials.created_at DESC`,
+                {
+                    replacements: [`%${keyword}%`],
+                    type: QueryTypes.SELECT
+                }
+            );
+        } else {
+            // Tìm theo tiêu đề
+            rows = await sequelize.query(
+                `SELECT materials.*, users.name as creator_name 
+                 FROM materials 
+                 LEFT JOIN users ON materials.created_by = users.id 
+                 WHERE materials.title LIKE ? 
+                 ORDER BY materials.created_at DESC`,
+                {
+                    replacements: [`%${keyword}%`],
+                    type: QueryTypes.SELECT
+                }
+            );
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: rows,
+            meta: {
+                query: trimmed,
+                type: isTagSearch ? 'tag' : 'title',
+                keyword
+            }
+        });
+    } catch (error) {
+        console.error("Search Error:", error);
+        res.status(500).json({ message: "Lỗi khi tìm kiếm học liệu" });
+    }
+};
+
+/**
  * 5. Admin: Lấy thống kê hệ thống (Tổng quan)
  */
 exports.getSystemStats = async (req, res) => {
@@ -328,7 +394,45 @@ exports.getMaterialProgress = async (req, res) => {
 exports.getUserDashboard = async (req, res) => {
     try {
         const userId = req.user.id;
+        const roleId = req.user.role_id;
 
+        // Nếu là Giáo viên (2) hoặc Admin (3)
+        if (roleId === 2 || roleId === 3) {
+            // 1. Tổng số học liệu đã tạo
+            const matResult = await sequelize.query(
+                'SELECT COUNT(*) as count FROM materials WHERE created_by = ?',
+                { replacements: [userId], type: QueryTypes.SELECT }
+            );
+
+            // 2. Tổng số bài quiz đã tạo
+            const quizResult = await sequelize.query(
+                'SELECT COUNT(*) as count FROM quizzes WHERE created_by = ?',
+                { replacements: [userId], type: QueryTypes.SELECT }
+            );
+
+            // 3. Tổng lượt tương tác trên các nội dung mình tạo (VIEWED/STARTED/COMPLETED)
+            const interactResult = await sequelize.query(
+                `SELECT COUNT(lh.id) as count 
+                 FROM learning_history lh
+                 LEFT JOIN materials m ON lh.material_id = m.id
+                 LEFT JOIN quizzes q ON lh.quiz_id = q.id
+                 WHERE m.created_by = ? OR q.created_by = ?`,
+                { replacements: [userId, userId], type: QueryTypes.SELECT }
+            );
+
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    stats: {
+                        totalMaterials: matResult[0]?.count || 0,
+                        totalQuizzes: quizResult[0]?.count || 0,
+                        totalInteractions: interactResult[0]?.count || 0
+                    }
+                }
+            });
+        }
+
+        // Nếu là Sinh viên (1)
         // 1. Lấy bài học đang xem dở bài gần nhất
         const lastMaterials = await sequelize.query(
             `SELECT m.id, m.title, m.description, lh.progress, lh.created_at 
@@ -347,13 +451,19 @@ exports.getUserDashboard = async (req, res) => {
             { replacements: [userId], type: QueryTypes.SELECT }
         );
 
+        // 3. Tính điểm trung bình (AVG score)
+        const avgScoreResult = await sequelize.query(
+            'SELECT AVG(score) as avg_score FROM results WHERE user_id = ?',
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
+
         res.status(200).json({
             status: 'success',
             data: {
                 lastMaterial: lastMaterials[0] || null,
                 stats: {
                     totalLearned: statsResult[0]?.total_learned || 0,
-                    avgScore: 8.5 
+                    avgScore: avgScoreResult[0]?.avg_score ? parseFloat(avgScoreResult[0].avg_score).toFixed(1) : 0
                 }
             }
         });

@@ -8,7 +8,7 @@ import { authService } from '../services/authService';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, token } = useAuth();
+  const { login, token, user } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,10 +24,10 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (token) {
-      navigate('/', { replace: true });
+    if (token && user) {
+      navigate(user.role_id === 3 ? '/admin' : '/', { replace: true });
     }
-  }, [token, navigate]);
+  }, [token, user, navigate]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,8 +59,9 @@ export default function Login() {
       // Save user and token to context/LocalStorage (implemented in AuthContext)
       login(response.user, response.token);
 
-      // Redirect to home or requested previous page (can be handled via location.state?.from)
-      navigate('/', { replace: true });
+      // Admin → Admin Dashboard, otherwise → Home
+      const destination = response.user.role_id === 3 ? '/admin' : '/';
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message || 

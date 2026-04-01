@@ -20,6 +20,8 @@ export default function Home() {
     lastMaterial: null, 
     stats: { totalLearned: 0, avgScore: 0 } 
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
@@ -60,6 +62,25 @@ export default function Home() {
       console.error("Lỗi khi tải học liệu thủ công:", err);
     }
   };
+
+  // Debounced Search: Gọi API tìm kiếm sau 400ms kể từ lần gõ cuối
+  useEffect(() => {
+    const handler = setTimeout(async () => {
+      if (!user?.id) return;
+      setIsSearching(true);
+      try {
+        const res = await api.get(`/api/edu/materials/search?q=${encodeURIComponent(searchQuery)}`);
+        if (res.data && res.data.data) {
+          setMaterials(res.data.data);
+        }
+      } catch (err) {
+        console.error("Lỗi tìm kiếm:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery, user?.id]);
 
   // State cho Modal Xóa và Thông báo (Toast)
   const [deletingId, setDeletingId] = useState(null);
@@ -337,7 +358,7 @@ export default function Home() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Tổng Học Liệu</p>
-                  <h3 className="text-3xl font-bold text-white mt-2">12</h3>
+                  <h3 className="text-3xl font-bold text-white mt-2">{dashboardData?.stats?.totalMaterials || 0}</h3>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-xl">
                   <FileText className="w-6 h-6 text-blue-400" />
@@ -348,7 +369,7 @@ export default function Home() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Số Bài Quiz</p>
-                  <h3 className="text-3xl font-bold text-white mt-2">8</h3>
+                  <h3 className="text-3xl font-bold text-white mt-2">{dashboardData?.stats?.totalQuizzes || 0}</h3>
                 </div>
                 <div className="p-3 bg-purple-500/10 rounded-xl">
                   <BrainCircuit className="w-6 h-6 text-purple-400" />
@@ -359,7 +380,7 @@ export default function Home() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Lượt Tương tác</p>
-                  <h3 className="text-3xl font-bold text-white mt-2">156</h3>
+                  <h3 className="text-3xl font-bold text-white mt-2">{dashboardData?.stats?.totalInteractions || 0}</h3>
                 </div>
                 <div className="p-3 bg-emerald-500/10 rounded-xl">
                   <Users className="w-6 h-6 text-emerald-400" />
@@ -368,12 +389,26 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
             <h2 className="text-2xl font-bold text-slate-50 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-blue-400" />
-              Học liệu gần đây
+              {searchQuery ? `Kết quả tìm kiếm (${materials.length})` : 'Học liệu gần đây'}
             </h2>
-            <button className="text-blue-400 hover:text-blue-300 text-sm font-semibold transition-colors">Xem toàn bộ</button>
+            <div className="relative w-full sm:w-72">
+              <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm bài học... (@tag hoặc #tag)"
+                className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -410,25 +445,25 @@ export default function Home() {
                   })()}
 
                   <div className="mt-auto border-t border-slate-700/50 pt-4">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <span className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 px-2.5 py-1.5 rounded-md shrink-0">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        Đã tóm tắt bằng AI
-                      </span>
-                      
-                      {user.role_id === 3 && (
-                        <>
+                    <div className="flex items-center justify-between gap-3 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        {user.role_id === 3 ? (
                           <button 
                             onClick={(e) => handleDeleteMaterial(e, item.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-colors shrink-0"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-colors"
                           >
                             <X className="w-3.5 h-3.5" /> Xóa
                           </button>
-                          <span className="text-xs font-medium text-slate-400 truncate flex-1" title={item.creator_name || 'Hệ thống'}>
-                            bởi <span className="text-slate-300 font-bold">{item.creator_name || 'Hệ thống'}</span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-700/50 text-slate-400 px-2 py-1.5 rounded-md">
+                            <User className="w-3 h-3" /> bởi {item.creator_name || "Hệ thống"}
                           </span>
-                        </>
-                      )}
+                        )}
+                      </div>
+
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold bg-emerald-500/5 text-emerald-500/80 px-2 py-1.5 rounded-md">
+                        <CheckCircle className="w-3 h-3" /> AI Summary
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -493,10 +528,10 @@ export default function Home() {
             )}
 
             {/* User Stats Card */}
-            <div className={`bg-slate-800/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 flex flex-col justify-center ${!dashboardData.lastMaterial ? 'lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-8' : ''}`}>
-              <h3 className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 text-center sm:text-left">Hồ sơ Của Bạn</h3>
+            <div className={`bg-slate-800/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 flex flex-col justify-center ${!dashboardData.lastMaterial ? 'lg:col-span-3' : ''}`}>
+              <h3 className={`text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 ${!dashboardData.lastMaterial ? 'text-left' : 'text-center sm:text-left'}`}>Hồ sơ Của Bạn</h3>
               
-              <div className={`space-y-6 ${!dashboardData.lastMaterial ? 'space-y-0 grid grid-cols-1 sm:grid-cols-2 gap-6' : ''}`}>
+              <div className={`space-y-6 ${!dashboardData.lastMaterial ? 'space-y-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl mx-auto w-full' : ''}`}>
                 <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
                   <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
                     <CheckCircle className="w-7 h-7 text-emerald-400" />
@@ -523,11 +558,31 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
             <h2 className="text-2xl font-bold text-slate-50 flex items-center gap-2">
               <Star className="w-6 h-6 text-amber-400 fill-amber-400/20" />
-              Gợi ý cho bạn
+              {searchQuery ? `Kết quả tìm kiếm` : 'Gợi ý cho bạn'}
             </h2>
-            <div className="relative w-full sm:w-64">
-              <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input type="text" placeholder="Tìm kiếm bài học..." className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-4 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner" />
+            <div className="relative w-full sm:w-72">
+              <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm bài học... (@tag hoặc #tag)"
+                className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+              {/* Gợi ý tìm theo tag */}
+              {(searchQuery.startsWith('@') || searchQuery.startsWith('#')) && searchQuery.length === 1 && (
+                <div className="absolute top-full mt-2 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-xl z-20 text-xs text-slate-400 font-medium">
+                  🏷️ Gõ tiếp tên tag bạn muốn tìm, VD: <span className="text-blue-400">{searchQuery}toán học</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -574,11 +629,30 @@ export default function Home() {
                 </div>
               ))
             ) : (
-              <p className="col-span-full text-center text-slate-400 py-10 font-medium">Hiện tại chưa có khóa học/bài giảng nào trên hệ thống.</p>
+              <div className="col-span-full text-center py-12">
+                {searchQuery ? (
+                  <>
+                    <Search className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <p className="text-slate-400 font-bold text-lg mb-1">
+                      Không tìm thấy kết quả nào cho <span className="text-blue-400">"{searchQuery}"</span>
+                    </p>
+                    <p className="text-slate-500 text-sm">
+                      {(searchQuery.startsWith('@') || searchQuery.startsWith('#'))
+                        ? 'Thử tìm tag khác hoặc kiểm tra lại tên tag.'
+                        : 'Thử tìm theo tag bằng cách gõ @tên_tag hoặc #tên_tag'}
+                    </p>
+                    <button onClick={() => setSearchQuery('')} className="mt-4 text-blue-400 text-sm font-bold hover:text-blue-300 transition-colors flex items-center gap-1.5 mx-auto">
+                      <X className="w-4 h-4" /> Xóa tìm kiếm
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-slate-400 font-medium">Hiện tại chưa có khóa học/bài giảng nào trên hệ thống.</p>
+                )}
+              </div>
             )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
 
       {/* Footer */}
