@@ -1,8 +1,11 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto'); // Thêm thư viện này (có sẵn trong Node)
+const { Op } = require('sequelize'); // Cần để so sánh thời gian
+const { sendResetEmail } = require('../services/emailService');
 
-// 1. Hàm Đăng ký (Đã cập nhật logic chặt chẽ của bạn)
+// 1. Hàm Đăng ký 
 exports.register = async (req, res) => {
     try {
         const { name, email, password, secretCode } = req.body;
@@ -43,7 +46,7 @@ exports.register = async (req, res) => {
     }
 };
 
-// 2. Hàm Đăng nhập (BẠN CẦN PHẢI CÓ HÀM NÀY Ở ĐÂY)
+// 2. Hàm Đăng nhập
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -102,6 +105,87 @@ exports.changePassword = async (req, res) => {
         await user.save();
 
         res.json({ message: "Đổi mật khẩu thành công!" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// --- HÀM QUÊN MẬT KHẨU (Gửi mail & In ra Log) ---
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ where: { email } });
+
+        if (!user) {
+            return res.status(404).json({ message: "Email không tồn tại trong hệ thống." });
+        }
+
+        // Tạo token ngẫu nhiên và hết hạn sau 15 phút
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        const resetTokenExpires = new Date(Date.now() + 15 * 60 * 1000); 
+
+        // Lưu vào DB
+        user.resetToken = resetToken;
+        user.resetTokenExpires = resetTokenExpires;
+        await user.save();
+
+        const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
+
+        // =========================================================================
+        // 🛠️ DEVELOPMENT LOGGING (DÀNH CHO TEAM FE & TESTER)
+        // GHI CHÚ: Đoạn code này dùng để in trực tiếp Link Reset ra Terminal của Server.
+        // Giúp anh em test tính năng Quên mật khẩu với các tài khoản giả (fake email) 
+        // mà không cần phải vào hộp thư thật để kiểm tra.
+        //
+        // ⚠️ QUAN TRỌNG: KHI DEPLOY LÊN PRODUCTION ĐỂ NGƯỜI DÙNG THỰC SỬ DỤNG, 
+        // BẮT BUỘC PHẢI COMMENT HOẶC XÓA ĐOẠN CONSOLE.LOG NÀY ĐỂ BẢO MẬT TOKEN!
+        // =========================================================================
+        console.log("\n==========================================");
+        console.log("🔑 [DEV MODE] LINK ĐẶT LẠI MẬT KHẨU:");
+        console.log(resetLink);
+        console.log("==========================================\n");
+
+        // Cố gắng gửi mail. Nếu dùng email giả, có thể báo lỗi nhưng luồng vẫn đi tiếp
+        try {
+            await sendResetEmail(email, resetLink);
+        } catch (mailError) {
+            console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+        }
+
+        res.json({ message: "Yêu cầu đã được xử lý. Link đặt lại mật khẩu đã được tạo (Xem tại Terminal nếu dùng email ảo)." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// --- HÀM ĐẶT LẠI MẬT KHẨU MỚI ---
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        // Tìm user có token khớp và thời gian hết hạn lớn hơn hiện tại
+        const user = await User.findOne({ 
+            where: { 
+                resetToken: token,
+                resetTokenExpires: { [Op.gt]: new Date() } 
+            } 
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn." });
+        }
+
+        // Mã hóa mật khẩu mới
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Cập nhật Database
+        user.password_hash = hashedPassword;
+        user.resetToken = null;
+        user.resetTokenExpires = null;
+        await user.save();
+
+        res.json({ message: "Mật khẩu đã được cập nhật thành công!" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -31,10 +31,19 @@ const User = sequelize.define('User', {
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
+    },
+    // --- THÊM 2 TRƯỜNG NÀY ---
+    resetToken: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    resetTokenExpires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     tableName: 'users',
-    timestamps: false // Tắt tự động thêm createdAt/updatedAt của Sequelize vì mình đã tự định nghĩa
+    timestamps: false 
 });
 
 module.exports = User;
