@@ -3,11 +3,22 @@ const axios = require('axios');
 /**
  * HÀM CHUNG: Sử dụng Google Gemini với giải pháp Mock fallback
  */
-const generateContent = async (prompt) => {
+const generateContent = async (prompt, fileData = null) => {
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        
+        let parts = [{ text: prompt }];
+        if (fileData && fileData.buffer && fileData.mimeType) {
+            parts.push({
+                inline_data: {
+                    mime_type: fileData.mimeType,
+                    data: fileData.buffer.toString('base64')
+                }
+            });
+        }
+
         const response = await axios.post(url, {
-            contents: [{ parts: [{ text: prompt }] }]
+            contents: [{ parts }]
         });
 
         if (response.data && response.data.candidates && response.data.candidates[0].content) {

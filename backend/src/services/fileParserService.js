@@ -26,12 +26,13 @@ const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
             const result = await mammoth.extractRawText({ buffer: nodeBuffer });
             const text = result.value.trim();
             if (!text || text.length < 10) {
-                throw new Error('mammoth returned empty content');
+                console.warn('mammoth returned very little or no content. Falling back to default text.');
+                return `Tài liệu Word này (tên: ${originalname}) chủ yếu chứa hình ảnh hoặc sơ đồ. Không có nhiều văn bản để AI phân tích.`;
             }
             return text.substring(0, 10000);
         } catch (err) {
             console.error('Mammoth DOCX parse error:', err.message);
-            return null;
+            return `Lỗi khi đọc định dạng Word (${originalname}). Tài liệu có thể chỉ chứa biểu đồ/hình ảnh.`;
         }
     }
 
@@ -42,12 +43,13 @@ const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
             const data = await pdfParse(nodeBuffer);
             const text = data.text.trim();
             if (!text || text.length < 10) {
-                throw new Error('pdf-parse returned empty content');
+                console.warn('pdf-parse returned very little or no content. Falling back to default text.');
+                return `Tài liệu PDF này (tên: ${originalname}) chủ yếu chứa hình ảnh hoặc định dạng không thể trích xuất chữ. Mời xem nội dung gốc.`;
             }
             return text.substring(0, 10000);
         } catch (err) {
             console.error('PDF parse error:', err.message);
-            return null;
+            return `Lỗi khi đọc file PDF (${originalname}). Nội dung có thể bị mã hóa hoặc chỉ chứa hình ảnh.`;
         }
     }
 

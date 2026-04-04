@@ -133,9 +133,9 @@ export default function Login() {
                 <label className="block text-sm font-bold text-slate-200" htmlFor="password">
                   Mật khẩu
                 </label>
-                <a href="#" className="text-sm font-semibold text-blue-400 hover:text-blue-300 hover:underline">
+                <Link to="/forgot-password" className="text-sm font-semibold text-blue-400 hover:text-blue-300 hover:underline">
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

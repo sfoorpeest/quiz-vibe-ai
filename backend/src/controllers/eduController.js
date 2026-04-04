@@ -307,6 +307,8 @@ exports.extractFileContent = async (req, res) => {
         let extractedText = null;
         let sourceTitle = 'Tài liệu không tên';
 
+        let fileDataForGemini = null;
+
         if (req.file) {
             const { buffer, mimetype, originalname } = req.file;
             // Sửa lỗi font tiếng Việt khi Multer đọc tên file (latin1 -> utf8)
@@ -318,6 +320,12 @@ exports.extractFileContent = async (req, res) => {
                 return res.status(415).json({
                     message: `Định dạng file "${originalname}" chưa được hỗ trợ hoặc file rỗng.`
                 });
+            }
+
+            // [TÍNH NĂNG MỚI] Đính kèm file gốc cho Gemini chạy Native OCR nếu đó là PDF
+            // Dung lượng inline_data Gemini max 20MB (base64) nên Buffer giới hạn 15MB an toàn
+            if (mimetype === 'application/pdf' && buffer.length < 15 * 1024 * 1024) {
+                fileDataForGemini = { buffer, mimeType: mimetype };
             }
         } else if (req.body.url) {
             const { url } = req.body;
@@ -334,21 +342,21 @@ exports.extractFileContent = async (req, res) => {
         }
 
         // Gọi AI sinh Draft (summary/tags)
-        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung sau. Trả về đúng JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.
+        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung tài liệu đính kèm (hoặc text dưới đây nếu không có đính kèm). Trả về đúng JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.
         Nội dung: ${extractedText.substring(0, 3000)}`;
 
-        let aiDraftText = await aiService.generateContent(draftPrompt);
+        let aiDraftText = await aiService.generateContent(draftPrompt, fileDataForGemini);
         aiDraftText = aiDraftText.replace(/```json\n|\n```|```/g, '').trim();
         let parsedDraft;
         try { parsedDraft = JSON.parse(aiDraftText); } catch {
             parsedDraft = { summary: "Tài liệu học thuật quan trọng.", tags: ["Học liệu", "Cơ bản"] };
         }
 
-        // Gọi AI tạo Bài giảng đầy đủ
-        const lessonPrompt = `Bạn là giáo viên. Viết bài giảng chi tiết (3 phần lớn ##) dựa trên tài liệu sau về chủ đề ${sourceTitle}.
+        // Gọi AI tạo Bài giảng đầy đủ. Kèm file PDF gốc (native OCR) nếu có!
+        const lessonPrompt = `Bạn là giáo viên. Viết bài giảng chi tiết (3 phần lớn ##) dựa trên tài liệu PDF đính kèm (ưu tiên đọc PDF nếu có) hoặc đoạn nội dung text sau về chủ đề ${sourceTitle}.
         Nội dung tài liệu: ${extractedText.substring(0, 5000)}`;
 
-        const lessonContent = await aiService.generateContent(lessonPrompt);
+        const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 
         return res.status(200).json({
             status: 'success',
