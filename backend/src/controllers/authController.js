@@ -129,7 +129,7 @@ exports.forgotPassword = async (req, res) => {
         user.resetTokenExpires = resetTokenExpires;
         await user.save();
 
-        const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
+        const resetLink = `http://localhost:5173/forgot-password?token=${resetToken}`;
 
         // =========================================================================
         // 🛠️ DEVELOPMENT LOGGING (DÀNH CHO TEAM FE & TESTER)
@@ -152,7 +152,7 @@ exports.forgotPassword = async (req, res) => {
             console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
         }
 
-        res.json({ message: "Yêu cầu đã được xử lý. Link đặt lại mật khẩu đã được tạo (Xem tại Terminal nếu dùng email ảo)." });
+        res.json({ message: "Yêu cầu đã được xử lý. Vui lòng kiểm tra hộp thư Email của bạn để nhận đường dẫn đặt lại mật khẩu." });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
