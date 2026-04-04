@@ -154,10 +154,7 @@ const NAV_ITEMS = [
   { icon: Home,          label: 'Tổng quan',        id: 'overview' },
   { icon: Users,         label: 'Người dùng',        id: 'users' },
   { icon: BookOpen,      label: 'Quản lý Quiz',      id: 'quiz' },
-  { icon: Database,      label: 'Học liệu',          id: 'materials' },
-  { icon: BarChart3,     label: 'Phân tích',         id: 'analytics' },
-  { icon: MessageSquare, label: 'Phản hồi',          id: 'feedback' },
-  { icon: Settings,      label: 'Cài đặt hệ thống', id: 'settings' },
+  { icon: Database,      label: 'Học liệu',          id: 'materials' }
 ];
 
 const ROLE_MAP = { 1: 'student', 2: 'teacher', 3: 'admin' };
@@ -359,18 +356,11 @@ export default function AdminDashboard() {
 
           <nav style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }} className="ad-scroll">
             <div style={{ padding: '4px 16px 8px', fontSize: 10, color: '#4b5563', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Menu chính</div>
-            {NAV_ITEMS.slice(0,5).map(item => (
+            {NAV_ITEMS.map(item => (
               <div key={item.id} className={`ad-sidenav-item ${activeNav === item.id ? 'active' : ''}`} onClick={() => setActiveNav(item.id)}>
                 <item.icon size={16} />
                 <span>{item.label}</span>
                 {activeNav === item.id && <ChevronRight size={13} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
-              </div>
-            ))}
-            <div style={{ padding: '12px 16px 8px', fontSize: 10, color: '#4b5563', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginTop: 8 }}>Hệ thống</div>
-            {NAV_ITEMS.slice(5).map(item => (
-              <div key={item.id} className={`ad-sidenav-item ${activeNav === item.id ? 'active' : ''}`} onClick={() => setActiveNav(item.id)}>
-                <item.icon size={16} />
-                <span>{item.label}</span>
               </div>
             ))}
           </nav>

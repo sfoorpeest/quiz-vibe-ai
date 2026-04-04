@@ -11,6 +11,7 @@ import LearningView from './pages/LearningView';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from './pages/AdminDashboard';
 import QuizPage from './pages/QuizPage';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -21,6 +22,14 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/change-password" 
             element={

@@ -190,3 +190,46 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// --- HÀM LẤY THÔNG TIN HỒ SƠ ---
+exports.getMe = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await User.findByPk(userId, {
+            attributes: { exclude: ['password_hash', 'resetToken', 'resetTokenExpires'] }
+        });
+        
+        if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại" });
+        }
+        res.json({ status: 'success', data: user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// --- HÀM CẬP NHẬT HỒ SƠ CHI TIẾT ---
+exports.updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { name } = req.body;
+        
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại" });
+        }
+        
+        if (name) {
+            user.name = name;
+        }
+        
+        await user.save();
+        res.json({ 
+            status: 'success', 
+            message: "Cập nhật hồ sơ thành công", 
+            data: { id: user.id, name: user.name, email: user.email, role_id: user.role_id } 
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

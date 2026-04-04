@@ -10,6 +10,12 @@ router.post('/register', registerValidator, authController.register);
 // Đăng nhập: Validator -> Controller
 router.post('/login', loginValidator, authController.login);
 
+// Lấy thông tin user hiện tại
+router.get('/me', authMiddleware, authController.getMe);
+
+// Cập nhật profile
+router.put('/update-profile', authMiddleware, authController.updateProfile);
+
 // Đổi mật khẩu: Cần Token xác thực
 router.post('/change-password', authMiddleware, authController.changePassword);
 
