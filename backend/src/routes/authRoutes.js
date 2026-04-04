@@ -13,4 +13,10 @@ router.post('/login', loginValidator, authController.login);
 // Đổi mật khẩu: Cần Token xác thực
 router.post('/change-password', authMiddleware, authController.changePassword);
 
+// Quên mật khẩu: Nhận email và gửi link
+router.post('/forgot-password', authController.forgotPassword);
+
+// Đặt lại mật khẩu: Nhận token và mật khẩu mới từ link email
+router.post('/reset-password', authController.resetPassword);
+
 module.exports = router;
