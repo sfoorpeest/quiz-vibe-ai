@@ -19,7 +19,7 @@ exports.register = async (req, res) => {
                 assignedRoleId = 2;
             } else {
                 return res.status(401).json({
-                    message: "Mã bí mật không hợp lệ. Vui lòng liên hệ Admin hoặc đăng ký tài khoản Student (để trống mã)."
+                    message: "Mã xác thực Admin không đúng. Vui lòng nhập đúng mã để đăng ký."
                 });
             }
         }
@@ -49,10 +49,10 @@ exports.login = async (req, res) => {
         const { email, password } = req.body;
         const user = await User.findOne({ where: { email } });
 
-        if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
+        if (!user) return res.status(404).json({ message: "Tài khoản không tồn tại" });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(401).json({ message: "Mật khẩu không chính xác" });
+        if (!isMatch) return res.status(401).json({ message: "Vui lòng cung cấp đầy đủ Email và Mật khẩu" });
 
         const token = jwt.sign(
             { id: user.id, role_id: user.role_id },
