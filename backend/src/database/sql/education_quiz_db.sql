@@ -389,3 +389,23 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-03-31 11:21:20
+-- =====================================================
+-- Script thêm các cột Profile vào bảng users
+-- Chạy script này trong MySQL Workbench
+-- =====================================================
+
+USE education_quiz_db;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NULL,
+ADD COLUMN IF NOT EXISTS birthDate VARCHAR(20) NULL,
+ADD COLUMN IF NOT EXISTS gender VARCHAR(10) NULL,
+ADD COLUMN IF NOT EXISTS address VARCHAR(255) NULL,
+ADD COLUMN IF NOT EXISTS bio TEXT NULL,
+ADD COLUMN IF NOT EXISTS avatar VARCHAR(255) NULL,
+ADD COLUMN IF NOT EXISTS notificationEmail BOOLEAN DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS notificationLearning BOOLEAN DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS isProfilePrivate BOOLEAN DEFAULT FALSE;
+
+-- Kiểm tra kết quả
+SELECT * FROM users LIMIT 5;

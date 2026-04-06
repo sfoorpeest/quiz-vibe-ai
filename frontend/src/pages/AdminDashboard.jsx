@@ -154,7 +154,8 @@ const NAV_ITEMS = [
   { icon: Home,          label: 'Tổng quan',        id: 'overview' },
   { icon: Users,         label: 'Người dùng',        id: 'users' },
   { icon: BookOpen,      label: 'Quản lý Quiz',      id: 'quiz' },
-  { icon: Database,      label: 'Học liệu',          id: 'materials' }
+  { icon: Database,      label: 'Học liệu',          id: 'materials' },
+  { icon: Settings,      label: 'Cài đặt hệ thống', id: 'settings' },
 ];
 
 const ROLE_MAP = { 1: 'student', 2: 'teacher', 3: 'admin' };
@@ -357,7 +358,13 @@ export default function AdminDashboard() {
           <nav style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }} className="ad-scroll">
             <div style={{ padding: '4px 16px 8px', fontSize: 10, color: '#4b5563', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Menu chính</div>
             {NAV_ITEMS.map(item => (
-              <div key={item.id} className={`ad-sidenav-item ${activeNav === item.id ? 'active' : ''}`} onClick={() => setActiveNav(item.id)}>
+              <div key={item.id} className={`ad-sidenav-item ${activeNav === item.id ? 'active' : ''}`} onClick={() => {
+                if (item.id === 'settings') {
+                  navigate('/profile?tab=settings');
+                } else {
+                  setActiveNav(item.id);
+                }
+              }}>
                 <item.icon size={16} />
                 <span>{item.label}</span>
                 {activeNav === item.id && <ChevronRight size={13} style={{ marginLeft: 'auto', opacity: 0.5 }} />}

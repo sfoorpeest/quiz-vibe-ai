@@ -11,19 +11,20 @@ const Button = ({
   className = '',
   ...props 
 }) => {
-  const baseStyles = 'font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2';
+  const baseStyles = 'font-bold rounded-2xl transition-all duration-200 flex items-center justify-center gap-2';
   
   const variants = {
-    primary: 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed',
-    secondary: 'bg-white text-indigo-600 border-2 border-indigo-600 hover:bg-indigo-50 active:scale-95',
-    accent: 'bg-teal-500 text-white hover:bg-teal-600 active:scale-95',
-    ghost: 'text-indigo-600 hover:bg-indigo-50 active:scale-95',
+    primary: 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20 active:scale-[0.98] disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed',
+    secondary: 'bg-slate-800/80 text-white border border-slate-700 hover:bg-slate-700 hover:border-slate-600 active:scale-[0.98] disabled:bg-slate-900 disabled:text-slate-600',
+    accent: 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20 active:scale-[0.98]',
+    ghost: 'text-slate-300 hover:bg-slate-800 hover:text-white active:scale-[0.98]',
+    outline: 'bg-transparent text-white border-2 border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/5 active:scale-[0.98]',
   };
 
   const sizes = {
-    sm: 'px-4 py-2 text-sm',
-    md: 'px-6 py-3 text-base',
-    lg: 'px-8 py-4 text-lg',
+    sm: 'px-4 py-2 text-xs',
+    md: 'px-6 py-3 text-sm',
+    lg: 'px-8 py-4 text-base',
   };
 
   const widthClass = fullWidth ? 'w-full' : '';

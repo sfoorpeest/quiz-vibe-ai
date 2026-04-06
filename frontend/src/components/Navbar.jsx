@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut } from 'lucide-react';
+import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -90,8 +90,16 @@ export default function Navbar() {
                         Đổi mật khẩu
                       </button>
 
-                      {/* Nút Cài đặt hệ thống (Settings) đã được ẩn ở đây theo yêu cầu */}
-                      
+                      <button 
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          navigate('/profile?tab=settings');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all group focus:outline-none"
+                      >
+                        <Settings className="w-4 h-4 text-violet-400 group-hover:rotate-90 transition-transform duration-300" />
+                        Cài đặt hệ thống
+                      </button>
                       {user.role_id === 3 && (
                         <button 
                           onClick={() => {

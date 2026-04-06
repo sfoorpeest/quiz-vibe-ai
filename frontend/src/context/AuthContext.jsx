@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext();
 
@@ -32,13 +32,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
   };
 
-  const updateUser = (newUserData) => {
+  const updateUser = useCallback((newUserData) => {
     setUser(prevUser => {
       const updated = { ...prevUser, ...newUserData };
       localStorage.setItem('user', JSON.stringify(updated));
       return updated;
     });
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
@@ -54,3 +54,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

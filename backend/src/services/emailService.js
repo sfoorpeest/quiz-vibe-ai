@@ -63,4 +63,42 @@ const sendResetEmail = async (email, link) => {
   });
 };
 
-module.exports = { sendResetEmail };
+const sendSupportNotificationToAdmin = async ({ name, email, message }) => {
+  const adminEmail = process.env.EMAIL_USER;
+  
+  const emailTemplate = `
+    <h3>Bạn có một yêu cầu hỗ trợ mới từ người dùng</h3>
+    <p><strong>Họ tên:</strong> ${name}</p>
+    <p><strong>Email:</strong> ${email}</p>
+    <p><strong>Nội dung:</strong></p>
+    <p>${message.replace(/\n/g, '<br>')}</p>
+  `;
+
+  await transporter.sendMail({
+    from: '"Quiz Vibe AI - Hệ Thống" <noreply@quizvibe.vn>',
+    to: adminEmail,
+    replyTo: email,
+    subject: "[SUPPORT TICKET] Yêu cầu hỗ trợ từ " + name,
+    html: emailTemplate
+  });
+};
+
+const sendSupportConfirmationToUser = async (email, name) => {
+  const emailTemplate = `
+    <p>Xin chào ${name},</p>
+    <p>Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn. Đội ngũ kỹ thuật của QuizVibe AI sẽ kiểm tra và phản hồi lại cho bạn thông qua email này trong vòng 24 giờ tới.</p>
+    <p>Cảm ơn bạn đã đồng hành cùng QuizVibe AI!</p>
+    <br>
+    <p>Trân trọng,</p>
+    <p>Đội ngũ QuizVibe AI</p>
+  `;
+
+  await transporter.sendMail({
+    from: '"Quiz Vibe AI - Hỗ Trợ" <noreply@quizvibe.vn>',
+    to: email,
+    subject: "Xác nhận: Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn",
+    html: emailTemplate
+  });
+};
+
+module.exports = { sendResetEmail, sendSupportNotificationToAdmin, sendSupportConfirmationToUser };

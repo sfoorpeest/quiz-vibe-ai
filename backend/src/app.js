@@ -6,6 +6,9 @@ const authRoutes = require('./routes/authRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const eduRoutes = require('./routes/eduRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+const contactRoutes = require('./routes/contactRoutes');
+const path = require('path');
 
 require('dotenv').config();
 
@@ -22,6 +25,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/edu', eduRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/contact', contactRoutes);
+
+// Phục vụ file tĩnh (ảnh avatar)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Kết nối Database
 connectDB();

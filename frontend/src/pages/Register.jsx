@@ -338,9 +338,9 @@ export default function Register() {
               <div className="ml-2 text-sm">
                 <label htmlFor="agreeTerms" className="text-slate-400 cursor-pointer select-none font-medium">
                   Tôi đồng ý với{' '}
-                  <a href="#" className="font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2">Điều khoản</a>
+                  <Link to="/terms" className="font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2">Điều khoản</Link>
                   {' '}và{' '}
-                  <a href="#" className="font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2">Chính sách bảo mật</a>
+                  <Link to="/privacy" className="font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2">Chính sách bảo mật</Link>
                 </label>
               </div>
             </div>

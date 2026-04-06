@@ -545,11 +545,11 @@ export default function Home() {
           <p className="text-slate-400 text-sm font-semibold">
             © {new Date().getFullYear()} QuizVibe. All rights reserved.
           </p>
-          {/* <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Điều khoản</a>
-            <a href="#" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Bảo mật</a>
-            <a href="#" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Liên hệ</a>
-          </div> */}
+          <div className="flex gap-6 mt-4 md:mt-0">
+            <Link to="/terms" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Điều khoản</Link>
+            <Link to="/privacy" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Bảo mật</Link>
+            <Link to="/contact" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Liên hệ</Link>
+          </div>
         </div>
       </footer>
 
