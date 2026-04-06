@@ -4,6 +4,7 @@ import { ArrowLeft, Key, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, Lock }
 import AnimatedBackground from '../components/AnimatedBackground';
 import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import Footer from '../components/Footer';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
@@ -76,7 +77,8 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 font-sans overflow-hidden text-slate-50">
+    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden text-slate-50">
+      <div className="flex-1 flex items-center justify-center p-4">
       <AnimatedBackground />
 
       <div className="w-full max-w-md">
@@ -221,6 +223,8 @@ export default function ChangePassword() {
           </form>
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

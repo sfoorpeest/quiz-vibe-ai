@@ -37,15 +37,38 @@ export default function Navbar() {
               <div className="relative" ref={profileRef}>
                 <button 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 shadow-sm transition-all focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 border transition-all focus:outline-none shadow-lg group ${
+                    isProfileOpen ? 
+                      (user.role_id === 3 ? 'border-amber-400 shadow-amber-500/40 scale-[1.02]' : 
+                       user.role_id === 2 ? 'border-emerald-400 shadow-emerald-500/40 scale-[1.02]' : 
+                       'border-cyan-400 shadow-cyan-500/50 scale-[1.02]') :
+                      (user.role_id === 3 ? 'border-amber-500/50 shadow-amber-500/20' : 
+                       user.role_id === 2 ? 'border-emerald-500/50 shadow-emerald-500/20' : 
+                       'border-blue-500/50 shadow-blue-500/30')
+                  }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-violet-500 flex items-center justify-center text-white shadow-md">
-                    <User className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-95 transition-transform ${
+                    user.role_id === 3 ? 'bg-linear-to-tr from-amber-500 to-orange-500 shadow-amber-500/20' : 
+                    user.role_id === 2 ? 'bg-linear-to-tr from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
+                    'bg-linear-to-tr from-blue-500 to-violet-500 shadow-blue-500/20'
+                  }`}>
+                    {user.role_id === 3 ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
-                  <span className="text-sm font-bold text-slate-200 hidden sm:block max-w-[120px] truncate">
-                    {user.name || user.fullName || 'Người dùng'}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                  
+                  <div className="flex flex-col items-start leading-tight hidden sm:flex pr-1">
+                    <span className="text-[13px] font-bold text-slate-100 max-w-[100px] truncate">
+                      {user.name || user.fullName || 'Người dùng'}
+                    </span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.25 rounded-md mt-0.5 ${
+                      user.role_id === 3 ? 'bg-amber-500/20 text-amber-400' : 
+                      user.role_id === 2 ? 'bg-emerald-500/20 text-emerald-400' : 
+                      'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {user.role_id === 3 ? 'Admin' : user.role_id === 2 ? 'GV' : 'HS'}
+                    </span>
+                  </div>
+
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isProfileOpen && (
@@ -53,8 +76,12 @@ export default function Navbar() {
                     
                     <div className="p-4 border-b border-slate-700 bg-slate-800/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white shadow-md shrink-0">
-                          <User className="w-5 h-5" />
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md shrink-0 ${
+                          user.role_id === 3 ? 'bg-linear-to-br from-amber-500 to-orange-500 shadow-amber-500/20' : 
+                          user.role_id === 2 ? 'bg-linear-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
+                          'bg-linear-to-br from-blue-500 to-violet-600 shadow-blue-500/20'
+                        }`}>
+                          {user.role_id === 3 ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />}
                         </div>
                         <div className="overflow-hidden">
                           <p className="text-base font-extrabold text-white truncate">

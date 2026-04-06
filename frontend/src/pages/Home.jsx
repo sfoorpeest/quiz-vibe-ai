@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
 
@@ -536,22 +537,7 @@ export default function Home() {
 
 
       {/* Footer */}
-      <footer className="relative bg-transparent py-12 border-t border-white/10 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center gap-2 mb-4 md:mb-0 hover:opacity-80 transition-opacity cursor-pointer">
-            <BrainCircuit className="text-blue-400 w-6 h-6" />
-            <span className="text-xl font-bold text-slate-50">QuizVibe</span>
-          </div>
-          <p className="text-slate-400 text-sm font-semibold">
-            © {new Date().getFullYear()} QuizVibe. All rights reserved.
-          </p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <Link to="/terms" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Điều khoản</Link>
-            <Link to="/privacy" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Bảo mật</Link>
-            <Link to="/contact" className="text-slate-400 hover:text-blue-400 transition-colors text-sm font-semibold">Liên hệ</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* --- CUSTOM OVERLAY: MODAL XÁC NHẬN XÓA --- */}
       {deletingId && (

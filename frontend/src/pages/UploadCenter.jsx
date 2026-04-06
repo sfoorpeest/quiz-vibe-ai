@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
+import Footer from '../components/Footer';
 
 export default function UploadCenter() {
   const navigate = useNavigate();
@@ -183,7 +184,7 @@ export default function UploadCenter() {
   }, [status, previewData.summary]);
 
   return (
-    <div className="relative min-h-screen text-slate-50 font-sans">
+    <div className="relative min-h-screen text-slate-50 font-sans flex flex-col">
       <AnimatedBackground />
 
       {/* Navbar Minimalist */}
@@ -467,6 +468,7 @@ export default function UploadCenter() {
         )}
 
       </main>
+      <Footer />
 
       {/* --- CUSTOM OVERLAY: TOAST NOTIFICATIONS --- */}
       {toast && (

@@ -1,5 +1,5 @@
 const mammoth = require('mammoth');
-const pdfParse = require('pdf-parse');
+const pdf = require('pdf-parse');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
@@ -40,16 +40,17 @@ const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
     if (ext === 'pdf' || mimetype === 'application/pdf') {
         try {
             const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-            const data = await pdfParse(nodeBuffer);
+            const data = await pdf(nodeBuffer);
             const text = data.text.trim();
             if (!text || text.length < 10) {
-                console.warn('pdf-parse returned very little or no content. Falling back to default text.');
-                return `Tài liệu PDF này (tên: ${originalname}) chủ yếu chứa hình ảnh hoặc định dạng không thể trích xuất chữ. Mời xem nội dung gốc.`;
+                console.warn('pdf-parse returned no content. Will rely on Gemini Native OCR.');
+                return '[PDF Content Empty - Redirecting to Native OCR]';
             }
             return text.substring(0, 10000);
         } catch (err) {
-            console.error('PDF parse error:', err.message);
-            return `Lỗi khi đọc file PDF (${originalname}). Nội dung có thể bị mã hóa hoặc chỉ chứa hình ảnh.`;
+            console.error('PDF local parse error:', err.message);
+            console.info('Note: This is normal if the file is scanned or encoded. System will use Gemini Native OCR instead.');
+            return '[PDF Local Parse Failed - Redirecting to Native OCR]';
         }
     }
 

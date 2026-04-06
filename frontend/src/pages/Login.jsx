@@ -4,6 +4,7 @@ import { BrainCircuit, Eye, EyeOff, Loader2, Mail, Lock, AlertCircle, CheckCircl
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import Footer from '../components/Footer';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -73,7 +74,8 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 font-sans overflow-hidden">
+    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4">
       <AnimatedBackground />
 
       <div className="w-full max-w-md">
@@ -187,6 +189,8 @@ export default function Login() {
           </Link>
         </p>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

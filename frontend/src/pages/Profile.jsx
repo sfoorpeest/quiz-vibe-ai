@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Bookmark, BookCopy, LayoutDashboard, RefreshCcw, Settings2, TriangleAlert } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import Footer from '../components/Footer';
 import ProfileActivity from '../components/profile/ProfileActivity';
 import ProfileBio from '../components/profile/ProfileBio';
 import ProfileHeader from '../components/profile/ProfileHeader';
@@ -397,7 +398,7 @@ export default function Profile() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 font-sans text-slate-50">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 font-sans text-slate-50 flex flex-col">
       <AnimatedBackground />
 
       <div className="relative z-10 min-h-screen">
@@ -486,6 +487,7 @@ export default function Profile() {
           )}
         </main>
       </div>
+      <Footer />
     </div>
   );
 }

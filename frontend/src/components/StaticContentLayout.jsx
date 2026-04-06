@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import Footer from './Footer';
 import AnimatedBackground from './AnimatedBackground';
 
 export default function StaticContentLayout({ title, subtitle, children }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 font-sans text-slate-50">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 font-sans text-slate-50 flex flex-col">
       <AnimatedBackground />
 
-      <div className="relative z-10 min-h-screen">
+      <div className="relative z-10 flex-1">
         <header className="sticky top-0 z-30 border-b border-slate-800/70 bg-slate-950/70 backdrop-blur-xl">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
@@ -36,6 +37,8 @@ export default function StaticContentLayout({ title, subtitle, children }) {
           {children}
         </main>
       </div>
+      
+      <Footer />
     </div>
   );
 }

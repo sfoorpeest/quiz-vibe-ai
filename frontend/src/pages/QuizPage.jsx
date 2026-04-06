@@ -324,10 +324,15 @@ export default function QuizPage() {
   // -------------------------------------------------------------------------------- //
   //  VIEW 3: KẾT QUẢ (Sau khi làm xong)
   // -------------------------------------------------------------------------------- //
+  // -------------------------------------------------------------------------------- //
+  //  VIEW 3: KẾT QUẢ (Sau khi làm xong)
+  // -------------------------------------------------------------------------------- //
   if (isFinished) {
     // Tính phần trăm
-    const percentage = Math.round((score / questions.length) * 100);
-    const isGood = percentage >= 70;
+    const percentage = Math.round((score / (questions.length || 5)) * 100);
+    const totalCount = questions.length || 5;
+    const isBad = score < 3; // Sai 3 câu trên 5 (tức là chỉ đúng 2 trở xuống)
+    const materialId = location.state?.materialId;
 
     return (
       <div className="min-h-screen bg-[#8C9EFF] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-slate-50">
@@ -362,7 +367,7 @@ export default function QuizPage() {
         </div>
 
         {/* Background Win/Lose Thêm Phụ */}
-        <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 mix-blend-color-burn opacity-30 ${isGood ? 'bg-emerald-300' : 'bg-rose-300'}`}></div>
+        <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 mix-blend-color-burn opacity-30 ${isBad ? 'bg-rose-300' : 'bg-emerald-300'}`}></div>
 
         <div className="relative z-10 w-full max-w-md bg-white/50 backdrop-blur-3xl border-2 border-white/60 p-10 rounded-[40px] shadow-[0_30px_70px_rgba(0,0,0,0.08)] text-center animate-in zoom-in-95 slide-in-from-bottom-5 duration-700">
 
@@ -370,38 +375,50 @@ export default function QuizPage() {
 
           <div className="flex justify-center my-6 relative">
             {/* Vòng sáng đằng sau điểm */}
-            <div className={`absolute inset-0 blur-3xl opacity-20 rounded-full ${isGood ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+            <div className={`absolute inset-0 blur-3xl opacity-20 rounded-full ${!isBad ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-            <div className={`relative z-10 text-5xl font-black py-5 px-10 rounded-[35px] border-4 inline-block shadow-2xl ${isGood ? 'text-emerald-600 border-emerald-500/20 bg-emerald-50/50' : 'text-amber-600 border-amber-500/20 bg-amber-50/50'}`}>
-              {score}/{questions.length}
+            <div className={`relative z-10 text-5xl font-black py-5 px-10 rounded-[35px] border-4 inline-block shadow-2xl ${!isBad ? 'text-emerald-600 border-emerald-500/20 bg-emerald-50/50' : 'text-rose-600 border-rose-500/20 bg-rose-50/50'}`}>
+              {score}/{totalCount}
             </div>
           </div>
 
           <p className="text-slate-600 font-bold text-xl mb-10 leading-relaxed px-4">
-            {isGood ? 'Tuyệt đỉnh! Bạn là một bậc thầy kiến thức thực thụ.' : 'Bạn đã hoàn thành bài thi, hãy ôn tập thêm chút nữa nhé!'}
+            {isBad 
+              ? 'Oops! Bạn cần quay lại bài giảng để nắm chắc kiến thức hơn.' 
+              : percentage >= 90 ? 'Tuyệt đỉnh! Bạn là một bậc thầy thực thụ.' : 'Làm tốt lắm, hãy tiếp tục phát huy nhé!'}
           </p>
 
           <div className="flex flex-col gap-4">
-            <button
-              onClick={() => navigate('/')}
-              className="w-full px-8 py-4 bg-linear-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-black rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-3 text-lg"
-            >
-              <Home className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Quay về trang chủ
-            </button>
-            <button
-              onClick={() => {
-                // Chơi lại bộ câu hỏi này
-                setCurrentIndex(0);
-                setScore(0);
-                setIsAnswered(false);
-                setSelectedOption(null);
-                setTimeLeft(TIME_PER_QUESTION);
-                setIsFinished(false);
-              }}
-              className="w-full px-8 py-4 bg-slate-100 hover:bg-white text-slate-700 font-black rounded-2xl transition-all shadow-md hover:shadow-lg border-2 border-slate-200/50 flex items-center justify-center gap-3 text-lg hover:-translate-y-1 active:translate-y-0 active:scale-95"
-            >
-              <RotateCcw className="w-6 h-6 border-2 border-slate-300/50 rounded-lg p-0.5" /> Làm lại bài
-            </button>
+            {isBad ? (
+              <button
+                onClick={() => materialId ? navigate(`/learning/${materialId}`) : navigate(-1)}
+                className="w-full px-8 py-4 bg-linear-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white font-black rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-3 text-lg"
+              >
+                <BookOpen className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Quay về học tiếp
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/')}
+                  className="w-full px-8 py-4 bg-linear-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-black rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-3 text-lg"
+                >
+                  <Home className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Quay về trang chủ
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentIndex(0);
+                    setScore(0);
+                    setIsAnswered(false);
+                    setSelectedOption(null);
+                    setTimeLeft(TIME_PER_QUESTION);
+                    setIsFinished(false);
+                  }}
+                  className="w-full px-8 py-4 bg-slate-100 hover:bg-white text-slate-700 font-black rounded-2xl transition-all shadow-md hover:shadow-lg border-2 border-slate-200/50 flex items-center justify-center gap-3 text-lg hover:-translate-y-1 active:translate-y-0 active:scale-95"
+                >
+                  <RotateCcw className="w-6 h-6 border-2 border-slate-300/50 rounded-lg p-0.5" /> Làm lại bài
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

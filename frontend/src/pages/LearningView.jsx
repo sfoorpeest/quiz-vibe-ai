@@ -3,10 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, BrainCircuit, MessageSquare, FileText, 
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
-  ChevronLeft, ChevronRight, List, CheckCircle2
+  ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
+import Footer from '../components/Footer';
+import ReactMarkdown from 'react-markdown';
 
 export default function LearningView() {
   const { id } = useParams();
@@ -18,6 +20,7 @@ export default function LearningView() {
   const [maxProgress, setMaxProgress] = useState(0); // Để biết đã đọc xa nhất tới đâu
   const [lastSavedProgress, setLastSavedProgress] = useState(0); // Để hạn chế spam API
   const [showToc, setShowToc] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   
   const [chatHistory, setChatHistory] = useState([
     { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi DeepSeek. Bạn có thắc mắc gì về nội dung bài học này không?' }
@@ -86,6 +89,7 @@ export default function LearningView() {
 
     return () => {
       isMounted = false;
+      window.speechSynthesis.cancel();
     };
   }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
 
@@ -97,6 +101,44 @@ export default function LearningView() {
       </div>
     );
   }
+
+  // --- NATIVE TEXT-TO-SPEECH (ĐỌC VĂN BẢN) ---
+  const handleReadAloud = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      // Loại bỏ các ký tự đánh dấu markdown để máy đọc tự nhiên hơn
+      const plainText = material.content.replace(/[#*`_]+/g, '').replace(/\[EXPLAIN\]/g, '');
+      const utterance = new SpeechSynthesisUtterance(plainText);
+      
+      const setVoiceAndSpeak = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // Cố gắng tìm giọng tiếng Việt nếu có
+        const vnVoice = voices.find(v => v.lang.includes('vi') || v.name.includes('Vietnamese')) || voices.find(v => v.lang.startsWith('vi'));
+        if (vnVoice) utterance.voice = vnVoice;
+        
+        utterance.lang = 'vi-VN';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utterance);
+      };
+      
+      // Load voices nếu chưa có (lỗi thường gặp trên vài trình duyệt web)
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.addEventListener('voiceschanged', setVoiceAndSpeak, { once: true });
+        // Kích hoạt thủ công cho an toàn
+        setTimeout(setVoiceAndSpeak, 500);
+      } else {
+        setVoiceAndSpeak();
+      }
+    }
+  };
 
   // Tính toán phần trăm cuộn
   const handleScroll = (e) => {
@@ -217,12 +259,32 @@ export default function LearningView() {
               </h2>
             </div>
             
-            <button 
-              onClick={() => setShowToc(!showToc)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${showToc ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-            >
-              <List className="w-4 h-4" /> Mục lục
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Nút Đọc Giọng AI */}
+              <button 
+                onClick={handleReadAloud}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isSpeaking ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                title="Đọc văn bản bài học"
+              >
+                {isSpeaking ? (
+                  <>
+                    <Square className="w-4 h-4 fill-current animate-pulse" /> Dừng
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4" /> Đọc
+                  </>
+                )}
+              </button>
+
+              {/* Nút Mục Lục */}
+              <button 
+                onClick={() => setShowToc(!showToc)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${showToc ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+              >
+                <List className="w-4 h-4" /> Mục lục
+              </button>
+            </div>
           </div>
           
           {/* Progress bar line under header */}
@@ -270,8 +332,8 @@ export default function LearningView() {
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
-              <div className="prose prose-invert prose-lg max-w-[800px] mx-auto text-slate-300 leading-relaxed font-medium pb-10">
-                <h1 className="text-3xl font-extrabold mb-8 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400">{material.title}</h1>
+              <div className="prose prose-invert prose-2xl max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-p:my-10 prose-headings:mt-20 prose-headings:mb-8 prose-li:my-6 prose-h2:text-4xl prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-2xl prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black">
+                <h1 className="text-5xl font-extrabold mb-16 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400 leading-tight">{material.title}</h1>
                 
                 {/* Phân tách và render nội dung theo section để trỏ Mục lục */}
                 {(() => {
@@ -282,7 +344,7 @@ export default function LearningView() {
                     const id = isHeader ? `sec-${++secIdx}` : null;
                     return (
                       <div key={pIdx} id={id} className={isHeader ? "mt-10 scroll-mt-6" : ""}>
-                        <div className="whitespace-pre-line">{part}</div>
+                        <ReactMarkdown>{part}</ReactMarkdown>
                       </div>
                     );
                   });
@@ -359,7 +421,7 @@ export default function LearningView() {
                     {material.summary.map((point, index) => (
                       <li key={index} className="flex gap-3 text-slate-300 font-medium text-sm leading-relaxed">
                         <span className="w-6 h-6 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0 mt-0.5">{index + 1}</span>
-                        {point}
+                        <ReactMarkdown>{point}</ReactMarkdown>
                       </li>
                     ))}
                   </ul>
@@ -367,7 +429,7 @@ export default function LearningView() {
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
                   <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
                   <button 
-                    onClick={() => navigate('/quiz/start', { state: { topic: `Dựa vào nội dung tài liệu: ${material?.title}\n\nNội dung chi tiết:\n${material?.content}` } })}
+                    onClick={() => navigate('/quiz/start', { state: { materialId: id, topic: `Dựa vào nội dung tài liệu: ${material?.title}\n\nNội dung chi tiết:\n${material?.content}` } })}
                     className="flex justify-center items-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] text-sm"
                   >
                     <Sparkles className="w-4 h-4" /> Sinh 5 câu Quiz từ học liệu này

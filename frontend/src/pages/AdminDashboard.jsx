@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminService';
+import Footer from '../components/Footer';
 
 /* ─── Animated Background ─── */
 function DashboardBg() {
@@ -774,6 +775,7 @@ export default function AdminDashboard() {
             )}
 
           </main>
+          <Footer />
         </div>
 
         {/* ── Delete confirmation modals ── */}

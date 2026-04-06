@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BrainCircuit, Mail, Loader2, ArrowLeft, AlertCircle, CheckCircle2, Send, Lock, Eye, EyeOff } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { authService } from '../services/authService';
+import Footer from '../components/Footer';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -90,7 +91,8 @@ export default function ForgotPassword() {
   // UI RENDER
   // =============================================================
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 font-sans overflow-hidden">
+    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4">
       <AnimatedBackground />
 
       <div className="w-full max-w-md relative z-10">
@@ -305,6 +307,8 @@ export default function ForgotPassword() {
           </p>
         )}
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

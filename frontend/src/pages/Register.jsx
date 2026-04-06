@@ -4,6 +4,7 @@ import { BrainCircuit, Eye, EyeOff, Loader2, Mail, Lock, User, AlertCircle, Shie
 import AnimatedBackground from '../components/AnimatedBackground';
 import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import Footer from '../components/Footer';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -102,10 +103,11 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 font-sans overflow-hidden py-12">
+    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4 py-12">
       <AnimatedBackground />
 
-      <div className="w-full max-w-lg">
+      <div className="w-full max-lg">
         <div className="bg-slate-900/80 backdrop-blur-xl rounded-4xl shadow-2xl shadow-blue-500/10 border border-slate-700/50 p-8 sm:p-10 mb-6 relative z-10">
           
           <div className="flex flex-col items-center mb-8">
@@ -369,6 +371,8 @@ export default function Register() {
           </Link>
         </p>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }
