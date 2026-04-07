@@ -171,68 +171,79 @@ exports.getAllMaterials = async (req, res) => {
 };
 
 /**
- * 3.5. Tìm kiếm học liệu theo tiêu đề hoặc theo tag
- * - Tìm theo tiêu đề: query bình thường
- * - Tìm theo tag: query bắt đầu bằng @ hoặc # (VD: @vũ trụ hoặc #vũ trụ)
+ * 3.5. Tìm kiếm + Filter học liệu
+ * Hỗ trợ:
+ * - q: tìm theo tiêu đề hoặc tag (nếu có @/#)
+ * - sort: 'latest' | 'oldest' | 'title'
+ * - creatorId: lọc theo người tạo
+ * - tag: lọc chính xác 1 tag
  */
 exports.searchMaterials = async (req, res) => {
     try {
-        const rawQuery = req.query.q || '';
-        const trimmed = rawQuery.trim();
+        const { q = '', sort = 'latest', creatorId, tag } = req.query;
+        const trimmed = q.trim();
 
-        if (!trimmed) {
-            // Trả về toàn bộ nếu không có từ khóa
-            const rows = await sequelize.query(
-                'SELECT materials.*, users.name as creator_name FROM materials LEFT JOIN users ON materials.created_by = users.id ORDER BY materials.created_at DESC',
-                { type: QueryTypes.SELECT }
-            );
-            return res.status(200).json({ status: 'success', data: rows });
+        let queryStr = `
+            SELECT materials.*, users.name as creator_name 
+            FROM materials 
+            LEFT JOIN users ON materials.created_by = users.id 
+            WHERE 1=1
+        `;
+        const replacements = [];
+
+        // 1. Xử lý Search chung (q)
+        if (trimmed) {
+            const isTagSearch = trimmed.startsWith('@') || trimmed.startsWith('#');
+            const keyword = trimmed.replace(/^[@#]/, '').trim();
+            
+            if (isTagSearch) {
+                queryStr += ' AND materials.description LIKE ?';
+                replacements.push(`%${keyword}%`);
+            } else {
+                queryStr += ' AND materials.title LIKE ?';
+                replacements.push(`%${keyword}%`);
+            }
         }
 
-        const isTagSearch = trimmed.startsWith('@') || trimmed.startsWith('#');
-        const keyword = trimmed.replace(/^[@#]/, '').trim(); // Bỏ ký tự đặc biệt đầu
+        // 2. Lọc theo Creator
+        if (creatorId) {
+            queryStr += ' AND materials.created_by = ?';
+            replacements.push(creatorId);
+        }
 
-        let rows;
-        if (isTagSearch) {
-            // Tìm theo tag: tag được nhúng trong description dạng [TAGS:tag1, tag2]
-            rows = await sequelize.query(
-                `SELECT materials.*, users.name as creator_name 
-                 FROM materials 
-                 LEFT JOIN users ON materials.created_by = users.id 
-                 WHERE materials.description LIKE ? 
-                 ORDER BY materials.created_at DESC`,
-                {
-                    replacements: [`%${keyword}%`],
-                    type: QueryTypes.SELECT
-                }
-            );
+        // 3. Lọc theo Tag cụ thể (nếu FE gửi riêng param tag)
+        if (tag) {
+            queryStr += ' AND materials.description LIKE ?';
+            replacements.push(`%${tag}%`);
+        }
+
+        // 4. Sắp xếp
+        if (sort === 'oldest') {
+            queryStr += ' ORDER BY materials.created_at ASC';
+        } else if (sort === 'title') {
+            queryStr += ' ORDER BY materials.title ASC';
         } else {
-            // Tìm theo tiêu đề
-            rows = await sequelize.query(
-                `SELECT materials.*, users.name as creator_name 
-                 FROM materials 
-                 LEFT JOIN users ON materials.created_by = users.id 
-                 WHERE materials.title LIKE ? 
-                 ORDER BY materials.created_at DESC`,
-                {
-                    replacements: [`%${keyword}%`],
-                    type: QueryTypes.SELECT
-                }
-            );
+            queryStr += ' ORDER BY materials.created_at DESC';
         }
+
+        const rows = await sequelize.query(queryStr, {
+            replacements,
+            type: QueryTypes.SELECT
+        });
 
         res.status(200).json({
             status: 'success',
             data: rows,
             meta: {
                 query: trimmed,
-                type: isTagSearch ? 'tag' : 'title',
-                keyword
+                sort,
+                creatorId,
+                tag
             }
         });
     } catch (error) {
-        console.error("Search Error:", error);
-        res.status(500).json({ message: "Lỗi khi tìm kiếm học liệu" });
+        console.error("Search/Filter Error:", error);
+        res.status(500).json({ message: "Lỗi khi tìm kiếm hoặc lọc học liệu" });
     }
 };
 

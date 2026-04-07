@@ -24,6 +24,12 @@ export default function Home() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [sortBy, setSortBy] = useState('latest'); // 'latest', 'oldest', 'title'
+  const [creatorFilter, setCreatorFilter] = useState(''); // ID người tạo
+  const [selectedTag, setSelectedTag] = useState(''); // Tag đang chọn
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+
 
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
@@ -71,7 +77,15 @@ export default function Home() {
       if (!user?.id) return;
       setIsSearching(true);
       try {
-        const res = await api.get(`/api/edu/materials/search?q=${encodeURIComponent(searchQuery)}`);
+        const queryParams = new URLSearchParams({
+          q: searchQuery,
+          sort: sortBy
+        });
+        if (creatorFilter) queryParams.append('creatorId', creatorFilter);
+        if (selectedTag) queryParams.append('tag', selectedTag);
+
+        const res = await api.get(`/api/edu/materials/search?${queryParams.toString()}`);
+
         if (res.data && res.data.data) {
           setMaterials(res.data.data);
         }
@@ -82,7 +96,9 @@ export default function Home() {
       }
     }, 400);
     return () => clearTimeout(handler);
-  }, [searchQuery, user?.id]);
+  }, [searchQuery, sortBy, creatorFilter, selectedTag, user?.id]);
+
+
 
   // State cho Modal Xóa và Thông báo (Toast)
   const [deletingId, setDeletingId] = useState(null);
@@ -275,24 +291,65 @@ export default function Home() {
               <BookOpen className="w-6 h-6 text-blue-400" />
               {searchQuery ? `Kết quả tìm kiếm (${materials.length})` : 'Học liệu gần đây'}
             </h2>
-            <div className="relative w-full sm:w-72">
-              <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm bài học... (@tag hoặc #tag)"
-                className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {/* Creator Filter - Chỉ hiện button rút gọn nếu muốn */}
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-slate-900/80 border border-slate-700 font-bold text-xs text-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="latest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="title">Theo tiêu đề (A-Z)</option>
+              </select>
+
+              <div className="relative w-full sm:w-72">
+                <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm bài học... (@tag hoặc #tag)"
+                  className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner text-sm"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Quick Filter Tags - Teacher Dashboard */}
+
+          <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Bộ lọc nhanh:</span>
+            {['Toán học', 'Lịch sử', 'Khoa học', 'Công nghệ', 'Ngoại ngữ'].map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+                className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                  selectedTag === tag 
+                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
+                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+            {selectedTag && (
+              <button 
+                onClick={() => setSelectedTag('')}
+                className="text-[10px] font-bold text-red-400 hover:text-red-300 ml-2 flex items-center gap-1"
+              >
+                <X className="w-3 h-3" /> Xóa lọc
+              </button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
             {/* Thực tế: Hiển thị materials lấy từ API */}
             {materials.length > 0 ? (
               materials.map((item) => (
@@ -441,33 +498,76 @@ export default function Home() {
               <Star className="w-6 h-6 text-amber-400 fill-amber-400/20" />
               {searchQuery ? `Kết quả tìm kiếm` : 'Gợi ý cho bạn'}
             </h2>
-            <div className="relative w-full sm:w-72">
-              <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm bài học... (@tag hoặc #tag)"
-                className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 text-xs font-bold uppercase hidden md:inline">Sắp xếp:</span>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-slate-900/80 border border-slate-700 font-bold text-xs text-blue-400 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              {/* Gợi ý tìm theo tag */}
-              {(searchQuery.startsWith('@') || searchQuery.startsWith('#')) && searchQuery.length === 1 && (
-                <div className="absolute top-full mt-2 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-xl z-20 text-xs text-slate-400 font-medium">
-                  🏷️ Gõ tiếp tên tag bạn muốn tìm, VD: <span className="text-blue-400">{searchQuery}toán học</span>
-                </div>
-              )}
+                  <option value="latest">Mới nhất</option>
+                  <option value="oldest">Cũ nhất</option>
+                  <option value="title">A-Z</option>
+                </select>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm bài học... (@tag hoặc #tag)"
+                  className="w-full bg-slate-900/80 border border-slate-700 font-medium rounded-xl pl-10 pr-10 py-2.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {/* Gợi ý tìm theo tag */}
+                {(searchQuery.startsWith('@') || searchQuery.startsWith('#')) && searchQuery.length === 1 && (
+                  <div className="absolute top-full mt-2 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-xl z-20 text-xs text-slate-400 font-medium">
+                    🏷️ Gõ tiếp tên tag bạn muốn tìm, VD: <span className="text-blue-400">{searchQuery}toán học</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* Quick Filter Tags - Student Dashboard */}
+
+          <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100 px-4 sm:px-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Chủ đề gợi ý:</span>
+            {['Cơ bản', 'Nâng cao', 'Luyện thi', 'Thực hành', 'Tóm tắt'].map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+                className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  selectedTag === tag 
+                    ? 'bg-amber-500 border-amber-400 text-slate-900 shadow-lg shadow-amber-500/30' 
+                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-blue-500/50 hover:text-blue-300'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+            {selectedTag && (
+              <button 
+                onClick={() => setSelectedTag('')}
+                className="text-[10px] font-bold text-slate-400 hover:text-slate-200 ml-2 flex items-center gap-1 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-700"
+              >
+                <X className="w-3 h-3" /> Đặt lại
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
             {materials.length > 0 ? (
               materials.map((item) => (
                 <div key={item.id} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">

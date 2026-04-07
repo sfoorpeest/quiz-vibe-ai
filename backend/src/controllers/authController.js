@@ -37,12 +37,25 @@ exports.register = async (req, res) => {
             role_id: assignedRoleId
         });
 
+        console.log(`✅ User registered: ${newUser.email} (Role ID: ${assignedRoleId})`);
+
         res.status(201).json({
+            status: 'success',
             message: "Đăng ký thành công!",
-            role_id: assignedRoleId
+            data: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                role_id: assignedRoleId
+            }
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("❌ Registration Error Details:", error);
+        res.status(500).json({ 
+            status: 'error',
+            message: "Lỗi hệ thống khi đăng ký. Vui lòng kiểm tra console backend.",
+            error: error.message 
+        });
     }
 };
 

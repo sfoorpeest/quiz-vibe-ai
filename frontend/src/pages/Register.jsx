@@ -103,12 +103,12 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden">
-      <div className="flex-1 flex items-center justify-center p-4 py-12">
+    <div className="relative min-h-screen flex flex-col font-sans overflow-hidden bg-slate-950">
       <AnimatedBackground />
-
-      <div className="w-full max-lg">
-        <div className="bg-slate-900/80 backdrop-blur-xl rounded-4xl shadow-2xl shadow-blue-500/10 border border-slate-700/50 p-8 sm:p-10 mb-6 relative z-10">
+      
+      <div className="flex-1 flex flex-col items-center justify-center p-4 py-12 relative z-10">
+        <div className="w-full max-w-lg">
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-4xl shadow-2xl shadow-blue-500/10 border border-slate-700/50 p-8 sm:p-10 mb-6 font-sans">
           
           <div className="flex flex-col items-center mb-8">
             <Link to="/" className="w-16 h-16 bg-linear-to-br from-blue-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 mb-6 hover:scale-105 transition-transform">
