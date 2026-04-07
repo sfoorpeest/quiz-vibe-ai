@@ -16,7 +16,10 @@ const sequelize = new Sequelize(
       idle: 10000
     },
     define: {
-      timestamps: false // Vì trong script SQL bạn đã tự định nghĩa created_at
+      timestamps: true,        // Bật lên vì mình đã thêm created_at/updated_at vào migration
+      underscored: true,       // Giúp map 'createdAt' trong code thành 'created_at' trong DB
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     }
   }
 );
