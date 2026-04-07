@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "teacher_id": 1,
+    "title": "Báo cáo Khoa học: Cấu trúc Hệ Mặt Trời và Các Hành Tinh Vòng Trong",
+    "file_path": null,
+    "content": "Hệ Mặt Trời là một hệ hành tinh có Mặt Trời ở trung tâm và các thiên thể nằm trong phạm vi lực hấp dẫn của nó. Đây là một cấu trúc phức tạp đã hình thành cách đây khoảng 4,6 tỷ năm từ sự suy sụp hấp dẫn của một đám mây phân tử khổng lồ.\n\n1. Mặt Trời: Trái tim của Hệ thống\nMặt Trời chiếm tới 99,86% khối lượng của toàn bộ hệ, cung cấp năng lượng và ánh sáng duy trì sự sống trên Trái Đất thông qua các phản ứng nhiệt hạch tại lõi. Về mặt phân loại, nó là một ngôi sao dãy chính kiểu G (G2V). Năng lượng tỏa ra từ Mặt Trời điều khiển khí hậu, thời tiết và các chu kỳ sinh học trên hành tinh chúng ta.\n\n2. Nhóm các hành tinh đá (Hành tinh vòng trong)\nNhóm này bao gồm Sao Thủy, Sao Kim, Trái Đất và Sao Hỏa. Đặc điểm chung của chúng là có bề mặt rắn, cấu tạo chủ yếu từ đá và kim loại.\n- Sao Thủy: Là hành tinh nhỏ nhất và nằm gần Mặt Trời nhất. Nó hầu như không có bầu khí quyển, dẫn đến sự chênh lệch nhiệt độ cực đại giữa ngày và đêm.\n- Sao Kim: Có kích thước gần bằng Trái Đất nhưng bầu khí quyển dày đặc khí CO2, tạo ra hiệu ứng nhà kính khủng khiếp khiến nó trở thành hành tinh nóng nhất.\n- Trái Đất: Hành tinh duy nhất trong vũ trụ được biết đến là có sự sống và nước ở dạng lỏng trên bề mặt.\n- Sao Hỏa: Được gọi là hành tinh đỏ do oxit sắt bao phủ bề mặt. Đây là mục tiêu trọng điểm cho việc tìm kiếm dấu vết sự sống ngoài Trái Đất.\n\n[LƯU Ý CHO TEAM]: Nội dung ở đây có thể kéo dài đến 2000-3000 từ để mô phỏng một bài giảng thực tế. Khi AI xử lý, nó sẽ dựa vào các đoạn phân tách bởi dấu xuống dòng này để hiểu cấu trúc bài viết.",
+    "_note": "Dữ liệu mẫu cho ngân hàng đề chung. file_path = null vì đây là dữ liệu text thuần túy, không cần upload file vật lý."
+  },
+  {
+    "id": 2,
+    "teacher_id": 1,
+    "title": "Chuyên đề: Lỗ Đen và Những Bí Ẩn Của Không Thời Gian",
+    "file_path": null,
+    "content": "Lỗ đen là một trong những thực thể kỳ lạ và mạnh mẽ nhất trong vũ trụ. Đây là vùng không thời gian có trường hấp dẫn mạnh đến mức không một vật chất nào, kể cả ánh sáng, có thể thoát ra ngoài.\n\nI. Sự hình thành và Chân trời sự kiện\nLỗ đen thường hình thành từ sự sụp đổ của các ngôi sao khổng lồ sau các vụ nổ siêu tân tinh. Điểm ranh giới bao quanh lỗ đen được gọi là 'Chân trời sự kiện' (Event Horizon). Một khi bất kỳ vật thể nào vượt qua ranh giới này, nó sẽ không bao giờ có thể quay trở lại.\n\nII. Thuyết tương đối rộng và Lỗ đen\nAlbert Einstein đã dự đoán sự tồn tại của lỗ đen thông qua Thuyết tương đối rộng vào năm 1915. Theo đó, vật chất cực đặc sẽ làm cong không thời gian một cách vô hạn, tạo thành một điểm kỳ dị (singularity) tại trung tâm lỗ đen.\n\nIII. Vai trò của lỗ đen trong thiên hà\nHầu hết các thiên hà lớn, bao gồm cả Dải Ngân Hà của chúng ta, đều chứa một lỗ đen siêu khối lượng ở trung tâm. Những 'con quái vật' này đóng vai trò quan trọng trong việc định hình sự phát triển và cấu trúc của toàn bộ thiên hà xung quanh chúng.\n\n[LƯU Ý]: Đây là tài liệu lý thuyết sâu, phù hợp để AI tạo ra các câu hỏi trắc nghiệm mức độ Khó/Vận dụng cao.",
+    "_note": "Dữ liệu text dài giúp test khả năng tóm tắt và trích xuất câu hỏi của Gemini API."
+  }
+]

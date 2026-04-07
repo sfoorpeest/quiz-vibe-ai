@@ -1,3 +1,6 @@
 node_modules/
 .env
 .DS_Store
+
+# Bỏ qua tất cả các file trong public/materials (không push tài liệu lên Git)
+/public/materials/*
