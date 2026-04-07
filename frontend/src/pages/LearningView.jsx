@@ -493,10 +493,7 @@ export default function LearningView() {
 
       </main>
 
-      {/* FOOTER */}
-      <footer className="h-12 border-t border-slate-800/50 bg-slate-950 flex items-center justify-center text-xs font-bold text-slate-500">
-        QuizVibe Learning Ecosystem 2.0
-      </footer>
+      <Footer />
 
       {/* Global Style Override for custom scrollbar */}
       <style>{`
