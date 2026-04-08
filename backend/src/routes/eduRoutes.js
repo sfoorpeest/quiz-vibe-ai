@@ -46,4 +46,30 @@ router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
 router.get('/admin/stats', auth, checkRole([3]), eduController.getSystemStats);
 router.delete('/admin/materials/:id', auth, checkRole([3]), eduController.deleteMaterialByAdmin);
 
+// 6. Google TTS Proxy (Giọng nữ chị Google)
+const axios = require('axios');
+router.get('/tts', auth, async (req, res) => {
+  try {
+    const { text, lang = 'vi' } = req.query;
+    if (!text) return res.status(400).json({ error: 'Missing text parameter' });
+
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(text)}`;
+
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/',
+      }
+    });
+
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(Buffer.from(response.data));
+  } catch (err) {
+    console.error('TTS Proxy error:', err.message);
+    res.status(500).json({ error: 'TTS proxy failed' });
+  }
+});
+
 module.exports = router;

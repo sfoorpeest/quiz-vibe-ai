@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -493,6 +493,152 @@ export default function Home() {
             </div>
           </div>
 
+          {/* === DEPARTURE HUB (ASYMMETRICAL BENTO GRID) === */}
+          <div className="mb-12 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
+            <h2 className="text-2xl font-bold text-slate-50 mb-1">Trung tâm Điều hướng</h2>
+            <p className="text-slate-400 text-sm mb-6">Chọn lối đi cho hành trình học tập của bạn</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               {/* 1. Bài học của tôi (Chiếm 2 cột) */}
+               <Link to="/my-lessons" className="md:col-span-2 group rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-cyan-500/20 hover:border-cyan-500/50 hover:bg-slate-800/80 transition-all duration-300 p-8 flex flex-col justify-between relative overflow-hidden shadow-lg shadow-black/20 hover:shadow-[0_0_30px_rgba(0,255,255,0.1)]">
+                 <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-800/80 flex items-center justify-center mb-10 border border-slate-700 shadow-inner group-hover:border-cyan-500/30 transition-colors">
+                      <BookOpen className="w-7 h-7 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-4xl font-bold text-white mb-3">Bài học của tôi</h3>
+                      <p className="text-slate-400 text-lg">Tiếp tục hành trình học tập</p>
+                    </div>
+                 </div>
+                 
+                 <div className="flex items-center justify-between mt-12 relative z-10">
+                    <div className="flex items-center -space-x-3">
+                      <img src="https://i.pravatar.cc/150?u=1" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
+                      <img src="https://i.pravatar.cc/150?u=2" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
+                      <div className="w-10 h-10 rounded-full border-2 border-[#0f172a] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-cyan-400 shadow-lg">
+                        +12
+                      </div>
+                    </div>
+                    
+                    <div className="bg-[#99f6e4] text-slate-950 px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-white transition-all shadow-[0_0_20px_rgba(153,246,228,0.2)]">
+                      Vào học ngay
+                      <ArrowRight className="w-5 h-5" />
+                    </div>
+                 </div>
+
+                 {/* Subtle Glow */}
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-[100px] -mr-32 -mt-32 rounded-full pointer-events-none"></div>
+               </Link>
+
+               {/* 2. Tự luyện tập (Chiếm 1 cột) */}
+               <Link to="/practice" className="md:col-span-1 group rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-purple-500/20 hover:border-purple-500/50 hover:bg-slate-800/80 transition-all duration-300 p-8 flex flex-col justify-between relative overflow-hidden shadow-lg shadow-black/20 hover:shadow-[0_0_30px_rgba(168,85,247,0.1)]">
+                 <div className="flex justify-between items-start mb-8 relative z-10">
+                    <h3 className="text-xl font-extrabold text-white">Tự luyện tập</h3>
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                      <BrainCircuit className="w-5 h-5 text-purple-400" />
+                    </div>
+                 </div>
+                 <p className="text-slate-400 text-sm mb-8 relative z-10 italic">"Generate a quiz on Neural Networks focusing on backpropagation..."</p>
+                 <div className="relative z-10 flex items-center gap-2 text-purple-400 font-bold text-sm group-hover:text-purple-300 mt-auto">
+                    AI Generation <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                 </div>
+                 <div className="absolute left-[-10%] bottom-[-10%] opacity-10 group-hover:opacity-20 group-hover:scale-105 transition-all duration-700 pointer-events-none">
+                    <BrainCircuit className="w-48 h-48 text-purple-400" />
+                 </div>
+               </Link>
+
+               {/* 3. Kho tài liệu (Chiếm 1 cột) */}
+               <div className="md:col-span-1 group rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-emerald-500/20 hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all duration-300 p-8 flex flex-col relative overflow-hidden shadow-lg shadow-black/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+                 <div className="flex justify-between items-center mb-8 relative z-10">
+                    <h3 className="text-xl font-extrabold text-white">Kho tài liệu</h3>
+                    <Link to="/materials" className="text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors">
+                      Xem tất cả
+                    </Link>
+                 </div>
+                 
+                 <div className="flex gap-2 mb-6 relative z-10">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input 
+                        type="text"
+                        placeholder="Tìm tài liệu, sách giáo khoa, bài giải..."
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 transition-all"
+                      />
+                    </div>
+                    <button className="p-2.5 bg-slate-800/50 border border-slate-700/50 rounded-2xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
+                 </div>
+
+                 <div className="space-y-4 relative z-10">
+                    <div className="flex items-center gap-4 group/item cursor-pointer">
+                      <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
+                        <FileText className="w-5 h-5 text-red-500 fill-red-500/10" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">Công thức Vật Lí 12 - Chương 1</h4>
+                        <p className="text-[10px] text-slate-500 mt-1 font-medium">PDF • 2.4 MB • 15/05/2024</p>
+                      </div>
+                      <button className="text-slate-500 hover:text-white transition-colors">
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-4 group/item cursor-pointer">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
+                        <FileText className="w-5 h-5 text-blue-500 fill-blue-500/10" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">Sổ tay Giải bài tập SGK Toán 12</h4>
+                        <p className="text-[10px] text-slate-500 mt-1 font-medium">DOCX • 1.1 MB • 12/05/2024</p>
+                      </div>
+                      <button className="text-slate-500 hover:text-white transition-colors">
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                 </div>
+
+                 {/* Subtle Glow */}
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] -mr-32 -mt-32 rounded-full pointer-events-none"></div>
+               </div>
+
+               {/* 4. Edu Game (Chiếm 2 cột) */}
+               <Link to="/games" className="md:col-span-2 group rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-amber-500/40 hover:bg-slate-800/80 transition-all duration-300 p-8 flex flex-col sm:flex-row justify-between relative overflow-hidden shadow-lg shadow-black/20 hover:shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                 <div className="relative z-10 flex-1 pr-6 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-4">
+                      <h3 className="text-2xl font-extrabold text-white">Edu Game</h3>
+                      <span className="px-2 py-0.5 rounded bg-purple-600/20 text-purple-400 border border-purple-500/30 text-[10px] font-bold tracking-widest uppercase">Live Challenge</span>
+                    </div>
+                    <p className="text-slate-400 text-sm mb-8 leading-relaxed max-w-sm">
+                      Battle other scholars in real-time knowledge duels and earn unique badges.
+                    </p>
+                    <div className="flex gap-4">
+                       <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
+                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Best: 12,450
+                       </span>
+                       <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
+                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #14
+                       </span>
+                    </div>
+                 </div>
+                 <div className="relative z-10 mt-6 sm:mt-0 flex items-center justify-center sm:w-1/3">
+                    <div className="relative group-hover:scale-105 transition-transform duration-500 group-hover:rotate-3">
+                       <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.4)] relative rotate-12">
+                          <Gamepad2 className="w-12 h-12 text-white fill-white" />
+                       </div>
+                       <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shadow-lg">
+                          <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                       </div>
+                    </div>
+                 </div>
+                 <div className="absolute right-[-10%] bottom-[-10%] opacity-5 group-hover:opacity-10 group-hover:scale-105 transition-all duration-700 pointer-events-none">
+                    <Gamepad2 className="w-64 h-64 text-amber-400" />
+                 </div>
+               </Link>
+
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
             <h2 className="text-2xl font-bold text-slate-50 flex items-center gap-2">
               <Star className="w-6 h-6 text-amber-400 fill-amber-400/20" />
@@ -601,7 +747,7 @@ export default function Home() {
 
                   <div className="mt-auto flex items-center justify-between border-t border-slate-700/60 pt-5">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
-                      <Clock className="w-3.5 h-3.5" /> ~15p đọc
+                      <User className="w-3.5 h-3.5" /> {item.creator_name || "Hệ thống"}
                     </span>
                     <Link to={`/learn/${item.id}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
                       Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

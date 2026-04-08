@@ -394,7 +394,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* ══ MAIN ══ */}
-        <div style={{ marginLeft: sidebarOpen ? 240 : 0, minHeight: '100vh', position: 'relative', zIndex: 1, transition: 'margin-left .3s ease' }}>
+        <div style={{ marginLeft: sidebarOpen ? 240 : 0, minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, transition: 'margin-left .3s ease' }}>
 
           {/* ── TOP BAR ── */}
           <header className="ad-topbar">
@@ -457,7 +457,7 @@ export default function AdminDashboard() {
           </header>
 
           {/* ══ PAGE CONTENT ══ */}
-          <main style={{ padding: '28px 28px 48px' }}>
+          <main style={{ padding: '28px 28px 48px', flex: 1 }}>
 
             {/* Error Message */}
             {error && (

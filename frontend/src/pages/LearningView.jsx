@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, BrainCircuit, MessageSquare, FileText, 
+import {
+  ArrowLeft, BrainCircuit, MessageSquare, FileText,
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
   ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square
 } from 'lucide-react';
@@ -21,7 +21,13 @@ export default function LearningView() {
   const [lastSavedProgress, setLastSavedProgress] = useState(0); // Để hạn chế spam API
   const [showToc, setShowToc] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+
+  // Refs cho Google TTS Audio
+  const googleAudioRef = useRef(null);
+  const googleAudioQueueRef = useRef([]);
+  const googleAudioIndexRef = useRef(0);
+
   const [chatHistory, setChatHistory] = useState([
     { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi DeepSeek. Bạn có thắc mắc gì về nội dung bài học này không?' }
   ]);
@@ -30,7 +36,7 @@ export default function LearningView() {
 
   useEffect(() => {
     if (!id) return;
-    
+
     let isMounted = true;
     const loadMaterial = async () => {
       try {
@@ -44,15 +50,15 @@ export default function LearningView() {
             let i = 1;
             const contentLines = (found.content || '').split('\n');
             contentLines.forEach(line => {
-               if (line.trim().startsWith('##')) {
-                  toc.push({ id: `sec-${i}`, title: line.replace('##', '').trim() });
-                  i++;
-               }
+              if (line.trim().startsWith('##')) {
+                toc.push({ id: `sec-${i}`, title: line.replace('##', '').trim() });
+                i++;
+              }
             });
 
             // Tách các câu tóm tắt (description)
-            const summaryArr = found.description 
-              ? found.description.split('.').filter(s => s.trim() !== '') 
+            const summaryArr = found.description
+              ? found.description.split('.').filter(s => s.trim() !== '')
               : ['Chưa có tóm tắt.'];
 
             setMaterial({
@@ -75,8 +81,8 @@ export default function LearningView() {
                 setLastSavedProgress(savedProgress);
                 setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
               }
-            } catch (pErr) { 
-              console.error("Lỗi khi tải tiến độ cũ:", pErr); 
+            } catch (pErr) {
+              console.error("Lỗi khi tải tiến độ cũ:", pErr);
             }
           }
         }
@@ -90,6 +96,12 @@ export default function LearningView() {
     return () => {
       isMounted = false;
       window.speechSynthesis.cancel();
+      // Dọn dẹp Google TTS audio nếu đang phát
+      if (googleAudioRef.current) {
+        googleAudioRef.current.pause();
+        googleAudioRef.current = null;
+      }
+      googleAudioQueueRef.current = [];
     };
   }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
 
@@ -102,40 +114,140 @@ export default function LearningView() {
     );
   }
 
-  // --- NATIVE TEXT-TO-SPEECH (ĐỌC VĂN BẢN) ---
-  const handleReadAloud = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
+  // --- Chia văn bản thành các đoạn ngắn cho Google TTS (tối đa ~190 ký tự) ---
+  const splitTextForGoogleTTS = (text) => {
+    const sentences = text.split(/(?<=[.!?。;:\n])\s*/);
+    const chunks = [];
+    let current = '';
+    for (const sentence of sentences) {
+      if (!sentence.trim()) continue;
+      if ((current + ' ' + sentence).trim().length <= 190) {
+        current = (current + ' ' + sentence).trim();
+      } else {
+        if (current) chunks.push(current);
+        if (sentence.length > 190) {
+          // Câu quá dài → tách theo dấu phẩy hoặc khoẩng trắng
+          const words = sentence.split(/\s+/);
+          current = '';
+          for (const word of words) {
+            if ((current + ' ' + word).trim().length <= 190) {
+              current = (current + ' ' + word).trim();
+            } else {
+              if (current) chunks.push(current);
+              current = word;
+            }
+          }
+        } else {
+          current = sentence;
+        }
+      }
+    }
+    if (current.trim()) chunks.push(current.trim());
+    return chunks;
+  };
+
+  // --- Phát từng đoạn Google TTS nối tiếp nhau ---
+  const playGoogleTTSChunk = async (index) => {
+    if (index >= googleAudioQueueRef.current.length) {
       setIsSpeaking(false);
+      googleAudioQueueRef.current = [];
+      googleAudioRef.current = null;
+      return;
+    }
+    const chunk = googleAudioQueueRef.current[index];
+
+    try {
+      // Dùng axiosClient (có JWT token) để gọi proxy
+      const response = await api.get('/api/edu/tts', {
+        params: { text: chunk, lang: 'vi' },
+        responseType: 'blob' // Quan trọng để lấy Audio
+      });
+
+      // Tạo Blob URL tạm thời
+      const blobUrl = URL.createObjectURL(response.data);
+      const audio = new Audio(blobUrl);
+
+      googleAudioRef.current = audio;
+      googleAudioIndexRef.current = index;
+
+      // Chỉnh giọng đọc nhanh hơn một xíu (1.15x)
+      audio.playbackRate = 1.2;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(blobUrl); // Dọn dẹp RAM
+        playGoogleTTSChunk(index + 1);
+      };
+
+      audio.onerror = (err) => {
+        console.error('Google TTS chunk error:', err);
+        URL.revokeObjectURL(blobUrl);
+        playGoogleTTSChunk(index + 1);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('Lỗi khi tải giọng từ proxy:', err);
+      setIsSpeaking(false);
+    }
+  };
+
+  // --- Dừng tất cả audio ---
+  const stopAllAudio = () => {
+    window.speechSynthesis.cancel();
+    if (googleAudioRef.current) {
+      googleAudioRef.current.pause();
+      googleAudioRef.current.currentTime = 0;
+      googleAudioRef.current = null;
+    }
+    googleAudioQueueRef.current = [];
+    setIsSpeaking(false);
+  };
+
+  // --- HANDLER CHÍNH: ĐỌC VĂN BẢN ---
+  const handleReadAloud = (voiceType = 'male') => {
+    setShowVoiceMenu(false);
+
+    if (isSpeaking) {
+      stopAllAudio();
+      return;
+    }
+
+    // Loại bỏ markdown syntax
+    const plainText = material.content
+      .replace(/[#*`_~>]+/g, '')
+      .replace(/\[EXPLAIN\]/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (voiceType === 'female') {
+      // ===== GIỌNG NỮ: Dùng Google Translate TTS (Chị Google) =====
+      const chunks = splitTextForGoogleTTS(plainText);
+      if (chunks.length === 0) return;
+      googleAudioQueueRef.current = chunks;
+      setIsSpeaking(true);
+      playGoogleTTSChunk(0);
     } else {
-      // Loại bỏ các ký tự đánh dấu markdown để máy đọc tự nhiên hơn
-      const plainText = material.content.replace(/[#*`_]+/g, '').replace(/\[EXPLAIN\]/g, '');
+      // ===== GIỌNG NAM: Dùng speechSynthesis mặc định của trình duyệt =====
       const utterance = new SpeechSynthesisUtterance(plainText);
-      
-      const setVoiceAndSpeak = () => {
-        const voices = window.speechSynthesis.getVoices();
-        // Cố gắng tìm giọng tiếng Việt nếu có
-        const vnVoice = voices.find(v => v.lang.includes('vi') || v.name.includes('Vietnamese')) || voices.find(v => v.lang.startsWith('vi'));
-        if (vnVoice) utterance.voice = vnVoice;
-        
-        utterance.lang = 'vi-VN';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        
+      const voices = window.speechSynthesis.getVoices();
+      const vnVoice = voices.find(v => v.lang.includes('vi')) || voices.find(v => v.name.includes('Vietnamese'));
+      if (vnVoice) utterance.voice = vnVoice;
+      utterance.lang = 'vi-VN';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      const speak = () => {
         setIsSpeaking(true);
         window.speechSynthesis.speak(utterance);
       };
-      
-      // Load voices nếu chưa có (lỗi thường gặp trên vài trình duyệt web)
+
       if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.addEventListener('voiceschanged', setVoiceAndSpeak, { once: true });
-        // Kích hoạt thủ công cho an toàn
-        setTimeout(setVoiceAndSpeak, 500);
+        window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true });
+        setTimeout(speak, 500);
       } else {
-        setVoiceAndSpeak();
+        speak();
       }
     }
   };
@@ -152,16 +264,16 @@ export default function LearningView() {
       }
       return;
     }
-    
+
     const currentProgress = (scrollTop / (scrollHeight - clientHeight)) * 100;
     const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
-    
+
     setReadingProgress(roundedProgress);
 
     // Chỉ cập nhật và lưu nếu vượt qua tiến độ cũ
     if (roundedProgress > maxProgress) {
       setMaxProgress(roundedProgress);
-      
+
       // Gửi API chỉ khi đủ 5% chênh lệch so với lần vừa gửi HOẶC đạt 100%
       if (roundedProgress - lastSavedProgress >= 5 || roundedProgress === 100) {
         saveProgress(roundedProgress);
@@ -201,14 +313,14 @@ export default function LearningView() {
 
       if (response.data && response.data.answer) {
         setChatHistory(prev => [
-          ...prev, 
+          ...prev,
           { sender: 'ai', text: response.data.answer }
         ]);
       }
     } catch (error) {
       console.error("Chat error:", error);
       setChatHistory(prev => [
-        ...prev, 
+        ...prev,
         { sender: 'ai', text: "Xin lỗi, hiện tại hệ thống AI đang bận. Vui lòng thử lại sau vài giây nhé." }
       ]);
     } finally {
@@ -234,19 +346,19 @@ export default function LearningView() {
               </div>
             </div>
           </div>
-          
+
 
         </div>
       </header>
 
       {/* MAIN 2-COLUMN LAYOUT */}
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
-        
+
         {/* LFET COLUMN: TÀI LIỆU HỌC TẬP */}
-        <div className="flex-2 min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+        <div className="flex-2 min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl flex flex-col shadow-2xl relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-          
-          <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-10">
+
+          <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-20 rounded-t-3xl overflow-visible">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <FileText className="w-5 h-5 text-blue-400" />
@@ -258,27 +370,57 @@ export default function LearningView() {
                 </span>
               </h2>
             </div>
-            
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 relative">
               {/* Nút Đọc Giọng AI */}
-              <button 
-                onClick={handleReadAloud}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isSpeaking ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                title="Đọc văn bản bài học"
-              >
-                {isSpeaking ? (
-                  <>
-                    <Square className="w-4 h-4 fill-current animate-pulse" /> Dừng
-                  </>
-                ) : (
-                  <>
+              {isSpeaking ? (
+                <button
+                  onClick={() => handleReadAloud()}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all"
+                  title="Dừng đọc"
+                >
+                  <Square className="w-4 h-4 fill-current animate-pulse" /> Dừng
+                </button>
+              ) : (
+                <div className="relative z-50">
+                  <button
+                    onClick={() => setShowVoiceMenu(!showVoiceMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700/50 shadow-sm"
+                    title="Chọn giọng đọc"
+                  >
                     <Volume2 className="w-4 h-4" /> Đọc
-                  </>
-                )}
-              </button>
+                  </button>
+
+                  {showVoiceMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-90"
+                        onClick={() => setShowVoiceMenu(false)}
+                      ></div>
+                      <div className="absolute right-0 top-full mt-4 w-40 bg-slate-800 border border-slate-700 shadow-2xl rounded-2xl overflow-hidden py-1 z-100 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+                        <button
+                          onClick={() => handleReadAloud('male')}
+                          className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                          Giọng Nam
+                        </button>
+                        <div className="h-px bg-slate-700/50 mx-2"></div>
+                        <button
+                          onClick={() => handleReadAloud('female')}
+                          className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-2"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
+                          Giọng Nữ
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Nút Mục Lục */}
-              <button 
+              <button
                 onClick={() => setShowToc(!showToc)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${showToc ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
               >
@@ -286,25 +428,25 @@ export default function LearningView() {
               </button>
             </div>
           </div>
-          
+
           {/* Progress bar line under header */}
           <div className="w-full h-1 bg-slate-800 z-10 relative">
             {/* Track đã xem nhiều nhất (maxProgress - màu chính) */}
-            <div 
-              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`} 
+            <div
+              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`}
               style={{ width: `${maxProgress}%` }}
             />
             {/* Vị trí cuộn hiện tại (mờ hơn, chỉ hiện nếu đang cuộn ngược) */}
             {readingProgress < maxProgress && (
-              <div 
-                className="absolute top-0 left-0 h-full bg-white/20 transition-all duration-100 pointer-events-none" 
+              <div
+                className="absolute top-0 left-0 h-full bg-white/20 transition-all duration-100 pointer-events-none"
                 style={{ width: `${readingProgress}%` }}
               />
             )}
           </div>
-          
+
           <div className="flex-1 overflow-hidden flex relative">
-            
+
             {/* TOC Sidebar */}
             {showToc && (
               <div className="w-64 bg-slate-900/95 backdrop-blur-md border-r border-slate-700/50 flex flex-col absolute left-0 top-0 bottom-0 z-20 animate-in slide-in-from-left-4 fade-in duration-300 shadow-xl">
@@ -313,8 +455,8 @@ export default function LearningView() {
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
                   {material.toc.map((item) => (
-                    <button 
-                      key={item.id} 
+                    <button
+                      key={item.id}
                       onClick={() => {
                         const element = document.getElementById(item.id);
                         if (element) {
@@ -334,7 +476,7 @@ export default function LearningView() {
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
               <div className="prose prose-invert prose-2xl max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-p:my-10 prose-headings:mt-20 prose-headings:mb-8 prose-li:my-6 prose-h2:text-4xl prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-2xl prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black">
                 <h1 className="text-5xl font-extrabold mb-16 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400 leading-tight">{material.title}</h1>
-                
+
                 {/* Phân tách và render nội dung theo section để trỏ Mục lục */}
                 {(() => {
                   const parts = material.content.split(/(?=## )/g);
@@ -350,7 +492,7 @@ export default function LearningView() {
                   });
                 })()}
               </div>
-              
+
               {/* Bài kế tiếp / Trước đó */}
               <div className="max-w-[800px] mx-auto mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4 justify-between items-center mb-8">
                 {material.prevLesson ? (
@@ -362,7 +504,7 @@ export default function LearningView() {
                     </div>
                   </button>
                 ) : <div />}
-                
+
                 {material.nextLesson ? (
                   <button className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700 group w-full sm:w-auto text-right justify-end">
                     <div>
@@ -381,7 +523,7 @@ export default function LearningView() {
         {/* RIGHT COLUMN: AI SIDEBAR */}
         <div className="flex-1 min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative min-h-0">
           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-violet-500 to-amber-500"></div>
-          
+
           <div className="px-6 py-5 border-b border-slate-800 bg-slate-900">
             <div className="flex items-center gap-3 text-lg font-bold text-white mb-4">
               <div className="p-2 bg-violet-500/10 rounded-lg shadow-inner border border-violet-500/20">
@@ -389,16 +531,16 @@ export default function LearningView() {
               </div>
               QuizVibe AI Copilot
             </div>
-            
+
             {/* TABS */}
             <div className="flex bg-slate-950/50 p-1 rounded-xl border border-slate-800/80">
-              <button 
+              <button
                 onClick={() => setActiveTab('summary')}
                 className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'summary' ? 'bg-slate-800 text-blue-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <Sparkles className="w-4 h-4" /> Tóm tắt
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'bg-slate-800 text-violet-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
               >
@@ -409,7 +551,7 @@ export default function LearningView() {
 
           {/* TAB CONTENT */}
           <div className="flex-1 min-h-0 flex flex-col bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
-            
+
             {/* SUMMARY TAB */}
             {activeTab === 'summary' && (
               <div className="overflow-y-auto flex-1 custom-scrollbar p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -428,7 +570,7 @@ export default function LearningView() {
                 </div>
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
                   <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
-                  <button 
+                  <button
                     onClick={() => navigate('/quiz/start', { state: { materialId: id, topic: `Dựa vào nội dung tài liệu: ${material?.title}\n\nNội dung chi tiết:\n${material?.content}` } })}
                     className="flex justify-center items-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] text-sm"
                   >
@@ -445,11 +587,10 @@ export default function LearningView() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5 flex flex-col custom-scrollbar">
                   {chatHistory.map((msg, index) => (
                     <div key={index} className={`flex max-w-[85%] ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}>
-                      <div className={`p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${
-                        msg.sender === 'user' 
-                        ? 'bg-blue-600 text-white rounded-tr-sm' 
+                      <div className={`p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${msg.sender === 'user'
+                        ? 'bg-blue-600 text-white rounded-tr-sm'
                         : 'bg-slate-800/80 border border-slate-700 text-slate-200 rounded-tl-sm'
-                      }`}>
+                        }`}>
                         {msg.text}
                       </div>
                     </div>
@@ -463,19 +604,19 @@ export default function LearningView() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Chat Input */}
                 <div className="p-4 border-t border-slate-800 bg-slate-900">
                   <form onSubmit={handleSendMessage} className="relative flex items-center">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={chatMessage}
                       onChange={(e) => setChatMessage(e.target.value)}
                       disabled={isLoading}
                       placeholder="Hỏi AI về bài học này..."
                       className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 text-sm font-medium rounded-xl pl-4 pr-12 py-3.5 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all placeholder:text-slate-600 shadow-inner disabled:opacity-50"
                     />
-                    <button 
+                    <button
                       type="submit"
                       disabled={!chatMessage.trim() || isLoading}
                       className="absolute right-2 p-2 bg-violet-600 disabled:bg-slate-700 text-white rounded-lg transition-colors shadow-sm disabled:text-slate-500"
