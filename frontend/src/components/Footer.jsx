@@ -20,16 +20,20 @@ const Footer = () => {
                     <div className="flex flex-row items-center justify-center md:justify-start gap-[18px] overflow-visible">
                         {/* NTTU & NIIE Group */}
                         <div className="flex items-center gap-3 shrink-0">
-                            <img
-                                src={nttuLogo}
-                                alt="NTTU"
-                                className="h-7 md:h-10 w-auto object-contain brightness-110 transition-all hover:scale-105"
-                            />
-                            <img
-                                src={niieLogo}
-                                alt="NIIE"
-                                className="h-9 md:h-11 w-auto object-contain brightness-110 transition-all hover:scale-105"
-                            />
+                            <a href="https://ntt.edu.vn/" target="_blank" rel="noopener noreferrer" className="block transition-transform hover:scale-105 active:scale-95">
+                                <img
+                                    src={nttuLogo}
+                                    alt="NTTU"
+                                    className="h-7 md:h-10 w-auto object-contain brightness-110"
+                                />
+                            </a>
+                            <a href="https://niie.edu.vn/" target="_blank" rel="noopener noreferrer" className="block transition-transform hover:scale-105 active:scale-95">
+                                <img
+                                    src={niieLogo}
+                                    alt="NIIE"
+                                    className="h-9 md:h-11 w-auto object-contain brightness-110"
+                                />
+                            </a>
                         </div>
 
                         {/* QuizVibe Group */}
@@ -42,11 +46,13 @@ const Footer = () => {
 
                         {/* Kyanon Group */}
                         <div className="flex items-center shrink-0">
-                            <img
-                                src={kyanonLogo}
-                                alt="Kyanon Digital"
-                                className="h-7 md:h-9 w-auto object-contain brightness-110 transition-all hover:scale-105"
-                            />
+                            <a href="https://kyanon.digital/" target="_blank" rel="noopener noreferrer" className="block transition-transform hover:scale-105 active:scale-95">
+                                <img
+                                    src={kyanonLogo}
+                                    alt="Kyanon Digital"
+                                    className="h-7 md:h-9 w-auto object-contain brightness-110"
+                                />
+                            </a>
                         </div>
                     </div>
 
