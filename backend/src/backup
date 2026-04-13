@@ -4,13 +4,13 @@ const { QueryTypes } = require('sequelize');
 const { extractTextFromBuffer, extractTextFromUrl } = require('../services/fileParserService');
 
 /**
- * 1. AI xử lý học liệu: Tóm tắt và Trích xuất từ khóa từ học liệu có sẵn
+ * 1. AI xử lý học liệu: Tóm tắt và Trích xuất từ khóa
  */
 exports.processMaterialWithAI = async (req, res) => {
     try {
         const materialId = req.params.id;
 
-        // Truy vấn thông tin học liệu
+        // SỬA: Dùng sequelize.query thay cho db.execute
         const materials = await sequelize.query(
             'SELECT * FROM materials WHERE id = ?',
             { replacements: [materialId], type: QueryTypes.SELECT }
@@ -22,7 +22,7 @@ exports.processMaterialWithAI = async (req, res) => {
 
         const material = materials[0];
         
-        // Ưu tiên dùng 'content' (nội dung chi tiết) để AI tóm tắt chính xác hơn description
+        // Ưu tiên dùng 'content' để AI tóm tắt cho chính xác
         const textToAnalyze = material.content || material.description;
 
         const prompt = `Bạn là trợ lý giáo dục. Hãy tóm tắt nội dung sau thành 5 gạch đầu dòng và liệt kê 5 từ khóa chính (keywords). 
@@ -30,7 +30,7 @@ exports.processMaterialWithAI = async (req, res) => {
         
         const aiResult = await aiService.generateContent(prompt);
 
-        // Ghi lại lịch sử là người dùng đã xem tài liệu này (Progress 100%)
+        // Ghi nhận hành động xem tài liệu
         await sequelize.query(
             'INSERT INTO learning_history (user_id, material_id, action, progress) VALUES (?, ?, ?, ?)',
             {
@@ -51,11 +51,12 @@ exports.processMaterialWithAI = async (req, res) => {
 };
 
 /**
- * 1.5 AI Phân tích Nháp: Dự đoán nội dung khi người dùng mới dán Link hoặc chọn File
+ * 1.5 AI Phân tích Nháp (Cho Upload Center)
  */
 exports.analyzeDraftMaterial = async (req, res) => {
     try {
         const { source_type, content } = req.body; 
+        // source_type có thể là 'file' (content là tên file) hoặc 'link' (content là URL)
         
         const prompt = `Bạn là một trợ lý giáo dục AI. Hãy dựa vào tiêu đề/đường dẫn sau để nội suy và tóm tắt một đoạn giới thiệu học thuật ngắn gọn (tối đa 3 câu) và đưa ra 4 từ khóa quan trọng (tags).
         Thay vì trả lời xin lỗi, hãy đưa ra nội dung giả định phù hợp giáo dục.
@@ -68,21 +69,24 @@ exports.analyzeDraftMaterial = async (req, res) => {
         }`;
 
         let aiResultText = await aiService.generateContent(prompt);
-        // Clean markdown code blocks nếu AI trả về
+        // Xóa các ký tự markdown JSON thừa nếu có
         aiResultText = aiResultText.replace(/```json\n|\n```|```/g, '').trim();
         
         let parsedResult;
         try {
             parsedResult = JSON.parse(aiResultText);
         } catch(e) {
-            // Fallback nếu JSON parse lỗi
+            // Fallback nếu AI không trả về JSON chuẩn
             parsedResult = {
                 summary: "Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.",
                 tags: ["Giáo dục", "Học liệu", "Cơ bản", "Quan trọng"]
             };
         }
 
-        res.status(200).json({ status: 'success', data: parsedResult });
+        res.status(200).json({
+            status: 'success',
+            data: parsedResult
+        });
     } catch (error) {
         console.error("AI Draft Analyze Error:", error);
         res.status(500).json({ message: "AI hiện không thể phân tích tài liệu này." });
@@ -90,73 +94,48 @@ exports.analyzeDraftMaterial = async (req, res) => {
 };
 
 /**
- * 2. Lưu học liệu mới vào Database và Đồng bộ lại toàn bộ file JSON
+ * 2. Tạo học liệu mới
  */
-const fs = require('fs');
-const path = require('path');
-
 exports.createMaterial = async (req, res) => {
     try {
         const { title, description, content_url, content } = req.body;
         const teacherId = req.user.id; 
 
-        // 1. Lưu bản ghi mới vào Database (MySQL)
+        // QUAY LẠI CẤU TRÚC GỐC: Chỉ lưu các trường có sẵn trong database
         const [resultId] = await sequelize.query(
             'INSERT INTO materials (title, description, content_url, content, created_by) VALUES (?, ?, ?, ?, ?)',
-            {
-                replacements: [title, description, content_url, content, teacherId],
-                type: QueryTypes.INSERT
-            }
-        );
-
-        // 2. [CẬP NHẬT] ĐỒNG BỘ TOÀN DIỆN: Lấy toàn bộ dữ liệu từ DB để ghi đè vào file JSON
-        // Cách này đảm bảo ID 3, ID 4 và các ID cũ đều sẽ xuất hiện đầy đủ trong file
-        const jsonPath = path.join(__dirname, '../database/data/materials.json'); 
-        
-        // Truy vấn tất cả học liệu đang có trong DB
-        const allMaterials = await sequelize.query(
-            'SELECT * FROM materials ORDER BY id ASC',
-            { type: QueryTypes.SELECT }
-        );
-
-        // Chuyển đổi định dạng dữ liệu (Mapping) nếu cần thiết để khớp với cấu trúc JSON mong muốn
-        const formattedData = allMaterials.map(item => ({
-            id: item.id,
-            teacher_id: item.created_by, // Map lại created_by thành teacher_id cho đúng format cũ
-            title: item.title,
-            description: item.description,
-            file_path: item.content_url,
-            content: item.content,
-            created_at: item.created_at,
-            _status: "Synced from Database"
-        }));
-
-        // Ghi đè toàn bộ nội dung mới vào file materials.json
-        fs.writeFileSync(jsonPath, JSON.stringify(formattedData, null, 4), 'utf8');
+                {
+                    replacements: [
+                        title, 
+                        description, 
+                        content_url, 
+                        content, 
+                        teacherId
+                    ],
+                    type: QueryTypes.INSERT
+                }
+            );
 
         res.status(201).json({
             status: 'success',
-            message: "Tạo học liệu thành công và đã đồng bộ toàn bộ file JSON",
+            message: "Tạo học liệu thành công",
             data: { id: resultId, title }
         });
-
     } catch (error) {
-        console.error("Create Material Sync Error:", error);
-        res.status(500).json({ 
-            message: "Lỗi khi tạo học liệu hoặc lỗi đồng bộ file hệ thống", 
-            error: error.message 
-        });
+        console.error("Create Material Error:", error);
+        res.status(500).json({ message: "Lỗi khi tạo học liệu", error: error.message });
     }
 };
 
 /**
- * 3. Tracking: Ghi nhận tiến độ học tập của học sinh
+ * 3. Lưu lịch sử học tập (Tracking Progress)
  */
 exports.trackProgress = async (req, res) => {
     try {
         const { material_id, quiz_id, action, progress } = req.body;
         const userId = req.user.id; 
 
+        // SỬA: Dùng sequelize.query
         await sequelize.query(
             'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress) VALUES (?, ?, ?, ?, ?)',
             {
@@ -165,7 +144,10 @@ exports.trackProgress = async (req, res) => {
             }
         );
 
-        res.status(201).json({ status: 'success', message: "Đã ghi nhận tiến độ học tập" });
+        res.status(201).json({
+            status: 'success',
+            message: "Đã ghi nhận tiến độ học tập"
+        });
     } catch (error) {
         console.error("Tracking Error:", error);
         res.status(500).json({ message: "Không thể lưu lịch sử học tập" });
@@ -173,15 +155,13 @@ exports.trackProgress = async (req, res) => {
 };
 
 /**
- * 4. Lấy toàn bộ danh sách học liệu (Kèm tên người tạo)
+ * 4. Lấy danh sách học liệu
  */
 exports.getAllMaterials = async (req, res) => {
     try {
+        // SỬA: JOIN với bảng users để lấy tên người tạo
         const rows = await sequelize.query(
-            `SELECT materials.*, users.name as creator_name 
-             FROM materials 
-             LEFT JOIN users ON materials.created_by = users.id 
-             ORDER BY materials.created_at DESC`,
+            'SELECT materials.*, users.name as creator_name FROM materials LEFT JOIN users ON materials.created_by = users.id ORDER BY materials.created_at DESC',
             { type: QueryTypes.SELECT }
         );
         res.status(200).json({ status: 'success', data: rows });
@@ -191,7 +171,12 @@ exports.getAllMaterials = async (req, res) => {
 };
 
 /**
- * 5. Tìm kiếm nâng cao và Lọc học liệu
+ * 3.5. Tìm kiếm + Filter học liệu
+ * Hỗ trợ:
+ * - q: tìm theo tiêu đề hoặc tag (nếu có @/#)
+ * - sort: 'latest' | 'oldest' | 'title'
+ * - creatorId: lọc theo người tạo
+ * - tag: lọc chính xác 1 tag
  */
 exports.searchMaterials = async (req, res) => {
     try {
@@ -206,13 +191,13 @@ exports.searchMaterials = async (req, res) => {
         `;
         const replacements = [];
 
-        // Xử lý Search theo tiêu đề hoặc tag (kí hiệu @ hoặc #)
+        // 1. Xử lý Search chung (q)
         if (trimmed) {
             const isTagSearch = trimmed.startsWith('@') || trimmed.startsWith('#');
             const keyword = trimmed.replace(/^[@#]/, '').trim();
             
             if (isTagSearch) {
-                queryStr += ' AND materials.description LIKE ?'; // Thường tag lưu trong description hoặc field riêng
+                queryStr += ' AND materials.description LIKE ?';
                 replacements.push(`%${keyword}%`);
             } else {
                 queryStr += ' AND materials.title LIKE ?';
@@ -220,17 +205,19 @@ exports.searchMaterials = async (req, res) => {
             }
         }
 
+        // 2. Lọc theo Creator
         if (creatorId) {
             queryStr += ' AND materials.created_by = ?';
             replacements.push(creatorId);
         }
 
+        // 3. Lọc theo Tag cụ thể (nếu FE gửi riêng param tag)
         if (tag) {
             queryStr += ' AND materials.description LIKE ?';
             replacements.push(`%${tag}%`);
         }
 
-        // Sorting logic
+        // 4. Sắp xếp
         if (sort === 'oldest') {
             queryStr += ' ORDER BY materials.created_at ASC';
         } else if (sort === 'title') {
@@ -239,24 +226,33 @@ exports.searchMaterials = async (req, res) => {
             queryStr += ' ORDER BY materials.created_at DESC';
         }
 
-        const rows = await sequelize.query(queryStr, { replacements, type: QueryTypes.SELECT });
+        const rows = await sequelize.query(queryStr, {
+            replacements,
+            type: QueryTypes.SELECT
+        });
 
         res.status(200).json({
             status: 'success',
             data: rows,
-            meta: { query: trimmed, sort, creatorId, tag }
+            meta: {
+                query: trimmed,
+                sort,
+                creatorId,
+                tag
+            }
         });
     } catch (error) {
-        console.error("Search Error:", error);
+        console.error("Search/Filter Error:", error);
         res.status(500).json({ message: "Lỗi khi tìm kiếm hoặc lọc học liệu" });
     }
 };
 
 /**
- * 6. Admin Stats: Thống kê hệ thống
+ * 5. Admin: Lấy thống kê hệ thống (Tổng quan)
  */
 exports.getSystemStats = async (req, res) => {
     try {
+        // Đếm tổng số học liệu, lượt học và người dùng
         const stats = await sequelize.query(`
             SELECT 
                 (SELECT COUNT(*) FROM materials) as total_materials,
@@ -272,19 +268,42 @@ exports.getSystemStats = async (req, res) => {
 };
 
 /**
- * 7. Gia sư ảo: Chat trực tiếp dựa trên nội dung bài học
+ * 6. Admin: Xóa học liệu (Dành cho quản trị viên)
+ */
+exports.deleteMaterialByAdmin = async (req, res) => {
+    try {
+        const materialId = req.params.id;
+        
+        await sequelize.query('DELETE FROM materials WHERE id = ?', {
+            replacements: [materialId],
+            type: QueryTypes.DELETE
+        });
+
+        res.status(200).json({ status: 'success', message: "Admin đã xóa học liệu thành công" });
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi khi xóa học liệu" });
+    }
+};
+
+/**
+ * 7. Giao tiếp với AI (Chat) trong Learning View
  */
 exports.chatWithAI = async (req, res) => {
     try {
         const { context, question } = req.body;
         
-        if (!question) return res.status(400).json({ message: "Vui lòng nhập câu hỏi." });
+        if (!question) {
+            return res.status(400).json({ message: "Vui lòng nhập câu hỏi." });
+        }
 
-        const prompt = `Bạn là một gia sư AI tận tâm tên là QuizVibe AI. Dựa vào nội dung tài liệu sau đây, hãy trả lời câu hỏi của học sinh một cách ngắn gọn, súc tích và thân thiện nhất.\nHãy dùng tiếng Việt.\n\nNội dung tài liệu:\n${context || 'Không có tài liệu cụ thể.'}\n\nCâu hỏi: ${question}`;
+        const prompt = `Bạn là một gia sư AI tận tâm tên là QuizVibe AI. Dựa vào nội dung tài liệu sau đây, hãy trả lời câu hỏi của học sinh một cách ngắn gọn, súc tích và thân thiện nhất, giống như bạn đang chat trực tiếp.\nHãy dùng tiếng Việt.\n\nNội dung tài liệu:\n${context || 'Không có tài liệu cụ thể.'}\n\nCâu hỏi của học sinh: ${question}`;
         
         const aiResponse = await aiService.generateContent(prompt);
 
-        res.status(200).json({ status: 'success', answer: aiResponse });
+        res.status(200).json({
+            status: 'success',
+            answer: aiResponse
+        });
     } catch (error) {
         console.error("AI Chat Error:", error);
         res.status(500).json({ message: "AI đang bận, vui lòng thử lại sau." });
@@ -292,29 +311,30 @@ exports.chatWithAI = async (req, res) => {
 };
 
 /**
- * 8. Trình xử lý tệp tin (File/URL): Trích xuất nội dung + Sinh bài giảng thông minh
- * Tích hợp Gemini Native OCR cho PDF dưới 15MB
+ * 8. Trích xuất nội dung từ File (TXT, DOCX, PDF) hoặc URL
  */
 exports.extractFileContent = async (req, res) => {
     try {
         let extractedText = null;
         let sourceTitle = 'Tài liệu không tên';
+
         let fileDataForGemini = null;
 
         if (req.file) {
             const { buffer, mimetype, originalname } = req.file;
-            // Xử lý encode tên file tiếng Việt
+            // Sửa lỗi font tiếng Việt khi Multer đọc tên file (latin1 -> utf8)
             const decodedName = Buffer.from(originalname, 'latin1').toString('utf8');
             sourceTitle = decodedName.split('.')[0];
-
-            // Trích xuất text thô (Server-side)
             extractedText = await extractTextFromBuffer(buffer, mimetype, decodedName);
 
             if (!extractedText) {
-                return res.status(415).json({ message: `Định dạng file "${originalname}" không hỗ trợ.` });
+                return res.status(415).json({
+                    message: `Định dạng file "${originalname}" chưa được hỗ trợ hoặc file rỗng.`
+                });
             }
 
-            // Nếu là PDF, chuẩn bị dữ liệu gửi trực tiếp cho Gemini (Native OCR)
+            // [TÍNH NĂNG MỚI] Đính kèm file gốc cho Gemini chạy Native OCR nếu đó là PDF
+            // Dung lượng inline_data Gemini max 20MB (base64) nên Buffer giới hạn 15MB an toàn
             if (mimetype === 'application/pdf' && buffer.length < 15 * 1024 * 1024) {
                 fileDataForGemini = { buffer, mimeType: mimetype };
             }
@@ -324,25 +344,30 @@ exports.extractFileContent = async (req, res) => {
             extractedText = await extractTextFromUrl(url);
 
             if (!extractedText || extractedText.length < 50) {
-                return res.status(422).json({ message: 'Không thể trích xuất nội dung từ URL này.' });
+                return res.status(422).json({
+                    message: 'Không thể trích xuất nội dung từ URL này.'
+                });
             }
         } else {
             return res.status(400).json({ message: 'Vui lòng gửi file hoặc URL.' });
         }
 
-        // Bước 1: Sinh bản nháp (Summary & Tags)
-        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung này. Trả về JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.`;
+        // Gọi AI sinh Draft (summary/tags)
+        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung tài liệu đính kèm (hoặc text dưới đây nếu không có đính kèm). Trả về đúng JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.
+        Nội dung: ${extractedText.substring(0, 3000)}`;
+
         let aiDraftText = await aiService.generateContent(draftPrompt, fileDataForGemini);
         aiDraftText = aiDraftText.replace(/```json\n|\n```|```/g, '').trim();
-        
         let parsedDraft;
         try { parsedDraft = JSON.parse(aiDraftText); } catch {
             parsedDraft = { summary: "Tài liệu học thuật quan trọng.", tags: ["Học liệu", "Cơ bản"] };
         }
 
-        // Bước 2: Sinh bài giảng Markdown chi tiết (Dùng PDF Native nếu có)
-        const lessonPrompt = `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên tài liệu sau. Hãy tập trung vào các kiến thức cốt lõi.`;
-        const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini || extractedText.substring(0, 5000));
+        // Gọi AI tạo Bài giảng đầy đủ. Kèm file PDF gốc (native OCR) nếu có!
+        const lessonPrompt = `Bạn là giáo viên. Viết bài giảng chi tiết (3 phần lớn ##) dựa trên tài liệu PDF đính kèm (ưu tiên đọc PDF nếu có) hoặc đoạn nội dung text sau về chủ đề ${sourceTitle}.
+        Nội dung tài liệu: ${extractedText.substring(0, 5000)}`;
+
+        const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 
         return res.status(200).json({
             status: 'success',
@@ -360,7 +385,7 @@ exports.extractFileContent = async (req, res) => {
 };
 
 /**
- * 9. Lấy tiến độ học tập cao nhất của người dùng đối với 1 học liệu cụ thể
+ * 9. Lấy tiến độ học tập đã lưu của người dùng
  */
 exports.getMaterialProgress = async (req, res) => {
     try {
@@ -377,24 +402,37 @@ exports.getMaterialProgress = async (req, res) => {
             progress: results[0]?.max_progress || 0
         });
     } catch (error) {
+        console.error('Get Progress Error:', error);
         res.status(500).json({ message: 'Không thể tải tiến độ học tập.' });
     }
 };
 
 /**
- * 10. Dashboard: Phân quyền dữ liệu cho Student / Teacher / Admin
+ * 10. Lấy dữ liệu Dashboard cho trang Home
  */
 exports.getUserDashboard = async (req, res) => {
     try {
         const userId = req.user.id;
         const roleId = req.user.role_id;
 
-        // Xử lý cho Giáo viên (2) hoặc Admin (3)
+        // Nếu là Giáo viên (2) hoặc Admin (3)
         if (roleId === 2 || roleId === 3) {
-            const matResult = await sequelize.query('SELECT COUNT(*) as count FROM materials WHERE created_by = ?', { replacements: [userId], type: QueryTypes.SELECT });
-            const quizResult = await sequelize.query('SELECT COUNT(*) as count FROM quizzes WHERE created_by = ?', { replacements: [userId], type: QueryTypes.SELECT });
+            // 1. Tổng số học liệu đã tạo
+            const matResult = await sequelize.query(
+                'SELECT COUNT(*) as count FROM materials WHERE created_by = ?',
+                { replacements: [userId], type: QueryTypes.SELECT }
+            );
+
+            // 2. Tổng số bài quiz đã tạo
+            const quizResult = await sequelize.query(
+                'SELECT COUNT(*) as count FROM quizzes WHERE created_by = ?',
+                { replacements: [userId], type: QueryTypes.SELECT }
+            );
+
+            // 3. Tổng lượt tương tác trên các nội dung mình tạo (VIEWED/STARTED/COMPLETED)
             const interactResult = await sequelize.query(
-                `SELECT COUNT(lh.id) as count FROM learning_history lh
+                `SELECT COUNT(lh.id) as count 
+                 FROM learning_history lh
                  LEFT JOIN materials m ON lh.material_id = m.id
                  LEFT JOIN quizzes q ON lh.quiz_id = q.id
                  WHERE m.created_by = ? OR q.created_by = ?`,
@@ -413,7 +451,8 @@ exports.getUserDashboard = async (req, res) => {
             });
         }
 
-        // Xử lý cho Sinh viên (1)
+        // Nếu là Sinh viên (1)
+        // 1. Lấy bài học đang xem dở bài gần nhất
         const lastMaterials = await sequelize.query(
             `SELECT m.id, m.title, m.description, lh.progress, lh.created_at 
              FROM learning_history lh
@@ -423,13 +462,19 @@ exports.getUserDashboard = async (req, res) => {
             { replacements: [userId], type: QueryTypes.SELECT }
         );
 
+        // 2. Thống kê bài đã học (đếm material_id duy nhất)
         const statsResult = await sequelize.query(
-            `SELECT COUNT(DISTINCT material_id) as total_learned FROM learning_history 
+            `SELECT COUNT(DISTINCT material_id) as total_learned 
+             FROM learning_history 
              WHERE user_id = ? AND (action = 'VIEWED_MATERIAL' OR action = 'COMPLETED_QUIZ')`,
             { replacements: [userId], type: QueryTypes.SELECT }
         );
 
-        const avgScoreResult = await sequelize.query('SELECT AVG(score) as avg_score FROM results WHERE user_id = ?', { replacements: [userId], type: QueryTypes.SELECT });
+        // 3. Tính điểm trung bình (AVG score)
+        const avgScoreResult = await sequelize.query(
+            'SELECT AVG(score) as avg_score FROM results WHERE user_id = ?',
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
 
         res.status(200).json({
             status: 'success',
@@ -444,18 +489,5 @@ exports.getUserDashboard = async (req, res) => {
     } catch (error) {
         console.error('Dashboard Error:', error);
         res.status(500).json({ message: 'Không thể tải dữ liệu Dashboard.' });
-    }
-};
-
-/**
- * 11. Admin: Xóa học liệu
- */
-exports.deleteMaterialByAdmin = async (req, res) => {
-    try {
-        const materialId = req.params.id;
-        await sequelize.query('DELETE FROM materials WHERE id = ?', { replacements: [materialId], type: QueryTypes.DELETE });
-        res.status(200).json({ status: 'success', message: "Admin đã xóa học liệu thành công" });
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi khi xóa học liệu" });
     }
 };
