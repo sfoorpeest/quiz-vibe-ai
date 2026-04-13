@@ -46,13 +46,14 @@ router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
 router.get('/admin/stats', auth, checkRole([3]), eduController.getSystemStats);
 router.delete('/admin/materials/:id', auth, checkRole([3]), eduController.deleteMaterialByAdmin);
 
-// 6. Google TTS Proxy (Giọng nữ chị Google)
+// 6. Google TTS Proxy (Chị Google - Ổn định nhất)
 const axios = require('axios');
 router.get('/tts', auth, async (req, res) => {
   try {
     const { text, lang = 'vi' } = req.query;
     if (!text) return res.status(400).json({ error: 'Missing text parameter' });
 
+    // Sử dụng endpoint Google Translate TTS ổn định
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(text)}`;
 
     const response = await axios.get(url, {

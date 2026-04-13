@@ -15,6 +15,10 @@ import Profile from './pages/Profile';
 import ContactPage from './pages/ContactPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import MyLessons from './pages/MyLessons';
+import Practice from './pages/Practice';
+import Materials from './pages/Materials';
+import EduGames from './pages/EduGames';
 
 function App() {
   return (
@@ -74,6 +78,39 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          {/* === 4 TRANG TRUNG TÂM ĐIỀU HƯỚNG === */}
+          <Route 
+            path="/my-lessons" 
+            element={
+              <ProtectedRoute>
+                <MyLessons />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/practice" 
+            element={
+              <ProtectedRoute>
+                <Practice />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/materials" 
+            element={
+              <ProtectedRoute>
+                <Materials />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/games" 
+            element={
+              <ProtectedRoute>
+                <EduGames />
               </ProtectedRoute>
             } 
           />

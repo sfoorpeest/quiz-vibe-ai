@@ -160,21 +160,20 @@ export default function LearningView() {
       // Dùng axiosClient (có JWT token) để gọi proxy
       const response = await api.get('/api/edu/tts', {
         params: { text: chunk, lang: 'vi' },
-        responseType: 'blob' // Quan trọng để lấy Audio
+        responseType: 'blob' 
       });
 
-      // Tạo Blob URL tạm thời
       const blobUrl = URL.createObjectURL(response.data);
       const audio = new Audio(blobUrl);
 
       googleAudioRef.current = audio;
       googleAudioIndexRef.current = index;
 
-      // Chỉnh giọng đọc nhanh hơn một xíu (1.15x)
+      // Chỉnh giọng đọc nhanh hơn một xíu (1.2x)
       audio.playbackRate = 1.2;
 
       audio.onended = () => {
-        URL.revokeObjectURL(blobUrl); // Dọn dẹp RAM
+        URL.revokeObjectURL(blobUrl);
         playGoogleTTSChunk(index + 1);
       };
 
@@ -220,21 +219,25 @@ export default function LearningView() {
       .trim();
 
     if (voiceType === 'female') {
-      // ===== GIỌNG NỮ: Dùng Google Translate TTS (Chị Google) =====
+      // ===== GIỌNG NỮ: Dùng Google Translate TTS (Proxy Backend) =====
       const chunks = splitTextForGoogleTTS(plainText);
       if (chunks.length === 0) return;
       googleAudioQueueRef.current = chunks;
       setIsSpeaking(true);
       playGoogleTTSChunk(0);
     } else {
-      // ===== GIỌNG NAM: Dùng speechSynthesis mặc định của trình duyệt =====
+      // ===== GIỌNG NAM / HOẠT HÌNH: Dùng speechSynthesis của trình duyệt (Ổn định nhất cho pitching) =====
       const utterance = new SpeechSynthesisUtterance(plainText);
       const voices = window.speechSynthesis.getVoices();
+      
+      // Tìm giọng tiếng Việt
       const vnVoice = voices.find(v => v.lang.includes('vi')) || voices.find(v => v.name.includes('Vietnamese'));
       if (vnVoice) utterance.voice = vnVoice;
       utterance.lang = 'vi-VN';
+      
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
+      
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
 
@@ -413,6 +416,7 @@ export default function LearningView() {
                           <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
                           Giọng Nữ
                         </button>
+
                       </div>
                     </>
                   )}
