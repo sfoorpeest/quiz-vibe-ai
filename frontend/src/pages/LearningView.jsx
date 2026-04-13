@@ -13,7 +13,7 @@ import ReactMarkdown from 'react-markdown';
 export default function LearningView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('summary'); // 'summary' or 'chat'
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'summary'
   const [chatMessage, setChatMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
@@ -539,16 +539,16 @@ export default function LearningView() {
             {/* TABS */}
             <div className="flex bg-slate-950/50 p-1 rounded-xl border border-slate-800/80">
               <button
-                onClick={() => setActiveTab('summary')}
-                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'summary' ? 'bg-slate-800 text-blue-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                <Sparkles className="w-4 h-4" /> Tóm tắt
-              </button>
-              <button
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'bg-slate-800 text-violet-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <MessageSquare className="w-4 h-4" /> Hỏi AI
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'summary' ? 'bg-slate-800 text-blue-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <Sparkles className="w-4 h-4" /> Tóm tắt
               </button>
             </div>
           </div>
