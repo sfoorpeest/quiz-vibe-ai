@@ -16,6 +16,9 @@ import ContactPage from './pages/ContactPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 
+// === BỔ SUNG: Import trang Dashboard Giáo viên mới ===
+import TeacherDashboard from './pages/Teacher/TeacherDashboard'; 
+
 function App() {
   return (
     <BrowserRouter>
@@ -28,6 +31,7 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          
           <Route 
             path="/profile" 
             element={
@@ -36,6 +40,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/change-password" 
             element={
@@ -44,7 +49,9 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route path="/result" element={<ResultPage />} />
+          
           <Route 
             path="/upload" 
             element={
@@ -53,6 +60,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/learn/:id" 
             element={
@@ -61,6 +69,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/quiz/start" 
             element={
@@ -69,6 +78,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/admin" 
             element={
@@ -77,6 +87,17 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          {/* === BỔ SUNG: Route dành cho Giáo viên === */}
+          <Route 
+            path="/teacher" 
+            element={
+              <ProtectedRoute>
+                <TeacherDashboard />
+              </ProtectedRoute>
+            } 
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
@@ -85,4 +106,3 @@ function App() {
 }
 
 export default App;
-

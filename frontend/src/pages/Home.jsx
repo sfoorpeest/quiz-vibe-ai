@@ -29,8 +29,6 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState(''); // Tag đang chọn
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-
-
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
     let isMounted = true;
@@ -97,8 +95,6 @@ export default function Home() {
     }, 400);
     return () => clearTimeout(handler);
   }, [searchQuery, sortBy, creatorFilter, selectedTag, user?.id]);
-
-
 
   // State cho Modal Xóa và Thông báo (Toast)
   const [deletingId, setDeletingId] = useState(null);
@@ -244,10 +240,22 @@ export default function Home() {
                 Hôm nay {user.role_id === 3 ? 'Quản trị viên' : 'Thầy/Cô'} muốn chuẩn bị tài liệu gì mới?
               </p>
             </div>
-            <Link to="/upload" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-              <UploadCloud className="w-5 h-5" />
-              Tải lên Học liệu
-            </Link>
+            
+            {/* CẬP NHẬT: Thêm nút Quản lý học liệu cạnh nút Tải lên */}
+            <div className="flex flex-wrap items-center gap-3">
+              <button 
+                onClick={() => navigate('/teacher')}
+                className="flex items-center gap-2 bg-slate-800/60 text-slate-200 border border-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all shadow-lg active:scale-95"
+              >
+                <Settings className="w-5 h-5" />
+                Quản lý học liệu
+              </button>
+
+              <Link to="/upload" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                <UploadCloud className="w-5 h-5" />
+                Tải lên Học liệu
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -292,7 +300,6 @@ export default function Home() {
               {searchQuery ? `Kết quả tìm kiếm (${materials.length})` : 'Học liệu gần đây'}
             </h2>
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              {/* Creator Filter - Chỉ hiện button rút gọn nếu muốn */}
               <select 
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value)}
@@ -321,8 +328,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Quick Filter Tags - Teacher Dashboard */}
-
           <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Bộ lọc nhanh:</span>
             {['Toán học', 'Lịch sử', 'Khoa học', 'Công nghệ', 'Ngoại ngữ'].map((tag) => (
@@ -349,8 +354,6 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-            {/* Thực tế: Hiển thị materials lấy từ API */}
             {materials.length > 0 ? (
               materials.map((item) => (
                 <div key={item.id} onClick={() => navigate(`/learn/${item.id}`)} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-500/50 transition-all rounded-2xl p-5 group cursor-pointer flex flex-col h-full">
@@ -364,7 +367,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Hiển thị Tags từ AI (Trích xuất từ description) */}
                   {(() => {
                     const tagMatch = item.description?.match(/^\[TAGS:(.*?)\]/);
                     if (tagMatch) {
@@ -410,7 +412,6 @@ export default function Home() {
               <div className="col-span-1 md:col-span-2 text-center text-slate-400 py-10 font-medium">Chưa có học liệu nào. Hãy bắt đầu tải lên!</div>
             )}
             
-            {/* Add New Card */}
             <Link to="/upload" className="bg-slate-800/20 border-2 border-slate-700 border-dashed hover:border-blue-500/50 hover:bg-slate-800/40 transition-all rounded-2xl p-5 flex flex-col items-center justify-center min-h-[160px] text-slate-400 hover:text-blue-400 cursor-pointer group">
               <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <Plus className="w-6 h-6" />
@@ -428,7 +429,6 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-            {/* Progress Card - Chỉ hiện nếu có bài đang học dở */}
             {dashboardData.lastMaterial && (
               <div className="lg:col-span-2 bg-linear-to-br from-blue-900/40 to-violet-900/40 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-8 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:rotate-12 transition-transform duration-700">
@@ -465,7 +465,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* User Stats Card */}
             <div className={`bg-slate-800/60 backdrop-blur-xl border border-slate-700 rounded-3xl p-8 flex flex-col justify-center ${!dashboardData.lastMaterial ? 'lg:col-span-3' : ''}`}>
               <h3 className={`text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 ${!dashboardData.lastMaterial ? 'text-left' : 'text-center sm:text-left'}`}>Hồ sơ Của Bạn</h3>
               
@@ -529,17 +528,9 @@ export default function Home() {
                     <X className="w-4 h-4" />
                   </button>
                 )}
-                {/* Gợi ý tìm theo tag */}
-                {(searchQuery.startsWith('@') || searchQuery.startsWith('#')) && searchQuery.length === 1 && (
-                  <div className="absolute top-full mt-2 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl p-3 shadow-xl z-20 text-xs text-slate-400 font-medium">
-                    🏷️ Gõ tiếp tên tag bạn muốn tìm, VD: <span className="text-blue-400">{searchQuery}toán học</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
-
-          {/* Quick Filter Tags - Student Dashboard */}
 
           <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100 px-4 sm:px-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Chủ đề gợi ý:</span>
@@ -567,7 +558,6 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
             {materials.length > 0 ? (
               materials.map((item) => (
                 <div key={item.id} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">
@@ -575,120 +565,52 @@ export default function Home() {
                     <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item.id}</span>
                     <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">{item.title}</h4>
-                  
-                  {/* Tách và hiển thị nội dung sạch + Tags */}
-                  {(() => {
-                    const tagMatch = item.description?.match(/^\[TAGS:(.*?)\]/);
-                    const cleanDesc = item.description?.replace(/^\[TAGS:.*?\]/, '') || "Tài liệu học tập trên hệ thống QuizVibe AI.";
-                    const tagList = tagMatch ? tagMatch[1].split(',') : [];
-                    
-                    return (
-                      <>
-                        <p className="text-slate-400 text-sm line-clamp-2 mb-4 font-medium leading-relaxed">{cleanDesc}</p>
-                        {tagList.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-6">
-                            {tagList.slice(0, 3).map((tag, idx) => (
-                              <span key={idx} className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 active:scale-95 transition-transform">
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-
-                  <div className="mt-auto flex items-center justify-between border-t border-slate-700/60 pt-5">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
-                      <Clock className="w-3.5 h-3.5" /> ~15p đọc
-                    </span>
-                    <Link to={`/learn/${item.id}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
-                      Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-400 transition-colors line-clamp-2">{item.title}</h4>
+                  <div className="mt-auto">
+                    <button onClick={() => navigate(`/learn/${item.id}`)} className="w-full flex items-center justify-center gap-2 bg-slate-700/50 hover:bg-blue-600 text-white py-2.5 rounded-xl font-bold transition-all">
+                      Học ngay
+                    </button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="col-span-full text-center py-12">
-                {searchQuery ? (
-                  <>
-                    <Search className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400 font-bold text-lg mb-1">
-                      Không tìm thấy kết quả nào cho <span className="text-blue-400">"{searchQuery}"</span>
-                    </p>
-                    <p className="text-slate-500 text-sm">
-                      {(searchQuery.startsWith('@') || searchQuery.startsWith('#'))
-                        ? 'Thử tìm tag khác hoặc kiểm tra lại tên tag.'
-                        : 'Thử tìm theo tag bằng cách gõ @tên_tag hoặc #tên_tag'}
-                    </p>
-                    <button onClick={() => setSearchQuery('')} className="mt-4 text-blue-400 text-sm font-bold hover:text-blue-300 transition-colors flex items-center gap-1.5 mx-auto">
-                      <X className="w-4 h-4" /> Xóa tìm kiếm
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-slate-400 font-medium">Hiện tại chưa có khóa học/bài giảng nào trên hệ thống.</p>
-                )}
+              <div className="col-span-full text-center py-20 bg-slate-800/20 rounded-3xl border border-slate-700/50">
+                <p className="text-slate-400">Không tìm thấy bài học nào phù hợp.</p>
               </div>
             )}
-            </div>
           </div>
-        )}
+        </div>
+      )}
 
-
-      {/* Footer */}
-      <Footer />
-
-      {/* --- CUSTOM OVERLAY: MODAL XÁC NHẬN XÓA --- */}
+      {/* Confirmation Modal for Deleting */}
       {deletingId && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border inset-0 shadow-inner">
-                <AlertTriangle className="w-8 h-8 text-red-500" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Xóa học liệu vĩnh viễn?</h3>
-              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                Sau khi xóa, học sinh sẽ không thể truy cập tài liệu này nữa. Bạn chắc chắn muốn tiếp tục chứ?
-              </p>
-              <div className="flex items-center gap-3 w-full">
-                <button 
-                  onClick={() => setDeletingId(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-600 font-bold text-slate-300 hover:bg-slate-800 transition-colors"
-                >
-                  Hủy thao tác
-                </button>
-                <button 
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 font-bold text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
-                >
-                  Xóa ngay
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeletingId(null)}></div>
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full relative z-10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">Xác nhận xóa?</h3>
+            <p className="text-slate-400 mb-8 leading-relaxed">Hành động này không thể hoàn tác. Toàn bộ nội dung học liệu và câu hỏi liên quan sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingId(null)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors">Hủy bỏ</button>
+              <button onClick={confirmDelete} className="flex-1 px-6 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20">Xác nhận xóa</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- CUSTOM OVERLAY: TOAST NOTIFICATIONS --- */}
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-110 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl shadow-black/50 border backdrop-blur-md ${
-            toast.type === 'error' ? 'bg-red-950/90 border-red-500/50' : 'bg-emerald-950/90 border-emerald-500/50'
-          }`}>
-            {toast.type === 'error' ? (
-              <AlertTriangle className="w-5 h-5 text-red-400" />
-            ) : (
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-            )}
-            <span className="text-sm font-bold text-slate-200">{toast.message}</span>
-            <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white p-1">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div className={`fixed bottom-8 right-8 z-50 px-6 py-4 rounded-2xl border flex items-center gap-3 shadow-2xl animate-in slide-in-from-right-10 duration-300 ${
+          toast.type === 'error' ? 'bg-red-900/20 border-red-500/50 text-red-200' : 'bg-emerald-900/20 border-emerald-500/50 text-emerald-200'
+        }`}>
+          {toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+          <p className="font-bold">{toast.message}</p>
         </div>
       )}
 
+      <Footer />
     </div>
   );
 }

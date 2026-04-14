@@ -1,517 +1,304 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, BrainCircuit, MessageSquare, FileText, 
-  Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
-  ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square
+  ArrowLeft, BrainCircuit, FileText, Send, Lightbulb, Loader2,
+  List, Volume2, Video, Download, GraduationCap, Trophy, 
+  ArrowRight, PauseCircle, CheckCircle2, X
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
 import ReactMarkdown from 'react-markdown';
 
+// --- COMPONENT THÀNH TÍCH MODERN ---
+const AchievementCard = ({ onClose, onQuizStart }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-500">
+    <div className="relative bg-slate-900 border border-blue-500/30 p-10 rounded-[3rem] max-w-sm w-full text-center shadow-[0_0_50px_-10px_rgba(59,130,246,0.5)] animate-in zoom-in-95 duration-300">
+      
+      <button 
+        onClick={onClose}
+        className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+      >
+        <X size={20} />
+      </button>
+
+      <div className="relative w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg rotate-3">
+        <Trophy className="text-white w-10 h-10" />
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-slate-900">
+            <CheckCircle2 size={12} className="text-white" />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-center gap-2 mb-2">
+        <div className="h-[1px] w-8 bg-slate-700"></div>
+        <span className="text-blue-400 font-black text-sm uppercase tracking-[0.3em]">100% Đã Học</span>
+        <div className="h-[1px] w-8 bg-slate-700"></div>
+      </div>
+      
+      <h2 className="text-xl font-bold text-white mb-8 leading-tight">
+        Sẵn sàng thử thách <br/> làm trắc nghiệm nào!
+      </h2>
+      
+      <button 
+        onClick={onQuizStart}
+        className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+      >
+        Làm Quiz ngay <ArrowRight size={18} />
+      </button>
+    </div>
+  </div>
+);
+
 export default function LearningView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('summary'); // 'summary' or 'chat'
+  
+  const [activeTab, setActiveTab] = useState('chat'); 
   const [chatMessage, setChatMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [readingProgress, setReadingProgress] = useState(0);
-  const [maxProgress, setMaxProgress] = useState(0); // Để biết đã đọc xa nhất tới đâu
-  const [lastSavedProgress, setLastSavedProgress] = useState(0); // Để hạn chế spam API
-  const [showToc, setShowToc] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  
-  const [chatHistory, setChatHistory] = useState([
-    { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi DeepSeek. Bạn có thắc mắc gì về nội dung bài học này không?' }
-  ]);
-
+  const [maxProgress, setMaxProgress] = useState(0);
   const [material, setMaterial] = useState(null);
+  const [fontSize, setFontSize] = useState(18);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [volume, setVolume] = useState(0.5); 
+  const [showAchievement, setShowAchievement] = useState(false);
+  const [showToc, setShowToc] = useState(false);
+  
+  const synth = window.speechSynthesis;
+  const utteranceRef = useRef(null);
+  const endOfContentRef = useRef(null);
+
+  const [chatHistory, setChatHistory] = useState([
+    { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe. Bạn có thắc mắc gì về nội dung bài học này không?' }
+  ]);
 
   useEffect(() => {
     if (!id) return;
-    
-    let isMounted = true;
-    const loadMaterial = async () => {
+    const loadData = async () => {
       try {
         const res = await api.post('/api/edu/materials/list');
-        if (isMounted && res.data && res.data.data) {
-          const allMates = res.data.data;
-          const found = allMates.find(m => m.id.toString() === id);
-          if (found) {
-            // Xây dựng TOC cơ bản dựa trên thẻ "##"
-            const toc = [];
-            let i = 1;
-            const contentLines = (found.content || '').split('\n');
-            contentLines.forEach(line => {
-               if (line.trim().startsWith('##')) {
-                  toc.push({ id: `sec-${i}`, title: line.replace('##', '').trim() });
-                  i++;
-               }
-            });
-
-            // Tách các câu tóm tắt (description)
-            const summaryArr = found.description 
-              ? found.description.split('.').filter(s => s.trim() !== '') 
-              : ['Chưa có tóm tắt.'];
-
-            setMaterial({
-              title: found.title,
-              author: found.creator_name || 'Giảng viên QuizVibe',
-              readTime: '15 phút',
-              content: found.content || 'Chưa có nội dung cho bài giảng này.',
-              summary: summaryArr,
-              toc: toc,
-              prevLesson: null,
-              nextLesson: null
-            });
-
-            // Fetch progress thực tế từ database
-            try {
-              const progressRes = await api.get(`/api/edu/learning/progress/${id}`);
-              if (progressRes.data && progressRes.data.status === 'success') {
-                const savedProgress = progressRes.data.progress || 0;
-                setMaxProgress(savedProgress);
-                setLastSavedProgress(savedProgress);
-                setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
-              }
-            } catch (pErr) { 
-              console.error("Lỗi khi tải tiến độ cũ:", pErr); 
-            }
-          }
+        const found = res.data?.data?.find(m => m.id.toString() === id);
+        if (found) {
+          const toc = (found.content || '').split('\n')
+            .filter(l => l.trim().startsWith('##'))
+            .map((l, i) => ({ id: `sec-${i+1}`, title: l.replace('##', '').trim() }));
+          
+          setMaterial({
+            title: found.title,
+            content: found.content || '',
+            summary: found.description?.split('.').filter(s => s.trim()) || [],
+            toc
+          });
+          
+          const pRes = await api.get(`/api/edu/learning/progress/${id}`);
+          if (pRes.data?.progress) setMaxProgress(pRes.data.progress);
         }
-      } catch (err) {
-        console.error("Lỗi khi tải chi tiết bài học:", err);
-      }
+      } catch (e) { console.error(e); }
     };
+    loadData();
+    return () => synth.cancel();
+  }, [id]);
 
-    loadMaterial();
-
-    return () => {
-      isMounted = false;
-      window.speechSynthesis.cancel();
-    };
-  }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
-
-  if (!material) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-        <p className="font-bold text-slate-400 animate-pulse">Đang tải bài giảng từ AI...</p>
-      </div>
-    );
-  }
-
-  // --- NATIVE TEXT-TO-SPEECH (ĐỌC VĂN BẢN) ---
-  const handleReadAloud = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    } else {
-      // Loại bỏ các ký tự đánh dấu markdown để máy đọc tự nhiên hơn
-      const plainText = material.content.replace(/[#*`_]+/g, '').replace(/\[EXPLAIN\]/g, '');
-      const utterance = new SpeechSynthesisUtterance(plainText);
-      
-      const setVoiceAndSpeak = () => {
-        const voices = window.speechSynthesis.getVoices();
-        // Cố gắng tìm giọng tiếng Việt nếu có
-        const vnVoice = voices.find(v => v.lang.includes('vi') || v.name.includes('Vietnamese')) || voices.find(v => v.lang.startsWith('vi'));
-        if (vnVoice) utterance.voice = vnVoice;
-        
-        utterance.lang = 'vi-VN';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        
-        setIsSpeaking(true);
-        window.speechSynthesis.speak(utterance);
-      };
-      
-      // Load voices nếu chưa có (lỗi thường gặp trên vài trình duyệt web)
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.addEventListener('voiceschanged', setVoiceAndSpeak, { once: true });
-        // Kích hoạt thủ công cho an toàn
-        setTimeout(setVoiceAndSpeak, 500);
-      } else {
-        setVoiceAndSpeak();
+  // Cập nhật âm lượng real-time khi kéo thanh trượt
+  useEffect(() => {
+    if (utteranceRef.current) {
+      utteranceRef.current.volume = volume;
+      if (isSpeaking) {
+        synth.pause();
+        synth.resume();
       }
     }
-  };
+  }, [volume, isSpeaking]);
 
-  // Tính toán phần trăm cuộn
+  // Observer theo dõi khi cuộn tới cuối bài
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && maxProgress >= 95) {
+        setShowAchievement(true);
+      }
+    }, { threshold: 0.5 });
+
+    if (endOfContentRef.current) observer.observe(endOfContentRef.current);
+    return () => observer.disconnect();
+  }, [maxProgress]);
+
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollHeight - clientHeight <= 0) {
-      if (maxProgress < 100) {
-        setReadingProgress(100);
-        setMaxProgress(100);
-        saveProgress(100);
-        setLastSavedProgress(100);
-      }
-      return;
-    }
-    
-    const currentProgress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-    const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
-    
-    setReadingProgress(roundedProgress);
-
-    // Chỉ cập nhật và lưu nếu vượt qua tiến độ cũ
-    if (roundedProgress > maxProgress) {
-      setMaxProgress(roundedProgress);
-      
-      // Gửi API chỉ khi đủ 5% chênh lệch so với lần vừa gửi HOẶC đạt 100%
-      if (roundedProgress - lastSavedProgress >= 5 || roundedProgress === 100) {
-        saveProgress(roundedProgress);
-        setLastSavedProgress(roundedProgress);
+    const current = Math.round((scrollTop / (scrollHeight - clientHeight)) * 100);
+    if (current > maxProgress) {
+      setMaxProgress(current);
+      if (current % 10 === 0 || current === 100) {
+        api.post('/api/edu/learning/track', { material_id: id, action: 'VIEWED_MATERIAL', progress: current });
       }
     }
   };
 
-  // Hàm gọi API lưu tiến độ
-  const saveProgress = async (val) => {
-    try {
-      await api.post('/api/edu/learning/track', {
-        material_id: id,
-        action: 'VIEWED_MATERIAL',
-        progress: val
-      });
-    } catch (err) {
-      console.warn("Lỗi lưu tiến độ:", err);
+  const handleReadAloud = () => {
+    if (isSpeaking) {
+      synth.cancel();
+      setIsSpeaking(false);
+    } else {
+      const text = material.content.replace(/[#*`_]+/g, '');
+      const ut = new SpeechSynthesisUtterance(text);
+      ut.lang = 'vi-VN';
+      ut.volume = volume;
+      ut.onend = () => setIsSpeaking(false);
+      utteranceRef.current = ut;
+      synth.speak(ut);
+      setIsSpeaking(true);
     }
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatMessage.trim() || isLoading) return;
-
-    // Thêm tin nhắn của user
-    const newUserMsg = { sender: 'user', text: chatMessage };
-    setChatHistory(prev => [...prev, newUserMsg]);
+    const userMsg = { sender: 'user', text: chatMessage };
+    setChatHistory(prev => [...prev, userMsg]);
     setChatMessage('');
     setIsLoading(true);
-
     try {
-      const response = await api.post('/api/edu/chat', {
-        context: material.content,
-        question: newUserMsg.text
-      });
-
-      if (response.data && response.data.answer) {
-        setChatHistory(prev => [
-          ...prev, 
-          { sender: 'ai', text: response.data.answer }
-        ]);
-      }
-    } catch (error) {
-      console.error("Chat error:", error);
-      setChatHistory(prev => [
-        ...prev, 
-        { sender: 'ai', text: "Xin lỗi, hiện tại hệ thống AI đang bận. Vui lòng thử lại sau vài giây nhé." }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api.post('/api/edu/chat', { context: material.content, question: userMsg.text });
+      setChatHistory(prev => [...prev, { sender: 'ai', text: res.data.answer }]);
+    } catch {
+      setChatHistory(prev => [...prev, { sender: 'ai', text: "Lỗi kết nối AI." }]);
+    } finally { setIsLoading(false); }
   };
 
-  return (
-    <div className="h-dvh relative text-slate-50 font-sans flex flex-col overflow-hidden">
-      <AnimatedBackground />
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 h-16 flex items-center px-4 sm:px-6">
-        <div className="flex items-center justify-between w-full max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="p-2 bg-slate-800 hover:bg-blue-600 rounded-xl transition-colors group">
-              <ArrowLeft className="w-5 h-5 text-slate-300 group-hover:text-white" />
-            </Link>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-slate-100 line-clamp-1">{material.title}</h1>
-              <div className="flex items-center gap-3 text-xs font-semibold text-slate-400 mt-0.5">
-                <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {material.author}</span>
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {material.readTime}</span>
-              </div>
-            </div>
-          </div>
-          
+  if (!material) return <div className="h-screen flex items-center justify-center bg-slate-950 text-blue-500">Loading...</div>;
 
+  return (
+    <div className="h-dvh flex flex-col bg-[#020617] text-slate-50 overflow-hidden relative">
+      <AnimatedBackground />
+      
+      {/* HEADER CẢI TIẾN: VIDEO, AUDIO, DOWNLOAD NẰM CẠNH NHAU */}
+      <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl flex items-center px-6 justify-between z-50">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="p-2 bg-slate-800 rounded-lg hover:bg-blue-600 transition-colors"><ArrowLeft size={18}/></Link>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 line-clamp-1 max-w-[150px]">{material.title}</span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Nhóm nút chức năng */}
+          <div className="flex items-center bg-slate-950/50 p-1 rounded-xl border border-slate-800 shadow-inner">
+            <button className="px-3 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all text-slate-400 hover:text-white">
+              <Video size={14}/> Video
+            </button>
+            <button 
+              onClick={handleReadAloud} 
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all ${isSpeaking ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+            >
+              {isSpeaking ? <PauseCircle size={14}/> : <Volume2 size={14}/>} Audio
+            </button>
+            <button className="px-3 py-1.5 hover:bg-slate-800 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all text-slate-400 hover:text-white">
+              <Download size={14}/> Tải về
+            </button>
+          </div>
+
+          {/* Nhóm điều khiển âm lượng và Font */}
+          <div className="flex items-center gap-4 bg-slate-950/50 px-4 py-1.5 rounded-xl border border-slate-800">
+             <div className="flex items-center gap-2 border-r border-slate-800 pr-4">
+                <Volume2 size={12} className="text-slate-500"/>
+                <input 
+                  type="range" min="0" max="1" step="0.1" 
+                  value={volume} 
+                  onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                  className="w-16 h-1 accent-blue-500 appearance-none bg-slate-800 rounded-full cursor-pointer hover:accent-blue-400"
+                />
+             </div>
+             <div className="flex items-center gap-3">
+                <button onClick={() => setFontSize(f => Math.max(12, f-2))} className="text-slate-400 hover:text-white font-bold">-</button>
+                <span className="text-blue-500 font-mono text-[10px] font-black">{fontSize}</span>
+                <button onClick={() => setFontSize(f => Math.min(30, f+2))} className="text-slate-400 hover:text-white font-bold">+</button>
+             </div>
+          </div>
         </div>
       </header>
 
-      {/* MAIN 2-COLUMN LAYOUT */}
-      <main className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto p-4 sm:p-6 gap-6">
-        
-        {/* LFET COLUMN: TÀI LIỆU HỌC TẬP */}
-        <div className="flex-2 min-w-0 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none"></div>
-          
-          <div className="px-8 py-5 border-b border-slate-800/80 bg-slate-900/80 flex items-center justify-between z-10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <FileText className="w-5 h-5 text-blue-400" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-                Nội dung chi tiết
-                <span className={`text-xs font-semibold px-2 py-1 rounded-md ${maxProgress >= 100 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>
-                  {maxProgress >= 100 ? '✓ Hoàn thành' : `Tiến độ: ${maxProgress}%`}
-                </span>
-              </h2>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Nút Đọc Giọng AI */}
-              <button 
-                onClick={handleReadAloud}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isSpeaking ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                title="Đọc văn bản bài học"
-              >
-                {isSpeaking ? (
-                  <>
-                    <Square className="w-4 h-4 fill-current animate-pulse" /> Dừng
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-4 h-4" /> Đọc
-                  </>
-                )}
-              </button>
-
-              {/* Nút Mục Lục */}
-              <button 
-                onClick={() => setShowToc(!showToc)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${showToc ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-              >
-                <List className="w-4 h-4" /> Mục lục
-              </button>
-            </div>
+      <main className="flex-1 flex flex-col lg:flex-row p-4 sm:p-6 gap-6 min-h-0 z-10">
+        {/* Cột Trái: Nội dung bài học */}
+        <div className="flex-[2] bg-slate-900/60 border border-slate-800 rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl relative">
+          <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/40">
+             <h2 className="font-bold flex items-center gap-2 text-slate-100"><FileText size={18} className="text-blue-400"/> Nội dung bài học</h2>
+             <div className="flex items-center gap-3">
+               <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{maxProgress}% HOÀN THÀNH</span>
+               <button onClick={() => setShowToc(!showToc)} className={`p-2 rounded-lg transition-all ${showToc ? 'bg-blue-600' : 'bg-slate-800 text-slate-400'}`}><List size={16}/></button>
+             </div>
           </div>
+          <div className="h-1 bg-slate-800"><div className="h-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300" style={{width: `${maxProgress}%`}}/></div>
           
-          {/* Progress bar line under header */}
-          <div className="w-full h-1 bg-slate-800 z-10 relative">
-            {/* Track đã xem nhiều nhất (maxProgress - màu chính) */}
-            <div 
-              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`} 
-              style={{ width: `${maxProgress}%` }}
-            />
-            {/* Vị trí cuộn hiện tại (mờ hơn, chỉ hiện nếu đang cuộn ngược) */}
-            {readingProgress < maxProgress && (
-              <div 
-                className="absolute top-0 left-0 h-full bg-white/20 transition-all duration-100 pointer-events-none" 
-                style={{ width: `${readingProgress}%` }}
-              />
-            )}
-          </div>
-          
-          <div className="flex-1 overflow-hidden flex relative">
-            
-            {/* TOC Sidebar */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth relative" onScroll={handleScroll}>
             {showToc && (
-              <div className="w-64 bg-slate-900/95 backdrop-blur-md border-r border-slate-700/50 flex flex-col absolute left-0 top-0 bottom-0 z-20 animate-in slide-in-from-left-4 fade-in duration-300 shadow-xl">
-                <div className="p-4 border-b border-slate-800">
-                  <h3 className="font-bold text-slate-200">Mục lục khóa học</h3>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
-                  {material.toc.map((item) => (
-                    <button 
-                      key={item.id} 
-                      onClick={() => {
-                        const element = document.getElementById(item.id);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }}
-                      className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors line-clamp-2 mb-1"
-                    >
-                      {item.title}
-                    </button>
-                  ))}
-                </div>
+              <div className="absolute left-6 top-6 w-60 bg-slate-900 border border-slate-700 rounded-2xl p-3 z-20 shadow-2xl animate-in fade-in slide-in-from-left-2">
+                {material.toc.map(t => (
+                  <button key={t.id} onClick={() => { document.getElementById(t.id)?.scrollIntoView({ behavior: 'smooth' }); setShowToc(false); }} className="w-full text-left p-2.5 text-xs text-slate-400 hover:text-white hover:bg-blue-600/20 rounded-lg mb-1 transition-all">{t.title}</button>
+                ))}
               </div>
             )}
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
-              <div className="prose prose-invert prose-2xl max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-p:my-10 prose-headings:mt-20 prose-headings:mb-8 prose-li:my-6 prose-h2:text-4xl prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-2xl prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black">
-                <h1 className="text-5xl font-extrabold mb-16 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400 leading-tight">{material.title}</h1>
-                
-                {/* Phân tách và render nội dung theo section để trỏ Mục lục */}
-                {(() => {
-                  const parts = material.content.split(/(?=## )/g);
-                  let secIdx = 0;
-                  return parts.map((part, pIdx) => {
-                    const isHeader = part.trim().startsWith('## ');
-                    const id = isHeader ? `sec-${++secIdx}` : null;
-                    return (
-                      <div key={pIdx} id={id} className={isHeader ? "mt-10 scroll-mt-6" : ""}>
-                        <ReactMarkdown>{part}</ReactMarkdown>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+            <article style={{ fontSize: `${fontSize}px` }} className="prose prose-invert max-w-none leading-relaxed prose-headings:text-white prose-p:text-slate-300">
+              <h1 className="text-4xl font-black mb-10 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">{material.title}</h1>
+              <ReactMarkdown>{material.content}</ReactMarkdown>
               
-              {/* Bài kế tiếp / Trước đó */}
-              <div className="max-w-[800px] mx-auto mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row gap-4 justify-between items-center mb-8">
-                {material.prevLesson ? (
-                  <button className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700 group w-full sm:w-auto text-left">
-                    <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
-                    <div>
-                      <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Bài trước</div>
-                      <div className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{material.prevLesson.title}</div>
-                    </div>
-                  </button>
-                ) : <div />}
-                
-                {material.nextLesson ? (
-                  <button className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700 group w-full sm:w-auto text-right justify-end">
-                    <div>
-                      <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Bài tiếp theo</div>
-                      <div className="text-sm font-semibold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{material.nextLesson.title}</div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
-                  </button>
-                ) : <div />}
+              {/* Điểm kích hoạt pop-up thành tích */}
+              <div ref={endOfContentRef} className="h-20 w-full mt-10 border-t border-slate-800/50 flex items-center justify-center opacity-30">
+                 <CheckCircle2 size={32} className="text-blue-500 animate-pulse" />
               </div>
-
-            </div>
+            </article>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: AI SIDEBAR */}
-        <div className="flex-1 min-w-[320px] lg:max-w-[450px] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl relative min-h-0">
-          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-violet-500 to-amber-500"></div>
-          
-          <div className="px-6 py-5 border-b border-slate-800 bg-slate-900">
-            <div className="flex items-center gap-3 text-lg font-bold text-white mb-4">
-              <div className="p-2 bg-violet-500/10 rounded-lg shadow-inner border border-violet-500/20">
-                <BrainCircuit className="w-5 h-5 text-violet-400" />
-              </div>
-              QuizVibe AI Copilot
-            </div>
-            
-            {/* TABS */}
-            <div className="flex bg-slate-950/50 p-1 rounded-xl border border-slate-800/80">
-              <button 
-                onClick={() => setActiveTab('summary')}
-                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'summary' ? 'bg-slate-800 text-blue-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                <Sparkles className="w-4 h-4" /> Tóm tắt
-              </button>
-              <button 
-                onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'chat' ? 'bg-slate-800 text-violet-400 shadow-sm border border-slate-700/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                <MessageSquare className="w-4 h-4" /> Hỏi AI
-              </button>
+        {/* Cột Phải: AI Chat & Tóm tắt */}
+        <div className="flex-1 bg-slate-900/90 border border-slate-800 rounded-[2.5rem] flex flex-col overflow-hidden shadow-2xl min-w-[360px]">
+          <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+            <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 shadow-inner">
+              <button onClick={() => setActiveTab('chat')} className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'chat' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Hỏi AI</button>
+              <button onClick={() => setActiveTab('summary')} className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'summary' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Tóm tắt</button>
             </div>
           </div>
 
-          {/* TAB CONTENT */}
-          <div className="flex-1 min-h-0 flex flex-col bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
-            
-            {/* SUMMARY TAB */}
-            {activeTab === 'summary' && (
-              <div className="overflow-y-auto flex-1 custom-scrollbar p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-6">
-                  <h3 className="flex items-center gap-2 text-amber-400 font-bold mb-3">
-                    <Lightbulb className="w-5 h-5" /> Ý chính cốt lõi
-                  </h3>
-                  <ul className="space-y-4">
-                    {material.summary.map((point, index) => (
-                      <li key={index} className="flex gap-3 text-slate-300 font-medium text-sm leading-relaxed">
-                        <span className="w-6 h-6 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0 mt-0.5">{index + 1}</span>
-                        <ReactMarkdown>{point}</ReactMarkdown>
-                      </li>
-                    ))}
+          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+            {activeTab === 'chat' ? (
+              <div className="space-y-4">
+                {chatHistory.map((m, i) => (
+                  <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-4 rounded-2xl text-sm max-w-[90%] shadow-sm ${m.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'}`}>{m.text}</div>
+                  </div>
+                ))}
+                {isLoading && <div className="flex items-center gap-2 text-[10px] text-blue-400 animate-pulse font-black uppercase tracking-widest"><BrainCircuit size={14}/> AI đang suy nghĩ...</div>}
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <div className="bg-amber-500/5 border border-amber-500/20 p-5 rounded-[2rem]">
+                  <h3 className="text-amber-500 font-black text-[10px] uppercase mb-4 flex items-center gap-2 tracking-widest"><Lightbulb size={14}/> Nội dung cốt lõi</h3>
+                  <ul className="space-y-3">
+                    {material.summary.map((s, i) => <li key={i} className="text-sm text-slate-300 flex gap-2"><span className="text-amber-500 font-bold">✦</span>{s}</li>)}
                   </ul>
                 </div>
-                <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
-                  <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
-                  <button 
-                    onClick={() => navigate('/quiz/start', { state: { materialId: id, topic: `Dựa vào nội dung tài liệu: ${material?.title}\n\nNội dung chi tiết:\n${material?.content}` } })}
-                    className="flex justify-center items-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] text-sm"
-                  >
-                    <Sparkles className="w-4 h-4" /> Sinh 5 câu Quiz từ học liệu này
-                  </button>
-                </div>
+                <button onClick={() => navigate('/quiz/start', { state: { materialId: id, topic: material.content } })} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:shadow-blue-500/20 active:scale-95 transition-all">
+                  <GraduationCap size={20} className="inline mr-2"/> Làm trắc nghiệm ngay
+                </button>
               </div>
             )}
-
-            {/* CHAT TAB */}
-            {activeTab === 'chat' && (
-              <div className="flex-1 min-h-0 flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-                {/* Message List */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5 flex flex-col custom-scrollbar">
-                  {chatHistory.map((msg, index) => (
-                    <div key={index} className={`flex max-w-[85%] ${msg.sender === 'user' ? 'self-end' : 'self-start'}`}>
-                      <div className={`p-4 rounded-2xl shadow-sm text-sm font-medium leading-relaxed ${
-                        msg.sender === 'user' 
-                        ? 'bg-blue-600 text-white rounded-tr-sm' 
-                        : 'bg-slate-800/80 border border-slate-700 text-slate-200 rounded-tl-sm'
-                      }`}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex max-w-[85%] self-start">
-                      <div className="p-4 rounded-2xl shadow-sm text-sm font-medium bg-slate-800/80 border border-slate-700 text-slate-200 rounded-tl-sm flex items-center gap-3">
-                        <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                        AI đang suy nghĩ...
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Chat Input */}
-                <div className="p-4 border-t border-slate-800 bg-slate-900">
-                  <form onSubmit={handleSendMessage} className="relative flex items-center">
-                    <input 
-                      type="text" 
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      disabled={isLoading}
-                      placeholder="Hỏi AI về bài học này..."
-                      className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 text-sm font-medium rounded-xl pl-4 pr-12 py-3.5 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all placeholder:text-slate-600 shadow-inner disabled:opacity-50"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={!chatMessage.trim() || isLoading}
-                      className="absolute right-2 p-2 bg-violet-600 disabled:bg-slate-700 text-white rounded-lg transition-colors shadow-sm disabled:text-slate-500"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </form>
-                  <p className="text-center text-[10px] uppercase font-bold tracking-widest text-slate-500 mt-3">AI có thể đưa ra kết quả thiếu chính xác</p>
-                </div>
-              </div>
-            )}
-
           </div>
-        </div>
 
+          {activeTab === 'chat' && (
+            <form onSubmit={handleSendMessage} className="p-4 bg-slate-900 border-t border-slate-800">
+              <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 focus-within:border-blue-500/50 transition-all">
+                <input value={chatMessage} onChange={e => setChatMessage(e.target.value)} placeholder="Nhập câu hỏi cho AI..." className="flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-slate-700" />
+                <button type="submit" className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 active:scale-90 transition-all shadow-lg"><Send size={16}/></button>
+              </div>
+            </form>
+          )}
+        </div>
       </main>
 
+      {/* Pop-up Thành tích hiện lên khi cuộn hết */}
+      {showAchievement && (
+        <AchievementCard 
+          onClose={() => setShowAchievement(false)} 
+          onQuizStart={() => navigate('/quiz/start', { state: { materialId: id, topic: material.content } })} 
+        />
+      )}
       <Footer />
-
-      {/* Global Style Override for custom scrollbar */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(15, 23, 42, 0.5); 
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(51, 65, 85, 0.8); 
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(71, 85, 105, 1); 
-        }
-      `}</style>
     </div>
   );
 }
