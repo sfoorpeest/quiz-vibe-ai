@@ -18,11 +18,37 @@ exports.getMaterials = async (req, res) => {
 
         return res.status(200).json(result);
     } catch (error) {
-        const msg =
-            error.response?.data?.message ||
-            error.response?.data?.error ||
-            error.message;
+        console.error('Get materials error:', error);
+        return res.status(500).json({ message: 'Failed to get materials' });
+    }
+};
 
-        setError(`❌ ${msg}`);
+exports.getMaterialDetail = async (req, res) => {
+    try {
+        const materialId = Number.parseInt(req.params.id, 10);
+
+        if (Number.isNaN(materialId) || materialId < 1) {
+            return res.status(400).json({ message: 'Invalid material id' });
+        }
+
+        const material = await materialService.getMaterialDetailById(materialId);
+
+        if (!material) {
+            return res.status(404).json({ message: 'Material not found' });
+        }
+
+        return res.status(200).json({
+            data: {
+                id: material.id,
+                title: material.title,
+                type: material.type,
+                content: material.content,
+                url: material.content_url,
+                createdAt: material.created_at
+            }
+        });
+    } catch (error) {
+        console.error('Get material detail error:', error);
+        return res.status(500).json({ message: 'Failed to get material detail' });
     }
 };

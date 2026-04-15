@@ -91,7 +91,30 @@ async function listMaterials({ search, type, page, limit }) {
     };
 }
 
+async function getMaterialDetailById(id) {
+    const detailQuery = `
+        SELECT
+            id,
+            title,
+            content,
+            content_url,
+            created_at,
+            ${TYPE_CASE_SQL} AS type
+        FROM materials
+        WHERE id = ?
+        LIMIT 1
+    `;
+
+    const rows = await sequelize.query(detailQuery, {
+        replacements: [id],
+        type: QueryTypes.SELECT
+    });
+
+    return rows[0] || null;
+}
+
 module.exports = {
     listMaterials,
+    getMaterialDetailById,
     ALLOWED_TYPES
 };
