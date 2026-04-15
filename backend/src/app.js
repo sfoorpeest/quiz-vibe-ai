@@ -8,6 +8,7 @@ const eduRoutes = require('./routes/eduRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const materialRoutes = require('./routes/materialRoutes');
 const path = require('path');
 
 require('dotenv').config();
@@ -27,6 +28,7 @@ app.use('/api/edu', eduRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/materials', materialRoutes);
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

@@ -29,8 +29,8 @@ module.exports = {
             content_url: item.content_url || null,
             content: item.content || null,
             created_by: item.created_by || 3, // Fallback về ID của bạn
-            created_at: item.created_at || new Date(),
-            updated_at: item.updated_at || new Date()
+            created_at: item.created_at ? new Date(item.created_at) : new Date(),
+            updated_at: item.updated_at ? new Date(item.updated_at) : new Date()
           }
         }
       );
