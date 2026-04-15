@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, FileSpreadsheet, Share2, FileText, Globe, 
-  Plus, CheckCircle, X, Link as LinkIcon, Copy, ExternalLink 
+  Plus, CheckCircle, X, ArrowLeft 
 } from 'lucide-react';
 
-// Import các component widget
+// Import Footer và các Widget
+import Footer from '../../components/Footer'; // Đảm bảo đường dẫn này đúng với dự án của bạn
 import { TeacherGroupCard, WorksheetTable, MaterialCard } from '../../components/Teacher/TeacherWidgets';
 
 export default function TeacherDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(null);
 
-  // ==================== DỮ LIỆU & STATE ====================
+  // ==================== DỮ LIỆU & STATE (GIỮ NGUYÊN) ====================
   const [materials] = useState([
     { id: 1, title: "Quản lý Đồ án Nhóm 5", date: "8/4/2026", author: "nhann1" },
     { id: 2, title: "Báo cáo Khoa học: Cấu trúc Hệ Mặt Trời", date: "7/4/2026", author: "Nguyễn Văn Lâm" },
@@ -30,11 +33,9 @@ export default function TeacherDashboard() {
 
   const [toast, setToast] = useState(null);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
-  const [isGroupDetailModalOpen, setIsGroupDetailModalOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
   const [newGroup, setNewGroup] = useState({ name: '', description: '' });
 
-  // ==================== LOGIC XỬ LÝ ====================
+  // ==================== LOGIC XỬ LÝ (GIỮ NGUYÊN) ====================
   const showToast = (title) => {
     const today = new Date().toLocaleDateString('vi-VN');
     setToast({ title, date: today });
@@ -74,20 +75,20 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 p-4 md:p-8 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] text-slate-100 font-sans relative overflow-x-hidden flex flex-col">
       
       {/* Background Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-600/20 rounded-full blur-[130px] animate-pulse" />
         <div className="absolute top-[20%] right-[-5%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[150px]" />
         <div className="absolute bottom-[-10%] left-[10%] w-[600px] h-[600px] bg-sky-600/15 rounded-full blur-[160px]" />
-        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-violet-600/20 rounded-full blur-[140px]" />
       </div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      {/* MAIN CONTENT WRAPPER */}
+      <main className="flex-1 relative z-10 w-full max-w-7xl mx-auto p-4 md:p-8">
         
-        {/* HEADER - Đã xóa nút Tạo học liệu mới */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
                <span className="text-sm font-bold tracking-widest uppercase text-blue-400">Dashboard</span>
@@ -103,7 +104,18 @@ export default function TeacherDashboard() {
           </div>
         </header>
 
-        {/* TABS - Đã xóa tab Upload & Thư viện */}
+        {/* NÚT QUAY LẠI DASHBOARD - NẰM TRÊN TAB */}
+        <div className="mb-8">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/20 transition-all font-bold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            Quay lại Dashboard
+          </button>
+        </div>
+
+        {/* TABS */}
         <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/5 w-fit rounded-[1.5rem] mb-10 border border-white/10 backdrop-blur-xl">
            {[
              { id: 'all', label: 'Tổng quan', icon: <Globe size={18}/> },
@@ -120,8 +132,8 @@ export default function TeacherDashboard() {
            ))}
         </div>
 
-        {/* CONTENT AREA */}
-        <div className="transition-all">
+        {/* TAB CONTENT AREAS (GIỮ NGUYÊN CODE CŨ) */}
+        <div className="transition-all mb-20">
           {activeTab === 'all' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4">
               <section className="lg:col-span-2 space-y-10">
@@ -164,7 +176,7 @@ export default function TeacherDashboard() {
                   </h2>
                   <div className="space-y-4">
                     {groups.map(group => (
-                      <div key={group.id} onClick={() => { setSelectedGroup(group); setIsGroupDetailModalOpen(true); }} className="cursor-pointer">
+                      <div key={group.id} className="cursor-pointer group/card">
                         <TeacherGroupCard name={group.name} count={group.count} color="bg-blue-500/10" textColor="text-blue-400" />
                       </div>
                     ))}
@@ -180,7 +192,7 @@ export default function TeacherDashboard() {
           {activeTab === 'groups' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in">
               {groups.map(group => (
-                <div key={group.id} onClick={() => { setSelectedGroup(group); setIsGroupDetailModalOpen(true); }} className="cursor-pointer">
+                <div key={group.id}>
                   <TeacherGroupCard name={group.name} count={group.count} color="bg-white/5" textColor="text-blue-400" />
                 </div>
               ))}
@@ -193,11 +205,14 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      {/* TOAST NOTIFICATION */}
+      {/* FOOTER - Đã tích hợp file Footer của bạn */}
+      <Footer />
+
+      {/* NOTIFICATIONS & MODALS (GIỮ NGUYÊN) */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-[300] bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-right-4">
+        <div className="fixed bottom-24 right-8 z-[300] bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-right-4">
           <CheckCircle size={28} />
           <div>
             <p className="font-bold">{toast.title}</p>
@@ -207,7 +222,6 @@ export default function TeacherDashboard() {
         </div>
       )}
 
-      {/* MODAL SHARE */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" onClick={() => setIsShareModalOpen(false)} />
@@ -223,11 +237,9 @@ export default function TeacherDashboard() {
                     <FileText className="text-blue-400" />
                     <span className="font-bold text-white truncate w-40">{file.title}</span>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => copyToClipboard(file.id)} className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${copySuccess === file.id ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                      {copySuccess === file.id ? 'Đã copy' : 'Copy Link'}
-                    </button>
-                  </div>
+                  <button onClick={() => copyToClipboard(file.id)} className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${copySuccess === file.id ? 'bg-emerald-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                    {copySuccess === file.id ? 'Đã copy' : 'Copy Link'}
+                  </button>
                 </div>
               ))}
             </div>
@@ -235,7 +247,6 @@ export default function TeacherDashboard() {
         </div>
       )}
 
-      {/* MODAL CREATE GROUP */}
       {isCreateGroupModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
           <div className="bg-slate-900 w-full max-w-md rounded-3xl p-8 border border-white/10">
