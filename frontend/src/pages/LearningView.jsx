@@ -342,23 +342,10 @@ export default function LearningView() {
                   </ul>
                 </div>
                 
-                {/* Logic Group: Quiz Buttons */}
+                {/* Logic Group: Empty Container */}
                 <div className="space-y-3">
-                  <button onClick={() => navigate('/quiz/start', { state: { materialId: id, topic: material.content } })} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:shadow-blue-500/20 active:scale-95 transition-all">
-                    <GraduationCap size={20} className="inline mr-2" /> Làm trắc nghiệm ngay
-                  </button>
-                  
                   <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
-                    <p className="text-sm font-medium text-blue-300/80 mb-3">Sẵn sàng để thử thách kiến thức?</p>
-                    <button
-                      onClick={() => {
-                        const generatedQuestions = generateQuizQuestions();
-                        navigate('/quiz-play', { state: { questions: generatedQuestions } });
-                      }}
-                      className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 font-bold rounded-xl transition-colors text-sm"
-                    >
-                      Sinh thêm 5 câu Quiz
-                    </button>
+                    {/* Nút sinh quiz đã được gỡ bỏ tại đây */}
                   </div>
                 </div>
               </div>
