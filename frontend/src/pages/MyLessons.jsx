@@ -65,11 +65,11 @@ export default function MyLessons() {
   };
 
   return (
-    <div className="relative min-h-screen font-sans text-slate-50">
+    <div className="relative min-h-screen font-sans text-slate-50 flex flex-col">
       <AnimatedBackground />
       <Navbar />
 
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 w-full">
 
         {/* ═══ HEADER: Chào mừng + Stats ═══ */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">

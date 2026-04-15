@@ -150,7 +150,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative min-h-screen font-sans text-slate-50">
+    <div className="relative min-h-screen font-sans text-slate-50 flex flex-col">
       
       {/* Background layer spanning the whole page */}
       <AnimatedBackground />
@@ -159,6 +159,7 @@ export default function Home() {
       <Navbar />
 
       {/* Main Content Area */}
+      <main className="flex-1">
       {!user ? (
         <>
           {/* Hero Section */}
@@ -244,10 +245,20 @@ export default function Home() {
                 Hôm nay {user.role_id === 3 ? 'Quản trị viên' : 'Thầy/Cô'} muốn chuẩn bị tài liệu gì mới?
               </p>
             </div>
-            <Link to="/upload" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-              <UploadCloud className="w-5 h-5" />
-              Tải lên Học liệu
-            </Link>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link to="/teacher/groups" className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-cyan-500/30 text-cyan-400 px-6 py-3 rounded-xl font-bold hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all shadow-lg active:scale-95">
+                <Users className="w-5 h-5" />
+                Quản lý Lớp
+              </Link>
+              <Link to="/teacher/worksheets" className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-amber-500/30 text-amber-400 px-6 py-3 rounded-xl font-bold hover:bg-amber-500/10 hover:border-amber-500/50 transition-all shadow-lg active:scale-95">
+                <FileText className="w-5 h-5" />
+                Phiếu Học Tập
+              </Link>
+              <Link to="/upload" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                <UploadCloud className="w-5 h-5" />
+                Tải lên Học liệu
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -780,6 +791,7 @@ export default function Home() {
             </div>
           </div>
         )}
+      </main>
 
 
       {/* Footer */}

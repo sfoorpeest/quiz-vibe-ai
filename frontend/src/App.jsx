@@ -19,6 +19,9 @@ import MyLessons from './pages/MyLessons';
 import Practice from './pages/Practice';
 import Materials from './pages/Materials';
 import EduGames from './pages/EduGames';
+import TeacherGroupManagement from './pages/TeacherGroupManagement';
+import WorksheetBuilder from './pages/WorksheetBuilder';
+import WorksheetPublic from './pages/WorksheetPublic';
 
 function App() {
   return (
@@ -114,6 +117,32 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          {/* === TEACHER ROUTES === */}
+          <Route 
+            path="/teacher/groups" 
+            element={
+              <ProtectedRoute>
+                <TeacherGroupManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teacher/worksheets" 
+            element={
+              <ProtectedRoute>
+                <WorksheetBuilder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teacher/worksheets/:id" 
+            element={
+              <ProtectedRoute>
+                <WorksheetBuilder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/shared/worksheet/:id" element={<WorksheetPublic />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

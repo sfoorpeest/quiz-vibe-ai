@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, BrainCircuit, MessageSquare, FileText,
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
-  ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square
+  ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square,
+  Video, Download
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -22,8 +23,17 @@ export default function LearningView() {
   const [showToc, setShowToc] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+  const [fontSize, setFontSize] = useState(18);
+  const [volume, setVolume] = useState(1);
 
-  // Refs cho Google TTS Audio
+  // Refs
+  const volumeRef = useRef(1);
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+
   const googleAudioRef = useRef(null);
   const googleAudioQueueRef = useRef([]);
   const googleAudioIndexRef = useRef(0);
@@ -171,6 +181,7 @@ export default function LearningView() {
 
       // Chỉnh giọng đọc nhanh hơn một xíu (1.2x)
       audio.playbackRate = 1.2;
+      audio.volume = volumeRef.current;
 
       audio.onended = () => {
         URL.revokeObjectURL(blobUrl);
@@ -237,6 +248,7 @@ export default function LearningView() {
       
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
+      utterance.volume = volumeRef.current;
       
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
@@ -298,6 +310,44 @@ export default function LearningView() {
     }
   };
 
+  const handleDownload = () => {
+    if (!material || !contentRef.current) return;
+    
+    const contentHtml = contentRef.current.innerHTML;
+    const fullHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>${material.title}</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; }
+          h1 { color: #2563eb; }
+          .metadata { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <h1>${material.title}</h1>
+        <div class="metadata">
+          <p>Tác giả: ${material.author}</p>
+          <p>Thời lượng: ${material.readTime}</p>
+        </div>
+        <hr/>
+        ${contentHtml}
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([fullHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${material.title.replace(/[\/\\:*?"<>|]/g, '').trim().replace(/\s+/g, '_')}_QuizVibe.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatMessage.trim() || isLoading) return;
@@ -350,6 +400,76 @@ export default function LearningView() {
             </div>
           </div>
 
+          {/* MEDIA CONTROLS */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center px-4 py-2 bg-slate-800/80 rounded-2xl border border-slate-700/50 text-sm font-semibold text-slate-300 gap-4">
+              <button className="flex items-center gap-2 hover:text-white transition-colors">
+                <Video className="w-4 h-4" /> VIDEO
+              </button>
+
+              {/* VOICE MENU (Moved here) */}
+              <div className="relative">
+                {isSpeaking ? (
+                  <button onClick={stopAllAudio} className="flex items-center gap-2 hover:text-white transition-colors text-amber-400">
+                    <Square className="w-4 h-4 fill-current animate-pulse" /> DỪNG
+                  </button>
+                ) : (
+                  <button onClick={() => setShowVoiceMenu(!showVoiceMenu)} className="flex items-center gap-2 hover:text-white transition-colors">
+                    <Volume2 className="w-4 h-4" /> AUDIO
+                  </button>
+                )}
+
+                {showVoiceMenu && !isSpeaking && (
+                  <>
+                    <div className="fixed inset-0 z-90" onClick={() => setShowVoiceMenu(false)}></div>
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-4 w-40 bg-slate-800 border border-slate-700 shadow-2xl rounded-2xl overflow-hidden py-1 z-100 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+                      <button onClick={() => handleReadAloud('male')} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                        Giọng Nam
+                      </button>
+                      <div className="h-px bg-slate-700/50 mx-2"></div>
+                      <button onClick={() => handleReadAloud('female')} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
+                        Giọng Nữ
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button 
+                onClick={handleDownload} 
+                className="flex items-center gap-2 hover:text-white transition-colors" 
+                title="Tải về Word (.doc)"
+              >
+                <Download className="w-4 h-4" /> TẢI VỀ
+              </button>
+            </div>
+
+            <div className="flex items-center px-4 py-2 bg-slate-800/80 rounded-2xl border border-slate-700/50 text-sm font-semibold text-slate-300 gap-4">
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="range" min="0" max="1" step="0.05" 
+                  value={volume} 
+                  onChange={(e) => {
+                    const newVol = parseFloat(e.target.value);
+                    setVolume(newVol);
+                    if (googleAudioRef.current) {
+                      googleAudioRef.current.volume = newVol;
+                    }
+                  }} 
+                  className="w-16 md:w-20 accent-blue-500 h-1.5 bg-slate-600 rounded-full appearance-none outline-none cursor-pointer" 
+                />
+              </div>
+              <div className="w-px h-4 bg-slate-600"></div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setFontSize(f => Math.max(12, f - 1))} className="hover:text-white text-lg font-bold leading-none text-slate-400 hover:text-slate-200">-</button>
+                <span className="w-5 text-center text-blue-400 font-bold">{fontSize}</span>
+                <button onClick={() => setFontSize(f => Math.min(30, f + 1))} className="hover:text-white text-lg font-bold leading-none text-slate-400 hover:text-slate-200">+</button>
+              </div>
+            </div>
+          </div>
 
         </div>
       </header>
@@ -375,54 +495,6 @@ export default function LearningView() {
             </div>
 
             <div className="flex items-center gap-2 relative">
-              {/* Nút Đọc Giọng AI */}
-              {isSpeaking ? (
-                <button
-                  onClick={() => handleReadAloud()}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all"
-                  title="Dừng đọc"
-                >
-                  <Square className="w-4 h-4 fill-current animate-pulse" /> Dừng
-                </button>
-              ) : (
-                <div className="relative z-50">
-                  <button
-                    onClick={() => setShowVoiceMenu(!showVoiceMenu)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all border border-slate-700/50 shadow-sm"
-                    title="Chọn giọng đọc"
-                  >
-                    <Volume2 className="w-4 h-4" /> Đọc
-                  </button>
-
-                  {showVoiceMenu && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-90"
-                        onClick={() => setShowVoiceMenu(false)}
-                      ></div>
-                      <div className="absolute right-0 top-full mt-4 w-40 bg-slate-800 border border-slate-700 shadow-2xl rounded-2xl overflow-hidden py-1 z-100 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
-                        <button
-                          onClick={() => handleReadAloud('male')}
-                          className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                          Giọng Nam
-                        </button>
-                        <div className="h-px bg-slate-700/50 mx-2"></div>
-                        <button
-                          onClick={() => handleReadAloud('female')}
-                          className="w-full text-left px-4 py-3 text-sm font-bold text-slate-300 hover:bg-pink-600 hover:text-white transition-all flex items-center gap-2"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-pink-500"></div>
-                          Giọng Nữ
-                        </button>
-
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               {/* Nút Mục Lục */}
               <button
                 onClick={() => setShowToc(!showToc)}
@@ -477,9 +549,13 @@ export default function LearningView() {
             )}
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth" onScroll={handleScroll}>
-              <div className="prose prose-invert prose-2xl max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-p:my-10 prose-headings:mt-20 prose-headings:mb-8 prose-li:my-6 prose-h2:text-4xl prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-2xl prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black">
-                <h1 className="text-5xl font-extrabold mb-16 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400 leading-tight">{material.title}</h1>
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth print-content" onScroll={handleScroll}>
+              <div 
+                ref={contentRef}
+                className="prose prose-invert max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-headings:mt-20 prose-headings:mb-8 prose-p:my-10 prose-p:text-[1em] prose-li:my-6 prose-li:text-[1em] prose-h2:text-[1.8em] prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-[1.4em] prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black"
+                style={{ fontSize: `${fontSize}px` }}
+              >
+                <h1 className="text-[2.5em] font-extrabold mb-16 bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-violet-400 leading-tight">{material.title}</h1>
 
                 {/* Phân tách và render nội dung theo section để trỏ Mục lục */}
                 {(() => {
