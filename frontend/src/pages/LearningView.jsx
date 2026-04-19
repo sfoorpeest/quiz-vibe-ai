@@ -464,9 +464,9 @@ export default function LearningView() {
               </div>
               <div className="w-px h-4 bg-slate-600"></div>
               <div className="flex items-center gap-3">
-                <button onClick={() => setFontSize(f => Math.max(12, f - 1))} className="hover:text-white text-lg font-bold leading-none text-slate-400 hover:text-slate-200">-</button>
+                <button onClick={() => setFontSize(f => Math.max(12, f - 1))} className="text-lg font-bold leading-none text-slate-400 hover:text-white">-</button>
                 <span className="w-5 text-center text-blue-400 font-bold">{fontSize}</span>
-                <button onClick={() => setFontSize(f => Math.min(30, f + 1))} className="hover:text-white text-lg font-bold leading-none text-slate-400 hover:text-slate-200">+</button>
+                <button onClick={() => setFontSize(f => Math.min(30, f + 1))} className="text-lg font-bold leading-none text-slate-400 hover:text-white">+</button>
               </div>
             </div>
           </div>

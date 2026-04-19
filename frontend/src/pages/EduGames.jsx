@@ -114,7 +114,7 @@ export default function EduGames() {
         <div className="flex flex-col lg:flex-row gap-6">
 
           {/* LEFT: Game Modes (65%) */}
-          <div className="flex-[2] space-y-6">
+          <div className="flex-2 space-y-6">
             {GAME_MODES.map(mode => {
               const Icon = mode.icon;
               return (
@@ -124,7 +124,7 @@ export default function EduGames() {
                   onClick={() => navigate('/quiz/start')}
                 >
                   {/* Ambient Glow */}
-                  <div className={`absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl ${mode.gradient} opacity-[0.04] blur-[100px] rounded-full pointer-events-none group-hover:opacity-[0.08] transition-opacity duration-700`}></div>
+                  <div className={`absolute top-0 right-0 w-96 h-96 bg-linear-to-bl ${mode.gradient} opacity-[0.04] blur-[100px] rounded-full pointer-events-none group-hover:opacity-[0.08] transition-opacity duration-700`}></div>
 
                   <div className="relative z-10 flex flex-col sm:flex-row items-stretch p-8 lg:p-10 gap-8">
                     {/* Info */}
@@ -137,7 +137,7 @@ export default function EduGames() {
                       </div>
                       <p className="text-slate-400 text-sm mb-6 leading-relaxed max-w-md">{mode.subtitle}</p>
                       <div className="flex items-center gap-4">
-                        <button className={`flex items-center gap-2 bg-gradient-to-r ${mode.gradient} text-slate-950 px-6 py-3 rounded-xl font-extrabold transition-all active:scale-95 shadow-lg text-sm`}>
+                        <button className={`flex items-center gap-2 bg-linear-to-r ${mode.gradient} text-slate-950 px-6 py-3 rounded-xl font-extrabold transition-all active:scale-95 shadow-lg text-sm`}>
                           <Play className="w-4 h-4 fill-current" /> Vào chơi
                         </button>
                         {mode.playersOnline && (
@@ -152,7 +152,7 @@ export default function EduGames() {
                     {/* Icon Decorative */}
                     <div className="flex items-center justify-center sm:w-48">
                       <div className={`relative group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
-                        <div className={`w-28 h-28 rounded-3xl bg-gradient-to-br ${mode.gradient} flex items-center justify-center shadow-2xl rotate-12`}>
+                        <div className={`w-28 h-28 rounded-3xl bg-linear-to-br ${mode.gradient} flex items-center justify-center shadow-2xl rotate-12`}>
                           <Icon className="w-14 h-14 text-white/90" />
                         </div>
                       </div>
@@ -164,7 +164,7 @@ export default function EduGames() {
           </div>
 
           {/* RIGHT SIDEBAR (35%): Leaderboard + Study Cards */}
-          <div className="flex-[1] min-w-[320px] space-y-6">
+          <div className="flex-1 min-w-[320px] space-y-6">
 
             {/* Leaderboard Widget */}
             <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
@@ -204,7 +204,7 @@ export default function EduGames() {
                     onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
                     className={`relative group/card rounded-2xl p-4 text-center transition-all duration-300 cursor-pointer border ${
                       card.achieved
-                        ? 'bg-gradient-to-b from-amber-500/5 to-transparent border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]'
+                        ? 'bg-linear-to-b from-amber-500/5 to-transparent border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]'
                         : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50 opacity-60 hover:opacity-80'
                     }`}
                   >
@@ -237,18 +237,18 @@ export default function EduGames() {
 
         {/* ═══ MODAL: Expanded Study Card ═══ */}
         {selectedCard && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedCard(null)}>
+          <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedCard(null)}>
             <div
               className={`relative w-full max-w-sm rounded-3xl p-8 text-center animate-in zoom-in-95 duration-300 ${
                 selectedCard.achieved
-                  ? 'bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-2 border-amber-500/30 shadow-[0_0_60px_rgba(245,158,11,0.15)]'
+                  ? 'bg-linear-to-b from-slate-800 via-slate-900 to-slate-950 border-2 border-amber-500/30 shadow-[0_0_60px_rgba(245,158,11,0.15)]'
                   : 'bg-slate-900 border border-slate-700'
               }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Holographic Shimmer */}
               {selectedCard.achieved && (
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-amber-400/5 via-transparent to-purple-400/5 pointer-events-none"></div>
+                <div className="absolute inset-0 rounded-3xl bg-linear-to-tr from-amber-400/5 via-transparent to-purple-400/5 pointer-events-none"></div>
               )}
 
               <div className="relative z-10">
@@ -276,7 +276,7 @@ export default function EduGames() {
                     {selectedCard.progress && (
                       <>
                         <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-slate-500 to-slate-400 rounded-full transition-all" style={{ width: `${(selectedCard.progress.current / selectedCard.progress.total) * 100}%` }}></div>
+                          <div className="h-full bg-linear-to-r from-slate-500 to-slate-400 rounded-full transition-all" style={{ width: `${(selectedCard.progress.current / selectedCard.progress.total) * 100}%` }}></div>
                         </div>
                         <p className="text-xs text-slate-500 font-bold">{selectedCard.progress.current} / {selectedCard.progress.total}</p>
                       </>

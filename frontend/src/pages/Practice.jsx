@@ -64,7 +64,7 @@ export default function Practice() {
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-50 mb-4 leading-tight">
             Luyện tập với
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-400"> Trí tuệ Nhân tạo</span>
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-violet-400"> Trí tuệ Nhân tạo</span>
           </h1>
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
             Nhập chủ đề bạn muốn ôn tập, AI sẽ tạo bài kiểm tra trắc nghiệm tùy chỉnh ngay lập tức.
@@ -72,7 +72,7 @@ export default function Practice() {
 
           {/* Big Prompt Input */}
           <form onSubmit={handleGenerate} className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-blue-600/20 rounded-3xl blur-xl group-focus-within:blur-2xl group-focus-within:opacity-100 opacity-60 transition-all duration-500 pointer-events-none"></div>
+            <div className="absolute -inset-1 bg-linear-to-r from-purple-600/20 via-violet-600/20 to-blue-600/20 rounded-3xl blur-xl group-focus-within:blur-2xl group-focus-within:opacity-100 opacity-60 transition-all duration-500 pointer-events-none"></div>
             <div className="relative flex items-center bg-slate-900/80 backdrop-blur-2xl border border-purple-500/20 group-focus-within:border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/5 transition-all">
               <Sparkles className="w-6 h-6 text-purple-400 ml-5 shrink-0" />
               <input
@@ -86,7 +86,7 @@ export default function Practice() {
               <button
                 type="submit"
                 disabled={!promptValue.trim() || isGenerating}
-                className="mr-3 flex items-center gap-2 bg-gradient-to-r from-purple-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 text-white px-6 py-3 rounded-xl font-extrabold transition-all hover:from-purple-500 hover:to-violet-500 active:scale-95 shadow-lg shadow-purple-500/20 disabled:shadow-none disabled:text-slate-500"
+                className="mr-3 flex items-center gap-2 bg-linear-to-r from-purple-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 text-white px-6 py-3 rounded-xl font-extrabold transition-all hover:from-purple-500 hover:to-violet-500 active:scale-95 shadow-lg shadow-purple-500/20 disabled:shadow-none disabled:text-slate-500"
               >
                 {isGenerating ? (
                   <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang tạo...</>

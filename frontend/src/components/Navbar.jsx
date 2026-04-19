@@ -55,7 +55,7 @@ export default function Navbar() {
                     {user.role_id === 3 ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
                   
-                  <div className="flex flex-col items-start leading-tight hidden sm:flex pr-1">
+                  <div className="hidden sm:flex flex-col items-start leading-tight pr-1">
                     <span className="text-[13px] font-bold text-slate-100 max-w-[100px] truncate">
                       {user.name || user.fullName || 'Người dùng'}
                     </span>
