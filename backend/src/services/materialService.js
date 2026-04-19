@@ -113,8 +113,78 @@ async function getMaterialDetailById(id) {
     return rows[0] || null;
 }
 
+async function getMyLessons(userId) {
+    const assignmentQuery = `
+        SELECT
+            q.id,
+            q.title,
+            q.type,
+            q.content_url,
+            q.content,
+            q.created_at
+        FROM (
+            SELECT DISTINCT
+                m.id,
+                m.title,
+                ${TYPE_CASE_SQL} AS type,
+                m.content_url,
+                m.content,
+                m.created_at,
+                um.assigned_at
+            FROM user_materials um
+            INNER JOIN materials m ON m.id = um.material_id
+            WHERE um.user_id = ?
+        ) q
+        ORDER BY COALESCE(q.assigned_at, q.created_at) DESC
+    `;
+
+    const fallbackQuery = `
+        SELECT DISTINCT
+            m.id,
+            m.title,
+            ${TYPE_CASE_SQL} AS type,
+            m.content_url,
+            m.content,
+            m.created_at
+        FROM learning_history lh
+        INNER JOIN materials m ON m.id = lh.material_id
+        WHERE lh.user_id = ?
+          AND lh.material_id IS NOT NULL
+        ORDER BY m.created_at DESC
+    `;
+
+    // Preferred source for My Lessons is explicit assignment relation.
+    // Fallback keeps API usable before migration/data backfill is completed.
+    try {
+        const assignedRows = await sequelize.query(assignmentQuery, {
+            replacements: [userId],
+            type: QueryTypes.SELECT
+        });
+
+        if (assignedRows.length > 0) {
+            return assignedRows;
+        }
+    } catch (error) {
+        console.error('MY LESSONS ERROR:', error);
+        // If user_materials does not exist yet, continue with fallback query.
+        const isMissingRelation =
+            String(error?.original?.code || '') === 'ER_NO_SUCH_TABLE' ||
+            /user_materials/i.test(String(error?.message || ''));
+
+        if (!isMissingRelation) {
+            throw error;
+        }
+    }
+
+    return sequelize.query(fallbackQuery, {
+        replacements: [userId],
+        type: QueryTypes.SELECT
+    });
+}
+
 module.exports = {
     listMaterials,
     getMaterialDetailById,
+    getMyLessons,
     ALLOWED_TYPES
 };

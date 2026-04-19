@@ -52,3 +52,15 @@ exports.getMaterialDetail = async (req, res) => {
         return res.status(500).json({ message: 'Failed to get material detail' });
     }
 };
+
+exports.getMyLessons = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const lessons = await materialService.getMyLessons(userId);
+
+        return res.status(200).json({ data: lessons });
+    } catch (error) {
+        console.error('Get my lessons error:', error);
+        return res.status(500).json({ message: 'Failed to get my lessons' });
+    }
+};
