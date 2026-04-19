@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
@@ -36,11 +36,25 @@ const MOCK_MATERIALS = [
 
 export default function Materials() {
   const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Tất cả');
-  const [selectedGrade, setSelectedGrade] = useState('Tất cả');
-  const [selectedType, setSelectedType] = useState('Tất cả');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const searchQuery = searchParams.get('keyword') || '';
+  const selectedSubject = searchParams.get('subject') || 'Tất cả';
+  const selectedGrade = searchParams.get('grade') || 'Tất cả';
+  const selectedType = searchParams.get('type') || 'Tất cả';
+
+  const updateParam = (key, value, emptyValue = '') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === emptyValue) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+      return next;
+    });
+  };
 
   // Filter logic
   const filteredMaterials = MOCK_MATERIALS.filter(mat => {
@@ -65,9 +79,13 @@ export default function Materials() {
   const hasActiveFilter = selectedSubject !== 'Tất cả' || selectedGrade !== 'Tất cả' || selectedType !== 'Tất cả';
 
   const clearFilters = () => {
-    setSelectedSubject('Tất cả');
-    setSelectedGrade('Tất cả');
-    setSelectedType('Tất cả');
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('subject');
+      next.delete('grade');
+      next.delete('type');
+      return next;
+    });
   };
 
   return (
@@ -119,7 +137,7 @@ export default function Materials() {
                   {SUBJECTS.map(subject => (
                     <button
                       key={subject}
-                      onClick={() => setSelectedSubject(subject)}
+                      onClick={() => updateParam('subject', subject, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedSubject === subject
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -139,7 +157,7 @@ export default function Materials() {
                   {GRADES.map(grade => (
                     <button
                       key={grade}
-                      onClick={() => setSelectedGrade(grade)}
+                      onClick={() => updateParam('grade', grade, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedGrade === grade
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -159,7 +177,7 @@ export default function Materials() {
                   {FILE_TYPES.map(type => (
                     <button
                       key={type}
-                      onClick={() => setSelectedType(type)}
+                      onClick={() => updateParam('type', type, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedType === type
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -183,12 +201,12 @@ export default function Materials() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => updateParam('keyword', e.target.value)}
                   placeholder="Tìm tài liệu, sách giáo khoa, bài giải..."
                   className="w-full bg-slate-900/80 backdrop-blur-2xl border border-slate-700/50 font-medium rounded-2xl pl-12 pr-10 py-3.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm shadow-lg"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  <button onClick={() => updateParam('keyword', '')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -202,19 +220,19 @@ export default function Materials() {
                 {selectedSubject !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedSubject}
-                    <button onClick={() => setSelectedSubject('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('subject', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {selectedGrade !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedGrade}
-                    <button onClick={() => setSelectedGrade('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('grade', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {selectedType !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedType}
-                    <button onClick={() => setSelectedType('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('type', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
               </div>
