@@ -24,30 +24,13 @@ const generateContent = async (prompt, fileData = null) => {
         if (response.data && response.data.candidates && response.data.candidates[0].content) {
             return response.data.candidates[0].content.parts[0].text;
         }
-        throw new Error("Invalid response");
+        throw new Error("Invalid response from Gemini API");
     } catch (error) {
-        console.error("❌ Gemini API Error (v1):", error.response?.data || error.message);
-
-        // --- CHẾ ĐỘ MOCK PHẢN HỒI (DÀNH CHO TRƯỜNG HỢP KEY LỖI HOẶC QUÁ TẢI) ---
-        // SỬA: Regex bám sát từ khóa \b để không dính "tài", "bài", "lại", v.v.
-        if (prompt.match(/\b(chào|hello)\b/i)) {
-            return "Chào bạn! Mình là QuizVibe AI. Rất vui được đồng hành cùng bạn trong bài học này. Bạn cần mình giải đáp thắc mắc nào về nội dung trên không?";
-        }
-
-        // Tự động tạo bài giảng theo chủ đề (Tách từ Title trong prompt nếu có thể)
-        // Nếu prompt có chứa "xoay quanh chủ đề", ta trích xuất nó ra để viết bài giảng ảo phù hợp
-        const matchTopic = prompt.match(/chủ đề "(.*?)"/i);
-        if (matchTopic && matchTopic[1]) {
-            const topic = matchTopic[1];
-            return `## 1. Mở đầu về ${topic}\n\nHôm nay chúng ta sẽ tìm hiểu về ${topic}. Đây là một khái niệm cực kỳ quan trọng đòi hỏi bạn phải nắm vững nền tảng gốc rễ để áp dụng vào thực tế.\n\n## 2. Các điểm cốt lõi của ${topic}\n\n- Bản chất vật lý / kỹ thuật nền tảng.\n- Những trường hợp sử dụng cơ bản.\n- So sánh ưu nhược điểm so với các hệ thống hoặc khái niệm tương đương.\n\n## 3. Tổng kết bài giảng\n\nNắm được lý thuyết của ${topic} sẽ giúp bạn có lợi thế lớn khi bắt tay vào triển khai. Hãy giữ vững tinh thần tự học thật tốt (Lưu ý: API Gemini hiện tại đang quá tải hoặc giới hạn đọc nội dung file cục bộ, vì vậy đây là phần phân tích giả lập từ tiêu đề file).`;
-        }
-
-        // Nếu chỉ hỏi câu hỏi bình thường
-        if (prompt.match(/\b(ai|trí tuệ nhân tạo)\b/i)) {
-            return "Trí tuệ nhân tạo (AI) là lĩnh vực máy tính mô phỏng trí thông minh con người. Trong bài học này, chúng ta tập trung vào Machine Learning và Deep Learning - hai trụ cột giúp máy tính tự học hỏi.";
-        }
-
-        return "Hệ thống AI hiện đang xử lý quá nhiều yêu cầu hoặc không thể đọc file nhị phân đính kèm (PDF/DOCX). Dựa vào kinh nghiệm, đây là một nội dung học thuật quan trọng mà bạn cần nghiên cứu sâu thêm từ các tài liệu bên ngoài.";
+        const errorDetail = error.response?.data || error.message;
+        console.error("❌ Gemini API Error:", JSON.stringify(errorDetail, null, 2));
+        
+        // Return a raw error message so the calling controller knows it failed
+        throw new Error(`AI_GEN_FAILED: ${error.message}`);
     }
 };
 
