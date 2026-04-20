@@ -19,7 +19,7 @@ const { connectDB } = require('./config/database');
 const app = express();
 
 // Middleware
-app.use(helmet()); // Bảo mật header
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
 app.use(cors()); // Cho phép FE truy cập
 app.use(morgan('dev')); // Log request ra console
 app.use(express.json()); // Đọc dữ liệu JSON từ request body

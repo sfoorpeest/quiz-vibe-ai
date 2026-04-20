@@ -7,7 +7,10 @@ import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 
 // ═══════════════════════════════════════════════════════════
-// MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
+import { materialService } from '../services/materialService';
+
+// ═══════════════════════════════════════════════════════════
+// MOCK DATA for missing fields pending backend update 
 // ═══════════════════════════════════════════════════════════
 const MOCK_STATS = { totalLessons: 12, totalHours: 45 };
 
@@ -21,17 +24,6 @@ const MOCK_CONTINUE_LESSON = {
   updatedAt: '2 giờ trước',
 };
 
-const MOCK_LESSONS = [
-  { id: 101, title: 'Lịch sử thế giới thời cận đại — Chương 3: Cách mạng Công nghiệp', author: 'Thầy Nguyễn Văn An', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-an', progress: 65, status: 'learning', isFavorite: true, updatedAt: '2 giờ trước' },
-  { id: 102, title: 'Giải tích II — Tích phân suy rộng và ứng dụng', author: 'Cô Trần Thị Mai', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-mai', progress: 100, status: 'done', isFavorite: false, updatedAt: '1 ngày trước' },
-  { id: 103, title: 'Vật Lý 12 — Dao động cơ học và sóng cơ', author: 'Thầy Lê Hoàng', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-hoang', progress: 30, status: 'learning', isFavorite: true, updatedAt: '3 ngày trước' },
-  { id: 104, title: 'Ngữ văn 11 — Phân tích tác phẩm "Chí Phèo" của Nam Cao', author: 'Cô Phạm Lan', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-lan', progress: 100, status: 'done', isFavorite: false, updatedAt: '5 ngày trước' },
-  { id: 105, title: 'Tiếng Anh — IELTS Writing Task 2: Agree/Disagree Essays', author: 'Mr. David Lee', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-david', progress: 10, status: 'learning', isFavorite: false, updatedAt: '1 tuần trước' },
-  { id: 106, title: 'Hóa học 10 — Liên kết hóa học và cấu trúc phân tử', author: 'Cô Nguyễn Hương', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-huong', progress: 100, status: 'done', isFavorite: true, updatedAt: '2 tuần trước' },
-  { id: 107, title: 'Sinh học 12 — Di truyền học quần thể', author: 'Thầy Đỗ Minh', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-minh', progress: 0, status: 'saved', isFavorite: false, updatedAt: '3 tuần trước' },
-  { id: 108, title: 'Địa lý 12 — Vấn đề phát triển kinh tế vùng Đông Nam Bộ', author: 'Cô Vũ Thảo', authorAvatar: 'https://i.pravatar.cc/150?u=teacher-thao', progress: 50, status: 'learning', isFavorite: false, updatedAt: '1 tháng trước' },
-];
-
 const TABS = [
   { key: 'all', label: 'Tất cả', icon: BookOpen },
   { key: 'learning', label: 'Đang học', icon: Play },
@@ -44,9 +36,42 @@ export default function MyLessons() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [lessons, setLessons] = useState([]);
+  const [stats, setStats] = useState({ totalLessons: 0, totalHours: 45 });
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchLessons = async () => {
+      setLoading(true);
+      try {
+        const res = await materialService.getMyLessons();
+        const apiLessons = (res.data || []).map(m => ({
+          id: m.id,
+          title: m.title || 'Bài học',
+          author: 'Hệ thống / Giảng viên', 
+          authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('HT')}&background=0D8ABC&color=fff`,
+          progress: m.progress || 0,
+          status: m.progress >= 100 ? 'done' : m.progress > 0 ? 'learning' : 'new',
+          isFavorite: false,
+          updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
+        }));
+        setLessons(apiLessons);
+        if (res.stats) {
+          setStats(res.stats);
+        }
+      } catch (err) {
+        console.error("Failed to fetch my lessons:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user) {
+      fetchLessons();
+    }
+  }, [user]);
 
   // Filter logic
-  const filteredLessons = MOCK_LESSONS.filter(lesson => {
+  const filteredLessons = lessons.filter(lesson => {
     const matchTab =
       activeTab === 'all' ||
       (activeTab === 'learning' && lesson.status === 'learning') ||
@@ -86,14 +111,14 @@ export default function MyLessons() {
             <div className="flex items-center gap-3 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-5 py-3 shadow-lg">
               <BookOpen className="w-5 h-5 text-cyan-400" />
               <div>
-                <p className="text-2xl font-extrabold text-white leading-none">{MOCK_STATS.totalLessons}</p>
+                <p className="text-2xl font-extrabold text-white leading-none">{stats.totalLessons}</p>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Bài đã học</p>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-5 py-3 shadow-lg">
               <Clock className="w-5 h-5 text-amber-400" />
               <div>
-                <p className="text-2xl font-extrabold text-white leading-none">{MOCK_STATS.totalHours}h</p>
+                <p className="text-2xl font-extrabold text-white leading-none">{stats.totalHours}h</p>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Giờ học</p>
               </div>
             </div>
@@ -161,9 +186,9 @@ export default function MyLessons() {
             {TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
-              const count = tab.key === 'all' ? MOCK_LESSONS.length
-                : tab.key === 'favorite' ? MOCK_LESSONS.filter(l => l.isFavorite).length
-                : MOCK_LESSONS.filter(l => l.status === tab.key).length;
+              const count = tab.key === 'all' ? lessons.length
+                : tab.key === 'favorite' ? lessons.filter(l => l.isFavorite).length
+                : lessons.filter(l => l.status === tab.key).length;
               return (
                 <button
                   key={tab.key}
@@ -214,7 +239,12 @@ export default function MyLessons() {
           </div>
 
           {/* Lesson Rows */}
-          {filteredLessons.length > 0 ? (
+          {loading ? (
+            <div className="py-16 text-center">
+              <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-400 font-bold">Đang tải...</p>
+            </div>
+          ) : filteredLessons.length > 0 ? (
             filteredLessons.map((lesson, idx) => (
               <div
                 key={lesson.id}
