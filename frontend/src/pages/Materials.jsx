@@ -1,59 +1,72 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 
-// ═══════════════════════════════════════════════════════════
-// MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
-// ═══════════════════════════════════════════════════════════
+import { materialService } from '../services/materialService';
+
 const FILE_TYPE_ICONS = {
-  pdf: { icon: FileText, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-  docx: { icon: FileText, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  pptx: { icon: FileText, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  document: { icon: FileText, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
   video: { icon: Video, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  image: { icon: Image, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  audio: { icon: Video, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
 };
 
 const SUBJECTS = ['Tất cả', 'Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tiếng Anh', 'Tin học'];
 const GRADES = ['Tất cả', 'Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
-const FILE_TYPES = ['Tất cả', 'PDF', 'DOCX', 'PPTX', 'Video'];
-
-const MOCK_MATERIALS = [
-  { id: 1, title: 'Công thức Vật Lý 12 — Chương 1: Dao động cơ', type: 'pdf', size: '2.4 MB', uploader: 'Thầy Nguyễn An', date: '15/03/2026', subject: 'Vật lý', grade: 'Lớp 12', views: 1240 },
-  { id: 2, title: 'Sổ tay Giải bài tập SGK Toán 12 — Giải tích', type: 'docx', size: '1.1 MB', uploader: 'Cô Trần Mai', date: '12/03/2026', subject: 'Toán học', grade: 'Lớp 12', views: 892 },
-  { id: 3, title: 'Slide bài giảng Hóa học 10 — Liên kết hóa học', type: 'pptx', size: '5.8 MB', uploader: 'Cô Nguyễn Hương', date: '10/03/2026', subject: 'Hóa học', grade: 'Lớp 10', views: 673 },
-  { id: 4, title: 'Video bài giảng: Phân tích "Chí Phèo" — Nam Cao', type: 'video', size: '120 MB', uploader: 'Cô Phạm Lan', date: '08/03/2026', subject: 'Ngữ văn', grade: 'Lớp 11', views: 2103 },
-  { id: 5, title: 'Đề thi thử THPT QG 2026 — Môn Toán (Đề 01)', type: 'pdf', size: '3.2 MB', uploader: 'Hệ thống', date: '05/03/2026', subject: 'Toán học', grade: 'Lớp 12', views: 4521 },
-  { id: 6, title: 'Tóm tắt Lịch sử Việt Nam — Thời kỳ Đổi Mới', type: 'docx', size: '0.8 MB', uploader: 'Thầy Đỗ Minh', date: '01/03/2026', subject: 'Lịch sử', grade: 'Lớp 12', views: 345 },
-  { id: 7, title: 'IELTS Speaking Part 2 — Sample Answers Collection', type: 'pdf', size: '4.5 MB', uploader: 'Mr. David Lee', date: '28/02/2026', subject: 'Tiếng Anh', grade: 'Đại học', views: 1876 },
-  { id: 8, title: 'Hình ảnh minh họa cấu trúc tế bào thực vật', type: 'image', size: '15 MB', uploader: 'Cô Vũ Thảo', date: '25/02/2026', subject: 'Sinh học', grade: 'Lớp 10', views: 512 },
-  { id: 9, title: 'Bài tập Tin học đại cương — Lập trình Python cơ bản', type: 'pdf', size: '1.9 MB', uploader: 'Thầy Lê Hoàng', date: '20/02/2026', subject: 'Tin học', grade: 'Đại học', views: 789 },
-  { id: 10, title: 'Atlas Địa lý 12 — Bản đồ kinh tế Đông Nam Bộ', type: 'image', size: '8.3 MB', uploader: 'Cô Phạm Lan', date: '15/02/2026', subject: 'Địa lý', grade: 'Lớp 12', views: 234 },
-];
+const FILE_TYPES = ['Tất cả', 'Video', 'Audio', 'Document'];
 
 export default function Materials() {
   const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Tất cả');
-  const [selectedGrade, setSelectedGrade] = useState('Tất cả');
-  const [selectedType, setSelectedType] = useState('Tất cả');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [materials, setMaterials] = useState([]);
+  const [pagination, setPagination] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Filter logic
-  const filteredMaterials = MOCK_MATERIALS.filter(mat => {
-    const matchSearch = mat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mat.uploader.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchSubject = selectedSubject === 'Tất cả' || mat.subject === selectedSubject;
-    const matchGrade = selectedGrade === 'Tất cả' || mat.grade === selectedGrade;
-    const matchType = selectedType === 'Tất cả' || mat.type.toUpperCase() === selectedType.toUpperCase();
-    return matchSearch && matchSubject && matchGrade && matchType;
-  });
+  const searchQuery = searchParams.get('keyword') || '';
+  const selectedSubject = searchParams.get('subject') || 'Tất cả';
+  const selectedGrade = searchParams.get('grade') || 'Tất cả';
+  const selectedType = searchParams.get('type') || 'Tất cả';
+
+  const updateParam = (key, value, emptyValue = '') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === emptyValue) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+      return next;
+    });
+  };
+
+  React.useEffect(() => {
+    const fetchMaterials = async () => {
+      setLoading(true);
+      try {
+        const params = {};
+        if (searchQuery) params.search = searchQuery;
+        if (selectedType !== 'Tất cả') params.type = selectedType.toLowerCase();
+        if (selectedSubject !== 'Tất cả') params.subject = selectedSubject;
+        if (selectedGrade !== 'Tất cả') params.grade = selectedGrade;
+        
+        const res = await materialService.getMaterials(params);
+        setMaterials(res.data || []);
+        setPagination(res.pagination || {});
+      } catch (err) {
+        console.error("Failed to fetch materials:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMaterials();
+  }, [searchQuery, selectedType, selectedSubject, selectedGrade]);
 
   const getFileIcon = (type) => {
-    const config = FILE_TYPE_ICONS[type] || FILE_TYPE_ICONS.pdf;
+    const config = FILE_TYPE_ICONS[type] || FILE_TYPE_ICONS.document;
     const Icon = config.icon;
     return (
       <div className={`w-10 h-10 rounded-xl ${config.bg} border ${config.border} flex items-center justify-center shrink-0`}>
@@ -65,17 +78,21 @@ export default function Materials() {
   const hasActiveFilter = selectedSubject !== 'Tất cả' || selectedGrade !== 'Tất cả' || selectedType !== 'Tất cả';
 
   const clearFilters = () => {
-    setSelectedSubject('Tất cả');
-    setSelectedGrade('Tất cả');
-    setSelectedType('Tất cả');
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('subject');
+      next.delete('grade');
+      next.delete('type');
+      return next;
+    });
   };
 
   return (
-    <div className="relative min-h-screen font-sans text-slate-50">
+    <div className="relative min-h-screen font-sans text-slate-50 flex flex-col">
       <AnimatedBackground />
       <Navbar />
 
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 w-full">
 
         {/* ═══ HEADER ═══ */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -84,7 +101,7 @@ export default function Materials() {
               <BookOpen className="w-4 h-4" /> Thư viện học liệu
             </p>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50">Kho tài liệu</h1>
-            <p className="text-slate-400 mt-2 text-sm">{MOCK_MATERIALS.length} tài liệu từ giảng viên và hệ thống</p>
+            <p className="text-slate-400 mt-2 text-sm">{pagination.total || 0} tài liệu từ giảng viên và hệ thống</p>
           </div>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -119,7 +136,7 @@ export default function Materials() {
                   {SUBJECTS.map(subject => (
                     <button
                       key={subject}
-                      onClick={() => setSelectedSubject(subject)}
+                      onClick={() => updateParam('subject', subject, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedSubject === subject
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -139,7 +156,7 @@ export default function Materials() {
                   {GRADES.map(grade => (
                     <button
                       key={grade}
-                      onClick={() => setSelectedGrade(grade)}
+                      onClick={() => updateParam('grade', grade, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedGrade === grade
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -159,7 +176,7 @@ export default function Materials() {
                   {FILE_TYPES.map(type => (
                     <button
                       key={type}
-                      onClick={() => setSelectedType(type)}
+                      onClick={() => updateParam('type', type, 'Tất cả')}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                         selectedType === type
                           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -183,12 +200,12 @@ export default function Materials() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => updateParam('keyword', e.target.value)}
                   placeholder="Tìm tài liệu, sách giáo khoa, bài giải..."
                   className="w-full bg-slate-900/80 backdrop-blur-2xl border border-slate-700/50 font-medium rounded-2xl pl-12 pr-10 py-3.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm shadow-lg"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  <button onClick={() => updateParam('keyword', '')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -202,19 +219,19 @@ export default function Materials() {
                 {selectedSubject !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedSubject}
-                    <button onClick={() => setSelectedSubject('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('subject', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {selectedGrade !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedGrade}
-                    <button onClick={() => setSelectedGrade('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('grade', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {selectedType !== 'Tất cả' && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedType}
-                    <button onClick={() => setSelectedType('Tất cả')}><X className="w-3 h-3" /></button>
+                    <button onClick={() => updateParam('type', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
               </div>
@@ -233,12 +250,17 @@ export default function Materials() {
                 <span className="w-10"></span>
               </div>
 
-              {filteredMaterials.length > 0 ? (
-                filteredMaterials.map((mat, idx) => (
+              {loading ? (
+                <div className="py-16 text-center">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-slate-400 font-bold">Đang tải...</p>
+                </div>
+              ) : materials.length > 0 ? (
+                materials.map((mat, idx) => (
                   <div
                     key={mat.id}
                     className={`group grid grid-cols-1 lg:grid-cols-[auto_1fr_80px_140px_100px_80px_auto] items-center gap-4 px-6 py-4 transition-all duration-200 hover:bg-slate-800/60 cursor-pointer ${
-                      idx < filteredMaterials.length - 1 ? 'border-b border-slate-800/30' : ''
+                      idx < materials.length - 1 ? 'border-b border-slate-800/30' : ''
                     }`}
                   >
                     {/* Icon */}
@@ -247,7 +269,7 @@ export default function Materials() {
                     {/* Title */}
                     <div className="min-w-0">
                       <h4 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition-colors truncate">{mat.title}</h4>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 lg:hidden">{mat.type.toUpperCase()} • {mat.size} • {mat.uploader}</p>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 lg:hidden">{mat.type.toUpperCase()} • {mat.created_by}</p>
                     </div>
 
                     {/* Type Badge */}
@@ -259,18 +281,18 @@ export default function Materials() {
 
                     {/* Uploader */}
                     <div className="hidden lg:flex items-center gap-2">
-                      <span className="text-xs text-slate-400 font-medium truncate">{mat.uploader}</span>
+                      <span className="text-xs text-slate-400 font-medium truncate">{mat.created_by || 'Hệ thống'}</span>
                     </div>
 
                     {/* Date */}
                     <div className="hidden lg:flex justify-center">
-                      <span className="text-xs text-slate-500 font-medium">{mat.date}</span>
+                      <span className="text-xs text-slate-500 font-medium">{new Date(mat.created_at).toLocaleDateString('vi-VN')}</span>
                     </div>
 
-                    {/* Views */}
+                    {/* Views (Mocked for now since DB doesn't have it) */}
                     <div className="hidden lg:flex justify-center items-center gap-1.5">
                       <Eye className="w-3 h-3 text-slate-600" />
-                      <span className="text-xs text-slate-500 font-medium">{mat.views.toLocaleString()}</span>
+                      <span className="text-xs text-slate-500 font-medium">---</span>
                     </div>
 
                     {/* Download */}
@@ -292,7 +314,7 @@ export default function Materials() {
 
             {/* Pagination or count */}
             <div className="mt-4 text-center">
-              <p className="text-xs font-bold text-slate-500">Hiển thị {filteredMaterials.length} / {MOCK_MATERIALS.length} tài liệu</p>
+              <p className="text-xs font-bold text-slate-500">Hiển thị {materials.length} / {pagination.total || 0} tài liệu</p>
             </div>
           </div>
 

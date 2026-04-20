@@ -17,7 +17,12 @@ export default function ProfileHeader({
   onToggleEdit,
   onRefresh,
 }) {
-  const avatarSource = profile?.avatarUrl || '';
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  let avatarSource = profile?.avatar || '';
+  if (avatarSource && avatarSource.startsWith('/uploads')) {
+    avatarSource = `${baseURL}${avatarSource}`;
+  }
+  
   const roleLabel = roleLabelMap[profile?.role_id] || 'Thành viên';
   const username = profile?.username || 'chua-cap-nhat';
 

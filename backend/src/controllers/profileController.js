@@ -1,17 +1,41 @@
 const User = require('../models/User');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 
 // --- LẤY THÔNG TIN PROFILE ---
 exports.getProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const user = await User.findByPk(userId, {
-            attributes: { exclude: ['password_hash', 'resetToken', 'resetTokenExpires'] }
-        });
+        const [user] = await sequelize.query(
+            "SELECT * FROM users WHERE id = :userId",
+            { replacements: { userId }, type: QueryTypes.SELECT }
+        );
 
         if (!user) {
             return res.status(404).json({ message: "Không tìm thấy người dùng." });
+        }
+
+        // --- SMART FALLBACK: Nếu DB chưa có avatar_url, tìm trong folder ---
+        let currentAvatar = user.avatar_url;
+        if (!currentAvatar) {
+            try {
+                const avatarDir = path.join(__dirname, '../../uploads/avatars');
+                if (fs.existsSync(avatarDir)) {
+                    const files = fs.readdirSync(avatarDir);
+                    // Tìm file mới nhất có dạng avatar_{userId}_
+                    const userFiles = files
+                        .filter(f => f.startsWith(`avatar_${userId}_`))
+                        .sort((a, b) => b.localeCompare(a)); // Sắp xếp giảm dần để lấy cái mới nhất (theo timestamp)
+                    
+                    if (userFiles.length > 0) {
+                        currentAvatar = `/uploads/avatars/${userFiles[0]}`;
+                    }
+                }
+            } catch (e) {
+                console.error("Smart Fallback Error:", e);
+            }
         }
 
         res.json({
@@ -25,10 +49,10 @@ exports.getProfile = async (req, res) => {
             gender: user.gender || '',
             address: user.address || '',
             bio: user.bio || '',
-            avatar: user.avatar_url || null,
-            notificationEmail: Boolean(user.notification_email),
-            notificationLearning: Boolean(user.notification_learning),
-            isProfilePrivate: Boolean(user.is_profile_private),
+            avatar: currentAvatar || null,
+            notificationEmail: user.notification_email ? true : false,
+            notificationLearning: user.notification_learning ? true : false,
+            isProfilePrivate: user.is_profile_private ? true : false,
             created_at: user.created_at,
         });
     } catch (error) {
@@ -61,7 +85,7 @@ exports.updateProfile = async (req, res) => {
         };
 
         Object.keys(fieldMap).forEach(feField => {
-            if (req.body[feField] !== undefined) {
+            if (req.body[feField] !== undefined && user[fieldMap[feField]] !== undefined) {
                 user[fieldMap[feField]] = req.body[feField];
             }
         });
@@ -105,25 +129,37 @@ exports.uploadAvatar = async (req, res) => {
             return res.status(400).json({ message: "Chưa chọn ảnh đại diện." });
         }
 
-        user.avatar_url = `/uploads/avatars/${req.file.filename}`;
-        await user.save();
+        // Chỉ lưu nếu cột tồn tại trong Model (hiện tại tôi đã tạm gỡ để tránh crash, nên tôi sẽ dùng raw query ở đây để cứu vãn)
+        await sequelize.query(
+            "UPDATE users SET avatar_url = :avatarPath WHERE id = :userId",
+            {
+                replacements: { avatarPath: `/uploads/avatars/${req.file.filename}`, userId },
+                type: QueryTypes.UPDATE
+            }
+        );
+
+        // Fetch lại data sạch
+        const [updatedUser] = await sequelize.query(
+            "SELECT * FROM users WHERE id = :userId",
+            { replacements: { userId }, type: QueryTypes.SELECT }
+        );
 
         res.json({
-            id: user.id,
-            name: user.name,
-            username: user.username || user.name,
-            email: user.email,
-            role_id: user.role_id,
-            phone: user.phone || '',
-            birthDate: user.birth_date || '',
-            gender: user.gender || '',
-            address: user.address || '',
-            bio: user.bio || '',
-            avatar: user.avatar_url,
-            notificationEmail: Boolean(user.notification_email),
-            notificationLearning: Boolean(user.notification_learning),
-            isProfilePrivate: Boolean(user.is_profile_private),
-            created_at: user.created_at,
+            id: updatedUser.id,
+            name: updatedUser.name,
+            username: updatedUser.username || updatedUser.name,
+            email: updatedUser.email,
+            role_id: updatedUser.role_id,
+            phone: updatedUser.phone || '',
+            birthDate: updatedUser.birth_date || '',
+            gender: updatedUser.gender || '',
+            address: updatedUser.address || '',
+            bio: updatedUser.bio || '',
+            avatar: updatedUser.avatar_url || null,
+            notificationEmail: updatedUser.notification_email ? true : false,
+            notificationLearning: updatedUser.notification_learning ? true : false,
+            isProfilePrivate: updatedUser.is_profile_private ? true : false,
+            created_at: updatedUser.created_at,
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);

@@ -8,6 +8,8 @@ const eduRoutes = require('./routes/eduRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const materialRoutes = require('./routes/materialRoutes');
+const myLessonRoutes = require('./routes/myLessonRoutes');
 const path = require('path');
 
 require('dotenv').config();
@@ -17,7 +19,7 @@ const { connectDB } = require('./config/database');
 const app = express();
 
 // Middleware
-app.use(helmet()); // Bảo mật header
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
 app.use(cors()); // Cho phép FE truy cập
 app.use(morgan('dev')); // Log request ra console
 app.use(express.json()); // Đọc dữ liệu JSON từ request body
@@ -27,6 +29,8 @@ app.use('/api/edu', eduRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/materials', materialRoutes);
+app.use('/my-lessons', myLessonRoutes);
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

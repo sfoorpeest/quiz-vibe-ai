@@ -6,7 +6,7 @@ const axios = require('axios');
 const generateContent = async (prompt, fileData = null) => {
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-        
+
         let parts = [{ text: prompt }];
         if (fileData && fileData.buffer && fileData.mimeType) {
             parts.push({
@@ -41,7 +41,7 @@ const generateContent = async (prompt, fileData = null) => {
             const topic = matchTopic[1];
             return `## 1. Mở đầu về ${topic}\n\nHôm nay chúng ta sẽ tìm hiểu về ${topic}. Đây là một khái niệm cực kỳ quan trọng đòi hỏi bạn phải nắm vững nền tảng gốc rễ để áp dụng vào thực tế.\n\n## 2. Các điểm cốt lõi của ${topic}\n\n- Bản chất vật lý / kỹ thuật nền tảng.\n- Những trường hợp sử dụng cơ bản.\n- So sánh ưu nhược điểm so với các hệ thống hoặc khái niệm tương đương.\n\n## 3. Tổng kết bài giảng\n\nNắm được lý thuyết của ${topic} sẽ giúp bạn có lợi thế lớn khi bắt tay vào triển khai. Hãy giữ vững tinh thần tự học thật tốt (Lưu ý: API Gemini hiện tại đang quá tải hoặc giới hạn đọc nội dung file cục bộ, vì vậy đây là phần phân tích giả lập từ tiêu đề file).`;
         }
-        
+
         // Nếu chỉ hỏi câu hỏi bình thường
         if (prompt.match(/\b(ai|trí tuệ nhân tạo)\b/i)) {
             return "Trí tuệ nhân tạo (AI) là lĩnh vực máy tính mô phỏng trí thông minh con người. Trong bài học này, chúng ta tập trung vào Machine Learning và Deep Learning - hai trụ cột giúp máy tính tự học hỏi.";
@@ -69,9 +69,9 @@ const generateQuizFromAI = async (topic, limit = 5) => {
     try {
         const text = await generateContent(prompt);
         // Làm sạch dữ liệu nếu AI lỡ tay thêm markdown hoặc text thừa
-        const jsonMatch = text.match(/\[.*\]/s); 
+        const jsonMatch = text.match(/\[.*\]/s);
         if (!jsonMatch) throw new Error("AI không trả về định dạng mảng JSON mong muốn.");
-        
+
         return JSON.parse(jsonMatch[0]);
     } catch (error) {
         console.error("Quiz Parse Error or AI Error:", error.message);
