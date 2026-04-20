@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, BrainCircuit, MessageSquare, FileText,
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
   ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square,
-  Video, Download
+  Video, Download, RotateCcw
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -14,6 +14,17 @@ import ReactMarkdown from 'react-markdown';
 export default function LearningView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Đọc dữ liệu ôn lại từ QuizPage (nếu có), sau đó fallback localStorage
+  const locationState = location.state || {};
+  const storedRaw = (() => {
+    try { return JSON.parse(localStorage.getItem(`quiz_review_${id}`) || 'null'); } catch { return null; }
+  })();
+  const resolvedState = (locationState.fullReviewData?.length > 0 ? locationState : storedRaw) || {};
+  const wrongAnswers = resolvedState.wrongAnswers || [];
+  const fullReviewData = resolvedState.fullReviewData || [];
+  const retryTopic = resolvedState.topic || locationState.topic || '';
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'summary'
   const [chatMessage, setChatMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,9 +36,14 @@ export default function LearningView() {
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
   const [fontSize, setFontSize] = useState(18);
   const [volume, setVolume] = useState(1);
+  const [manualHighlightedSections, setManualHighlightedSections] = useState([]);
+  const [selectedReviewKeys, setSelectedReviewKeys] = useState([]);
+  const [highlightNotice, setHighlightNotice] = useState('');
+  const [isReviewVisible, setIsReviewVisible] = useState(true);
 
   // Refs
   const volumeRef = useRef(1);
+  const lessonScrollRef = useRef(null);
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -123,6 +139,110 @@ export default function LearningView() {
       </div>
     );
   }
+
+  const validSectionIds = new Set((material.toc || []).map((item) => item.id));
+  const reviewItems = (fullReviewData.length > 0
+    ? fullReviewData
+    : wrongAnswers.map((item, idx) => ({ ...item, isCorrect: false, questionId: item.questionId || `wrong-${idx}` }))
+  ).map((item, idx) => ({
+    ...item,
+    _reviewKey: `${item.questionId || idx}-${item.contentReference || 'no-ref'}-${idx}`
+  }));
+
+  const sectionChunks = material.content.split(/(?=## )/g);
+  const sectionMeta = [];
+  let sectionCounter = 0;
+  sectionChunks.forEach((part) => {
+    if (!part.trim().startsWith('## ')) return;
+    sectionCounter += 1;
+    sectionMeta.push({
+      id: `sec-${sectionCounter}`,
+      rawText: part
+    });
+  });
+
+  const normalizeText = (text = '') => text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const extractKeywords = (question = '') => {
+    const stopWords = new Set([
+      'cau', 'hoi', 'la', 'nao', 'trong', 'voi', 'cua', 'va', 'cho', 'nhung',
+      'duoc', 'tu', 'mot', 'cac', 'phan', 'noi', 'dung', 'hay', 've', 'tai',
+      'khi', 'sao', 'nhu', 'the', 'gi', 'khong', 'co', 'de', 'day', 'nay'
+    ]);
+    const words = normalizeText(question)
+      .split(' ')
+      .filter((w) => w.length >= 4 && !stopWords.has(w));
+    return [...new Set(words)].slice(0, 10);
+  };
+
+  const findMatchedSections = (item) => {
+    if (item?.contentReference && validSectionIds.has(item.contentReference)) {
+      return [item.contentReference];
+    }
+
+    const keywords = extractKeywords(item?.question || '');
+    if (!keywords.length) return [];
+
+    const scored = sectionMeta
+      .map((section) => {
+        const sectionText = normalizeText(section.rawText);
+        const score = keywords.reduce((acc, kw) => acc + (sectionText.includes(kw) ? 1 : 0), 0);
+        return { id: section.id, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    if (!scored.length) return [];
+    const topScore = scored[0].score;
+    return scored
+      .filter((entry) => entry.score >= Math.max(1, topScore - 1))
+      .slice(0, 4)
+      .map((entry) => entry.id);
+  };
+
+  const scrollToSection = (sectionId) => {
+    const container = lessonScrollRef.current;
+    const target = document.getElementById(sectionId);
+    if (!container || !target) return;
+    const headerOffset = 96;
+    const targetTop = Math.max(0, target.offsetTop - headerOffset);
+    container.scrollTo({ top: targetTop, behavior: 'smooth' });
+  };
+
+  const handleReviewClick = (item) => {
+    const matchedSections = findMatchedSections(item);
+    setSelectedReviewKeys((prev) => (prev.includes(item._reviewKey) ? prev : [...prev, item._reviewKey]));
+
+    if (!matchedSections.length) {
+      setHighlightNotice('Nội dung này không có trong bài, hãy tham khảo phần giải thích bên dưới');
+      if (lessonScrollRef.current) {
+        lessonScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    setHighlightNotice('');
+    setManualHighlightedSections((prev) => [...new Set([...prev, ...matchedSections])]);
+    scrollToSection(matchedSections[0]);
+  };
+
+  const clearHighlights = () => {
+    setManualHighlightedSections([]);
+    setSelectedReviewKeys([]);
+    setHighlightNotice('');
+  };
+
+  const clearReviewSection = () => {
+    localStorage.removeItem(`quiz_review_${id}`);
+    setIsReviewVisible(false);
+    clearHighlights();
+  };
 
   // --- Chia văn bản thành các đoạn ngắn cho Google TTS (tối đa ~190 ký tự) ---
   const splitTextForGoogleTTS = (text) => {
@@ -549,7 +669,29 @@ export default function LearningView() {
             )}
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth print-content" onScroll={handleScroll}>
+            <div ref={lessonScrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth print-content" onScroll={handleScroll}>
+
+              {/* RETRY BANNER: hiện khi quay lại từ quiz thất bại */}
+              {isReviewVisible && wrongAnswers.length > 0 && (
+                <div className="max-w-[900px] mx-auto mb-8 p-4 bg-amber-500/10 border border-amber-400/30 rounded-2xl flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/20 rounded-xl shrink-0">
+                      <RotateCcw className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-amber-300">Bạn cần ôn lại bài học này</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{wrongAnswers.length} câu trả lời sai — nhấn vào câu hỏi bên dưới để highlight nội dung</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/quiz/start', { state: { topic: retryTopic || material?.title, materialId: id } })}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 rounded-xl text-amber-300 text-sm font-bold transition-all whitespace-nowrap shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Làm lại bài kiểm tra
+                  </button>
+                </div>
+              )}
+
               <div 
                 ref={contentRef}
                 className="prose prose-invert max-w-[900px] mx-auto text-slate-300 leading-[1.9] font-normal pb-20 prose-headings:mt-20 prose-headings:mb-8 prose-p:my-10 prose-p:text-[1em] prose-li:my-6 prose-li:text-[1em] prose-h2:text-[1.8em] prose-h2:border-b prose-h2:pb-4 prose-h2:border-slate-800 prose-h3:text-[1.4em] prose-strong:text-white prose-strong:font-extrabold prose-ul:list-disc prose-ol:list-decimal prose-marker:text-blue-400 prose-marker:font-black"
@@ -564,13 +706,73 @@ export default function LearningView() {
                   return parts.map((part, pIdx) => {
                     const isHeader = part.trim().startsWith('## ');
                     const id = isHeader ? `sec-${++secIdx}` : null;
+                    const isHighlighted = id && manualHighlightedSections.includes(id);
                     return (
-                      <div key={pIdx} id={id} className={isHeader ? "mt-10 scroll-mt-6" : ""}>
+                      <div key={pIdx} id={id} className={`${isHeader ? "mt-10 scroll-mt-6" : ""} ${isHighlighted ? "rounded-xl border-2 border-amber-400/40 bg-amber-500/5 px-4 py-2 not-prose prose-headings:mt-4" : ""}`}>
                         <ReactMarkdown>{part}</ReactMarkdown>
                       </div>
                     );
                   });
                 })()}
+
+                {isReviewVisible && reviewItems.length > 0 && (
+                  <section id="review-section" className="mt-10 rounded-2xl border border-blue-400/30 bg-blue-500/5 p-5 not-prose">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+                      <div>
+                        <h2 className="text-2xl font-black text-blue-200">Mục ôn tập</h2>
+                        <p className="text-sm text-slate-300 mt-1">Nhấn vào từng câu hỏi để highlight nội dung liên quan trong bài học.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={clearHighlights}
+                          className="px-3 py-2 rounded-xl border border-slate-600 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-sm font-bold transition-colors"
+                        >
+                          Xóa highlight
+                        </button>
+                        <button
+                          onClick={clearReviewSection}
+                          className="px-3 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-200 text-sm font-bold transition-colors"
+                        >
+                          Xóa mục ôn tập
+                        </button>
+                      </div>
+                    </div>
+
+                    {highlightNotice && (
+                      <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm font-semibold text-amber-200">
+                        {highlightNotice}
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      {reviewItems.map((item, idx) => {
+                        const isSelected = selectedReviewKeys.includes(item._reviewKey);
+                        return (
+                          <button
+                            key={item._reviewKey}
+                            type="button"
+                            onClick={() => handleReviewClick(item)}
+                            className={`w-full text-left rounded-xl border p-4 transition-all ${isSelected ? 'border-blue-400/60 bg-blue-500/10' : 'border-slate-700/70 bg-slate-900/40 hover:border-blue-400/40 hover:bg-blue-500/5'}`}
+                          >
+                            <p className={`text-xs uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5 ${item.isCorrect ? 'text-emerald-400' : 'text-rose-300/90'}`}>
+                              {item.isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                              {item.isCorrect ? 'Bạn đã trả lời đúng' : 'Bạn đã trả lời sai'}
+                            </p>
+                            <p className="text-sm text-slate-200 leading-relaxed mb-2">
+                              <span className="font-bold text-slate-100">Câu hỏi: </span>{item.question || `Câu hỏi #${item.questionId || idx + 1}`}
+                            </p>
+                            <p className="text-sm text-emerald-300 leading-relaxed mb-2">
+                              <span className="font-bold text-emerald-200">Câu trả lời đúng: </span>{item.correctAnswer || 'Chưa có dữ liệu đáp án đúng'}
+                            </p>
+                            <p className="text-sm text-slate-300 leading-relaxed">
+                              <span className="font-bold text-slate-100">Giải thích: </span>{item.explanation || 'Chưa có giải thích cho câu hỏi này.'}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
               </div>
 
               {/* Bài kế tiếp / Trước đó */}

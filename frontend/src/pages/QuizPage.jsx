@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Clock, CheckCircle2, XCircle, ArrowRight, Home,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../api/axiosClient';
+import Button from '../components/Button';
 
 // Helper: Web Audio API mini synth cho âm thanh hiệu ứng (không cần tải file ngoài)
 const playSound = (type) => {
@@ -118,6 +119,14 @@ export default function QuizPage() {
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
 
+  // Theo dõi đáp án người dùng chọn (dùng ref để tránh vấn đề closure)
+  const answersRef = useRef([]);
+  const [retryResult, setRetryResult] = useState(null);
+  const [isCheckingAnswers, setIsCheckingAnswers] = useState(false);
+  const [showRetryPrompt, setShowRetryPrompt] = useState(false);
+
+  const materialId = location.state?.materialId;
+
   // Chỉnh thời gian mỗi câu
   const TIME_PER_QUESTION = 30;
   const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
@@ -195,6 +204,9 @@ export default function QuizPage() {
   };
 
   const handleNext = () => {
+    // Ghi lại đáp án của câu hiện tại (null nếu hết giờ không chọn)
+    answersRef.current = [...answersRef.current, selectedOption];
+
     if (currentIndex < questions.length - 1) {
       // Sang câu kế tiếp
       setCurrentIndex(prev => prev + 1);
@@ -207,24 +219,78 @@ export default function QuizPage() {
     }
   };
 
-  // Tự động lưu kết quả khi hoàn thành
+  // Kiểm tra đáp án và xử lý retry khi hoàn thành
   useEffect(() => {
-    const submitResult = async () => {
-      if (isFinished && score > 0) {
-        try {
-          await api.post('/api/quiz/submit', {
-            quizId: quizId,
-            score: score,
-            total: questions.length
-          });
-          console.log("Kết quả đã được lưu!");
-        } catch (error) {
-          console.error("Lỗi khi lưu kết quả:", error);
+    if (!isFinished) return;
+    const checkAndSubmit = async () => {
+      setIsCheckingAnswers(true);
+      try {
+        const res = await api.post('/api/quiz/check-answers', {
+          quizId,
+          selectedAnswers: answersRef.current
+        });
+
+        // Xây dựng danh sách đầy đủ tất cả câu (đúng + sai) để lưu và hiển thị
+        const fullReviewData = questions.map((q, idx) => {
+          const parts = q.content ? q.content.split('\n\n[EXPLAIN]') : ['', ''];
+          const afterExplain = parts[1] || '';
+          const refSplit = afterExplain.split('\n\n[REF]');
+          const explanation = refSplit[0].trim();
+          const contentReference = (refSplit[1] || '').trim();
+          const userAnswer = answersRef.current[idx] || null;
+          const isCorrect = userAnswer === q.correct_answer;
+          return {
+            questionId: q.id,
+            question: parts[0].trim(),
+            correctAnswer: q.correct_answer,
+            userAnswer,
+            explanation,
+            contentReference,
+            isCorrect,
+          };
+        });
+
+        const wrongAnswers = fullReviewData.filter(r => !r.isCorrect);
+        const result = { ...res.data, wrongAnswers, fullReviewData };
+        setRetryResult(result);
+
+        // Lưu vào localStorage để LearningView tải lại khi user quay về
+        if (materialId) {
+          localStorage.setItem(
+            `quiz_review_${materialId}`,
+            JSON.stringify({ wrongAnswers, fullReviewData, topic })
+          );
         }
+
+        if (result.retryRequired) {
+          setShowRetryPrompt(true);
+        }
+      } catch (error) {
+        console.error('Lỗi kiểm tra đáp án:', error);
+        // Fallback dùng điểm cục bộ
+        const fallbackReview = questions.map((q, idx) => {
+          const parts = q.content ? q.content.split('\n\n[EXPLAIN]') : ['', ''];
+          const afterExplain = parts[1] || '';
+          const refSplit = afterExplain.split('\n\n[REF]');
+          const explanation = refSplit[0].trim();
+          const contentReference = (refSplit[1] || '').trim();
+          const userAnswer = answersRef.current[idx] || null;
+          const isCorrect = userAnswer === q.correct_answer;
+          return { questionId: q.id, question: parts[0].trim(), correctAnswer: q.correct_answer, userAnswer, explanation, contentReference, isCorrect };
+        });
+        const wrongAnswers = fallbackReview.filter(r => !r.isCorrect);
+        setRetryResult({ retryRequired: score < 3, score, wrongAnswers, fullReviewData: fallbackReview });
+        if (materialId) {
+          localStorage.setItem(`quiz_review_${materialId}`, JSON.stringify({ wrongAnswers, fullReviewData: fallbackReview, topic }));
+        }
+        if (score < 3) setShowRetryPrompt(true);
+      } finally {
+        setIsCheckingAnswers(false);
       }
     };
-    submitResult();
-  }, [isFinished, score, quizId, questions.length]);
+    checkAndSubmit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
 
   // -------------------------------------------------------------------------------- //
   //  VIEW 1: SETUP (Nếu chưa có dữ liệu)
@@ -331,12 +397,60 @@ export default function QuizPage() {
     // Tính phần trăm
     const percentage = Math.round((score / (questions.length || 5)) * 100);
     const totalCount = questions.length || 5;
-    const isBad = score < 3; // Sai 3 câu trên 5 (tức là chỉ đúng 2 trở xuống)
-    const materialId = location.state?.materialId;
+    const isBad = retryResult?.retryRequired ?? (score < 3);
+
+    if (isCheckingAnswers) {
+      return (
+        <div className="min-h-screen bg-[#8C9EFF] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 text-white">
+            <Loader2 className="w-10 h-10 animate-spin" />
+            <p className="font-bold text-lg">Đang chấm điểm...</p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-screen bg-[#8C9EFF] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-slate-50">
         <BlobStyles />
+
+        {isBad && showRetryPrompt && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-6">
+            <div className="w-full max-w-md rounded-3xl border border-white/30 bg-white/90 p-7 text-slate-900 shadow-[0_30px_70px_rgba(0,0,0,0.2)]">
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4">
+                <div className="shrink-0 rounded-lg bg-amber-500/20 p-1.5">
+                  <RotateCcw className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black tracking-tight text-amber-900">Bạn cần ôn lại bài học này</h2>
+                  <p className="text-sm font-semibold text-amber-900/80 mt-1">
+                    Hãy ôn lại các phần kiến thức được đánh dấu trước khi làm lại bài kiểm tra.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowRetryPrompt(false)}
+                  variant="secondary"
+                  fullWidth
+                  className="!rounded-xl !py-3 !text-sm !font-bold !bg-slate-100 !text-slate-700 !border !border-slate-300 hover:!bg-slate-50"
+                >
+                  Ở lại trang này
+                </Button>
+                <Button
+                  onClick={() => materialId
+                    ? navigate(`/learn/${materialId}`, { state: { wrongAnswers: retryResult?.wrongAnswers || [], fullReviewData: retryResult?.fullReviewData || [], topic } })
+                    : navigate(-1)}
+                  variant="primary"
+                  fullWidth
+                  className="!rounded-xl !py-3 !text-sm !font-black"
+                >
+                  Ôn lại bài học
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Animated Background Blobs */}
         <div className="absolute top-[10%] left-[20%] w-96 h-96 bg-[#9394E6] rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob pointer-events-none"></div>
@@ -367,7 +481,7 @@ export default function QuizPage() {
         </div>
 
         {/* Background Win/Lose Thêm Phụ */}
-        <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 mix-blend-color-burn opacity-30 ${isBad ? 'bg-rose-300' : 'bg-emerald-300'}`}></div>
+        <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 mix-blend-color-burn opacity-30 ${isBad ? 'bg-amber-300' : 'bg-emerald-300'}`}></div>
 
         <div className="relative z-10 w-full max-w-md bg-white/50 backdrop-blur-3xl border-2 border-white/60 p-10 rounded-[40px] shadow-[0_30px_70px_rgba(0,0,0,0.08)] text-center animate-in zoom-in-95 slide-in-from-bottom-5 duration-700">
 
@@ -375,36 +489,51 @@ export default function QuizPage() {
 
           <div className="flex justify-center my-6 relative">
             {/* Vòng sáng đằng sau điểm */}
-            <div className={`absolute inset-0 blur-3xl opacity-20 rounded-full ${!isBad ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+            <div className={`absolute inset-0 blur-3xl opacity-20 rounded-full ${!isBad ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
 
-            <div className={`relative z-10 text-5xl font-black py-5 px-10 rounded-[35px] border-4 inline-block shadow-2xl ${!isBad ? 'text-emerald-600 border-emerald-500/20 bg-emerald-50/50' : 'text-rose-600 border-rose-500/20 bg-rose-50/50'}`}>
+            <div className={`relative z-10 text-5xl font-black py-5 px-10 rounded-[35px] border-4 inline-block shadow-2xl ${!isBad ? 'text-emerald-700 border-emerald-500/25 bg-emerald-50/60' : 'text-amber-700 border-amber-500/25 bg-amber-50/60'}`}>
               {score}/{totalCount}
             </div>
           </div>
 
-          <p className="text-slate-600 font-bold text-xl mb-10 leading-relaxed px-4">
-            {isBad 
-              ? 'Oops! Bạn cần quay lại bài giảng để nắm chắc kiến thức hơn.' 
-              : percentage >= 90 ? 'Tuyệt đỉnh! Bạn là một bậc thầy thực thụ.' : 'Làm tốt lắm, hãy tiếp tục phát huy nhé!'}
-          </p>
+          <div className={`mb-10 rounded-2xl border px-5 py-4 text-left ${isBad ? 'bg-amber-500/10 border-amber-400/40 text-amber-900' : 'bg-emerald-500/10 border-emerald-400/40 text-emerald-900'}`}>
+            <div className="flex items-start gap-3">
+              <div className={`mt-0.5 rounded-lg p-1.5 ${isBad ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
+                {isBad ? <RotateCcw className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+              </div>
+              <p className="font-bold text-base leading-relaxed">
+                {isBad
+                  ? 'Oops! Bạn cần quay lại bài giảng để nắm chắc kiến thức hơn.'
+                  : percentage >= 90 ? 'Tuyệt đỉnh! Bạn là một bậc thầy thực thụ.' : 'Làm tốt lắm, hãy tiếp tục phát huy nhé!'}
+              </p>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-4">
             {isBad ? (
-              <button
-                onClick={() => materialId ? navigate(`/learning/${materialId}`) : navigate(-1)}
-                className="w-full px-8 py-4 bg-linear-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white font-black rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-3 text-lg"
+              <Button
+                onClick={() => materialId
+                  ? navigate(`/learn/${materialId}`, { state: { wrongAnswers: retryResult?.wrongAnswers || [], fullReviewData: retryResult?.fullReviewData || [], topic } })
+                  : navigate(-1)}
+                fullWidth
+                size="lg"
+                variant="primary"
+                className="text-lg shadow-xl hover:-translate-y-1 active:translate-y-0"
               >
-                <BookOpen className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Quay về học tiếp
-              </button>
+                <BookOpen className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Ôn lại bài học
+              </Button>
             ) : (
               <>
-                <button
+                <Button
                   onClick={() => navigate('/')}
-                  className="w-full px-8 py-4 bg-linear-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-black rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 flex items-center justify-center gap-3 text-lg"
+                  fullWidth
+                  size="lg"
+                  variant="primary"
+                  className="text-lg bg-linear-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl hover:-translate-y-1 active:translate-y-0"
                 >
                   <Home className="w-6 h-6 border-2 border-white/20 rounded-lg p-0.5" /> Quay về trang chủ
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     setCurrentIndex(0);
                     setScore(0);
@@ -413,10 +542,13 @@ export default function QuizPage() {
                     setTimeLeft(TIME_PER_QUESTION);
                     setIsFinished(false);
                   }}
-                  className="w-full px-8 py-4 bg-slate-100 hover:bg-white text-slate-700 font-black rounded-2xl transition-all shadow-md hover:shadow-lg border-2 border-slate-200/50 flex items-center justify-center gap-3 text-lg hover:-translate-y-1 active:translate-y-0 active:scale-95"
+                  fullWidth
+                  size="lg"
+                  variant="secondary"
+                  className="text-lg !bg-slate-100 !text-slate-700 !border-2 !border-slate-200/50 hover:!bg-white shadow-md hover:shadow-lg hover:-translate-y-1 active:translate-y-0"
                 >
                   <RotateCcw className="w-6 h-6 border-2 border-slate-300/50 rounded-lg p-0.5" /> Làm lại bài
-                </button>
+                </Button>
               </>
             )}
           </div>
