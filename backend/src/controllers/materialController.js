@@ -2,7 +2,7 @@ const materialService = require('../services/materialService');
 
 exports.getMaterials = async (req, res) => {
     try {
-        const { search = '', type = '', page = '1', limit = '10' } = req.query;
+        const { search = '', type = '', subject = '', grade = '', page = '1', limit = '10' } = req.query;
         const normalizedType = String(type || '').toLowerCase().trim();
 
         if (normalizedType && !materialService.ALLOWED_TYPES.has(normalizedType)) {
@@ -12,6 +12,8 @@ exports.getMaterials = async (req, res) => {
         const result = await materialService.listMaterials({
             search,
             type: normalizedType,
+            subject,
+            grade,
             page,
             limit
         });
@@ -58,7 +60,16 @@ exports.getMyLessons = async (req, res) => {
         const userId = req.user.id;
         const lessons = await materialService.getMyLessons(userId);
 
-        return res.status(200).json({ data: lessons });
+        // Synchronize with Home page logic: count all materials the user has interacted with (progress > 0)
+        const totalLearned = lessons.filter(l => l.progress > 0).length;
+
+        return res.status(200).json({ 
+            data: lessons,
+            stats: {
+                totalLessons: totalLearned,
+                totalHours: 45 // Progressing tracking for hours still pending DB update
+            }
+        });
     } catch (error) {
         console.error('Get my lessons error:', error);
         return res.status(500).json({ message: 'Failed to get my lessons' });

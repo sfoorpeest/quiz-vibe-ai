@@ -37,6 +37,7 @@ export default function MyLessons() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [lessons, setLessons] = useState([]);
+  const [stats, setStats] = useState({ totalLessons: 0, totalHours: 45 });
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
@@ -47,14 +48,17 @@ export default function MyLessons() {
         const apiLessons = (res.data || []).map(m => ({
           id: m.id,
           title: m.title || 'Bài học',
-          author: 'Hệ thống / Giảng viên', // Temporary mock as DB lacks creator relation via user_materials currently
+          author: 'Hệ thống / Giảng viên', 
           authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('HT')}&background=0D8ABC&color=fff`,
-          progress: Math.floor(Math.random() * 100), // Random mock
-          status: Math.random() > 0.5 ? 'learning' : 'done', // Random mock
+          progress: m.progress || 0,
+          status: m.progress >= 100 ? 'done' : m.progress > 0 ? 'learning' : 'new',
           isFavorite: false,
           updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
         }));
         setLessons(apiLessons);
+        if (res.stats) {
+          setStats(res.stats);
+        }
       } catch (err) {
         console.error("Failed to fetch my lessons:", err);
       } finally {
@@ -107,14 +111,14 @@ export default function MyLessons() {
             <div className="flex items-center gap-3 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-5 py-3 shadow-lg">
               <BookOpen className="w-5 h-5 text-cyan-400" />
               <div>
-                <p className="text-2xl font-extrabold text-white leading-none">{MOCK_STATS.totalLessons}</p>
+                <p className="text-2xl font-extrabold text-white leading-none">{stats.totalLessons}</p>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Bài đã học</p>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-5 py-3 shadow-lg">
               <Clock className="w-5 h-5 text-amber-400" />
               <div>
-                <p className="text-2xl font-extrabold text-white leading-none">{MOCK_STATS.totalHours}h</p>
+                <p className="text-2xl font-extrabold text-white leading-none">{stats.totalHours}h</p>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Giờ học</p>
               </div>
             </div>

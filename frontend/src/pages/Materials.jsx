@@ -50,6 +50,8 @@ export default function Materials() {
         const params = {};
         if (searchQuery) params.search = searchQuery;
         if (selectedType !== 'Tất cả') params.type = selectedType.toLowerCase();
+        if (selectedSubject !== 'Tất cả') params.subject = selectedSubject;
+        if (selectedGrade !== 'Tất cả') params.grade = selectedGrade;
         
         const res = await materialService.getMaterials(params);
         setMaterials(res.data || []);
