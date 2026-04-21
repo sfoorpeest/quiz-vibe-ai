@@ -330,19 +330,50 @@ exports.extractFileContent = async (req, res) => {
             return res.status(400).json({ message: 'Vui lòng gửi file hoặc URL.' });
         }
 
-        // Bước 1: Sinh bản nháp (Summary & Tags)
-        const draftPrompt = `Bạn là trợ lý giáo dục AI. Hãy viết tóm tắt ngắn (3 câu) và 4 tags cho nội dung này. Trả về JSON {"summary": "...", "tags": ["Tag1", ...]} không kèm markdown.`;
+        // Bước 1: Sinh bản nháp (Summary & Tags) dựa trên nội dung thực tế
+        const contentSnippet = extractedText.substring(0, 4000);
+        const draftPrompt = `Bạn là trợ lý giáo dục chuyên nghiệp. Dựa vào nội dung tài liệu sau, hãy:
+        1. Viết tóm tắt ngắn gọn (3 câu) bao quát ý chính.
+        2. Tự động xác định và trích xuất đúng 4 từ khóa (tags) quan trọng nhất liên quan đến chủ đề của tài liệu.
+        QUY TẮC BẮT BUỘC cho tags:
+        - Mỗi tag là cụm từ tiếng Việt tự nhiên, có dấu cách, KHÔNG dùng dấu gạch dưới (_), KHÔNG có ký tự # hay ##.
+        - Ví dụ đúng: ["Vật lí 12", "Cảm ứng điện từ", "Dòng điện xoay chiều", "Lớp 12"]
+        - Ví dụ SAI: ["##Vật_lí_12", "#Cảm_ứng", "vat_ly"]
+        Trả về kết quả duy nhất dưới định dạng JSON: {"summary": "...", "tags": ["...", "...", "...", "..."]} và tuyệt đối không kèm theo bất kỳ văn bản nào khác hoặc markdown.
+        
+        Nội dung tài liệu:
+        ${contentSnippet}`;
+
         let aiDraftText = await aiService.generateContent(draftPrompt, fileDataForGemini);
         aiDraftText = aiDraftText.replace(/```json\n|\n```|```/g, '').trim();
         
         let parsedDraft;
-        try { parsedDraft = JSON.parse(aiDraftText); } catch {
-            parsedDraft = { summary: "Tài liệu học thuật quan trọng.", tags: ["Học liệu", "Cơ bản"] };
+        try { 
+            parsedDraft = JSON.parse(aiDraftText);
+            // Làm sạch tags: loại bỏ ##, # ở đầu và thay _ bằng dấu cách
+            if (Array.isArray(parsedDraft.tags)) {
+                parsedDraft.tags = parsedDraft.tags.map(tag => 
+                    tag.replace(/^#+\s*/, '').replace(/_/g, ' ').trim()
+                );
+            }
+        } catch (e) {
+            console.error("JSON Parse Error for Draft:", aiDraftText);
+            parsedDraft = { 
+                summary: "Tài liệu học thuật quan trọng. (AI đang xử lý nội dung chi tiết bên dưới)", 
+                tags: ["Học liệu", "Cơ bản"] 
+            };
         }
 
-        // Bước 2: Sinh bài giảng Markdown chi tiết (Dùng PDF Native nếu có)
-        const lessonPrompt = `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên tài liệu sau. Hãy tập trung vào các kiến thức cốt lõi.`;
-        const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini || extractedText.substring(0, 5000));
+        // Bước 2: Sinh bài giảng Markdown chi tiết
+        // QUAN TRỌNG: Nhúng nội dung trực tiếp vào prompt thay vì truyền qua tham số fileData
+        // vì fileData chỉ hỗ trợ object {buffer, mimeType} (PDF binary), không hỗ trợ chuỗi text thuần
+        const lessonPrompt = fileDataForGemini
+            ? `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên tài liệu đính kèm. Hãy tập trung vào các kiến thức cốt lõi.`
+            : `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên nội dung tài liệu sau. Hãy tập trung vào các kiến thức cốt lõi.
+            
+            Nội dung tài liệu:
+            ${extractedText.substring(0, 5000)}`;
+        const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 
         return res.status(200).json({
             status: 'success',

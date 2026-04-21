@@ -26,7 +26,7 @@ exports.createAiQuiz = async (req, res) => {
         const questionsToSave = questionsFromAi.map(q => ({
             quiz_id: newQuiz.id,
             // Nén lời giải vào content để không cần sửa đổi bảng DB (Wordaround)
-            content: q.question + (q.explanation ? `\n\n[EXPLAIN]${q.explanation}` : ""),
+            content: q.question + (q.explanation ? `\n\n[EXPLAIN]${q.explanation}` : "") + (q.contentReference ? `\n\n[REF]${q.contentReference}` : ""),
             options: q.options,  // Mảng JSON các lựa chọn
             correct_answer: q.correct_answer // Đáp án đúng
         }));
@@ -101,7 +101,73 @@ exports.saveQuizResult = async (req, res) => {
 };
 
 /**
- * 3. Lấy bảng xếp hạng (Leaderboard)
+ * 3. Kiểm tra đáp án - quyết định cần ôn lại hay không
+ */
+exports.checkAnswers = async (req, res) => {
+    try {
+        const { quizId, selectedAnswers } = req.body;
+        const userId = req.user.id;
+
+        if (!Array.isArray(selectedAnswers) || selectedAnswers.length === 0) {
+            return res.status(400).json({ message: 'selectedAnswers là bắt buộc' });
+        }
+
+        // Lấy các câu hỏi theo thứ tự tạo
+        const questions = await sequelize.query(
+            'SELECT * FROM questions WHERE quiz_id = ? ORDER BY id ASC',
+            { replacements: [quizId], type: QueryTypes.SELECT }
+        );
+
+        const wrongAnswers = [];
+        let correctCount = 0;
+
+        selectedAnswers.forEach((selected, idx) => {
+            const question = questions[idx];
+            if (!question) return;
+
+            // Tách explanation và contentReference từ content
+            const explainSplit = question.content.split('\n\n[EXPLAIN]');
+            const afterExplain = explainSplit[1] || '';
+            const refSplit = afterExplain.split('\n\n[REF]');
+            const explanation = refSplit[0].trim();
+            const contentReference = (refSplit[1] || 'sec-1').trim();
+
+            if (selected && selected === question.correct_answer) {
+                correctCount++;
+            } else {
+                wrongAnswers.push({
+                    questionId: question.id,
+                    correctAnswer: question.correct_answer,
+                    explanation,
+                    contentReference
+                });
+            }
+        });
+
+        // Sai từ 3 câu trở lên → cần ôn lại
+        if (wrongAnswers.length >= 3) {
+            return res.status(200).json({ retryRequired: true, wrongAnswers });
+        }
+
+        // Lưu kết quả khi đạt yêu cầu
+        await sequelize.query(
+            'INSERT INTO results (user_id, quiz_id, score) VALUES (?, ?, ?)',
+            { replacements: [userId, quizId || null, correctCount], type: QueryTypes.INSERT }
+        );
+        await sequelize.query(
+            'INSERT INTO learning_history (user_id, quiz_id, action, progress) VALUES (?, ?, ?, ?)',
+            { replacements: [userId, quizId || null, 'COMPLETED_QUIZ', 100], type: QueryTypes.INSERT }
+        );
+
+        return res.status(200).json({ retryRequired: false, score: correctCount });
+    } catch (error) {
+        console.error('Check Answers Error:', error);
+        return res.status(500).json({ message: 'Lỗi khi kiểm tra đáp án' });
+    }
+};
+
+/**
+ * 4. Lấy bảng xếp hạng (Leaderboard)
  */
 exports.getLeaderboard = async (req, res) => {
     try {
