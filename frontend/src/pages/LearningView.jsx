@@ -38,6 +38,12 @@ export default function LearningView() {
   const googleAudioQueueRef = useRef([]);
   const googleAudioIndexRef = useRef(0);
 
+  const nativeSpeechQueueRef = useRef([]);
+  const nativeSpeechIndexRef = useRef(0);
+  const activeUtteranceRef = useRef(null);
+  const currentCharIndexRef = useRef(0);
+  const volumeTimerRef = useRef(null);
+
   const [chatHistory, setChatHistory] = useState([
     { sender: 'ai', text: 'Chào bạn! Mình là trợ lý AI QuizVibe được hỗ trợ bởi DeepSeek. Bạn có thắc mắc gì về nội dung bài học này không?' }
   ]);
@@ -125,22 +131,23 @@ export default function LearningView() {
   }
 
   // --- Chia văn bản thành các đoạn ngắn cho Google TTS (tối đa ~190 ký tự) ---
-  const splitTextForGoogleTTS = (text) => {
-    const sentences = text.split(/(?<=[.!?。;:\n])\s*/);
+  const splitTextForAggressiveTTS = (text) => {
+    // Tách theo dấu chấm, chấm hỏi, chấm than, xuống dòng, dấu phẩy, chấm phẩy, hai chấm
+    const sentences = text.split(/(?<=[.!?。;:\n,])\s*/);
     const chunks = [];
     let current = '';
     for (const sentence of sentences) {
       if (!sentence.trim()) continue;
-      if ((current + ' ' + sentence).trim().length <= 190) {
+      // Giới hạn chunk nhỏ hơn (~100 ký tự) để thay đổi volume nhanh hơn
+      if ((current + ' ' + sentence).trim().length <= 100) {
         current = (current + ' ' + sentence).trim();
       } else {
         if (current) chunks.push(current);
-        if (sentence.length > 190) {
-          // Câu quá dài → tách theo dấu phẩy hoặc khoẩng trắng
+        if (sentence.length > 100) {
           const words = sentence.split(/\s+/);
           current = '';
           for (const word of words) {
-            if ((current + ' ' + word).trim().length <= 190) {
+            if ((current + ' ' + word).trim().length <= 100) {
               current = (current + ' ' + word).trim();
             } else {
               if (current) chunks.push(current);
@@ -157,6 +164,8 @@ export default function LearningView() {
   };
 
   // --- Phát từng đoạn Google TTS nối tiếp nhau ---
+
+  // --- Phát từng đoạn Google TTS nối tiếp nhau ---
   const playGoogleTTSChunk = async (index) => {
     if (index >= googleAudioQueueRef.current.length) {
       setIsSpeaking(false);
@@ -167,7 +176,6 @@ export default function LearningView() {
     const chunk = googleAudioQueueRef.current[index];
 
     try {
-      // Dùng axiosClient (có JWT token) để gọi proxy
       const response = await api.get('/api/edu/tts', {
         params: { text: chunk, lang: 'vi' },
         responseType: 'blob' 
@@ -179,7 +187,6 @@ export default function LearningView() {
       googleAudioRef.current = audio;
       googleAudioIndexRef.current = index;
 
-      // Chỉnh giọng đọc nhanh hơn một xíu (1.2x)
       audio.playbackRate = 1.2;
       audio.volume = volumeRef.current;
 
@@ -201,6 +208,64 @@ export default function LearningView() {
     }
   };
 
+  // --- Phát từng đoạn Native Speech Synthesis nối tiếp nhau ---
+  const playNativeSpeechChunk = (index, offset = 0) => {
+    if (index >= nativeSpeechQueueRef.current.length) {
+      setIsSpeaking(false);
+      nativeSpeechQueueRef.current = [];
+      activeUtteranceRef.current = null;
+      currentCharIndexRef.current = 0;
+      return;
+    }
+
+    const fullChunk = nativeSpeechQueueRef.current[index];
+    const textToSpeak = fullChunk.slice(offset);
+    
+    // Nếu phần còn lại trống rỗng, chuyển sang chunk tiếp theo
+    if (!textToSpeak.trim()) {
+      currentCharIndexRef.current = 0;
+      playNativeSpeechChunk(index + 1);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    activeUtteranceRef.current = utterance;
+    nativeSpeechIndexRef.current = index;
+
+    const voices = window.speechSynthesis.getVoices();
+    const vnVoice = voices.find(v => v.lang.includes('vi')) || voices.find(v => v.name.includes('Vietnamese'));
+    
+    if (vnVoice) utterance.voice = vnVoice;
+    utterance.lang = 'vi-VN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = volumeRef.current;
+
+    // Cập nhật vị trí đang đọc hiện tại (tính cả offset)
+    utterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        currentCharIndexRef.current = offset + event.charIndex;
+      }
+    };
+
+    utterance.onend = () => {
+      if (activeUtteranceRef.current === utterance) {
+        currentCharIndexRef.current = 0; // Hết chunk này thì reset về 0 cho chunk kế tiếp
+        playNativeSpeechChunk(index + 1);
+      }
+    };
+
+    utterance.onerror = (err) => {
+      if (err.error === 'interrupted') return;
+      console.error('Native TTS chunk error:', err);
+      if (activeUtteranceRef.current === utterance) {
+        playNativeSpeechChunk(index + 1);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
   // --- Dừng tất cả audio ---
   const stopAllAudio = () => {
     window.speechSynthesis.cancel();
@@ -210,6 +275,9 @@ export default function LearningView() {
       googleAudioRef.current = null;
     }
     googleAudioQueueRef.current = [];
+    nativeSpeechQueueRef.current = [];
+    activeUtteranceRef.current = null;
+    currentCharIndexRef.current = 0;
     setIsSpeaking(false);
   };
 
@@ -231,38 +299,31 @@ export default function LearningView() {
 
     if (voiceType === 'female') {
       // ===== GIỌNG NỮ: Dùng Google Translate TTS (Proxy Backend) =====
-      const chunks = splitTextForGoogleTTS(plainText);
+      const chunks = splitTextForAggressiveTTS(plainText); // Dùng chunk nhỏ hơn
       if (chunks.length === 0) return;
       googleAudioQueueRef.current = chunks;
       setIsSpeaking(true);
       playGoogleTTSChunk(0);
     } else {
-      // ===== GIỌNG NAM / HOẠT HÌNH: Dùng speechSynthesis của trình duyệt (Ổn định nhất cho pitching) =====
-      const utterance = new SpeechSynthesisUtterance(plainText);
-      const voices = window.speechSynthesis.getVoices();
+      // ===== GIỌNG NAM: Dùng speechSynthesis với Aggressive Chunking =====
+      const chunks = splitTextForAggressiveTTS(plainText); 
+      if (chunks.length === 0) return;
       
-      // Tìm giọng tiếng Việt
-      const vnVoice = voices.find(v => v.lang.includes('vi')) || voices.find(v => v.name.includes('Vietnamese'));
-      if (vnVoice) utterance.voice = vnVoice;
-      utterance.lang = 'vi-VN';
+      nativeSpeechQueueRef.current = chunks;
+      setIsSpeaking(true);
+      currentCharIndexRef.current = 0;
       
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = volumeRef.current;
-      
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-
-      const speak = () => {
-        setIsSpeaking(true);
-        window.speechSynthesis.speak(utterance);
+      const startSpeaking = () => {
+        playNativeSpeechChunk(0);
       };
 
       if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.addEventListener('voiceschanged', speak, { once: true });
-        setTimeout(speak, 500);
+        window.speechSynthesis.onvoiceschanged = () => {
+          startSpeaking();
+          window.speechSynthesis.onvoiceschanged = null;
+        };
       } else {
-        speak();
+        startSpeaking();
       }
     }
   };
@@ -458,6 +519,10 @@ export default function LearningView() {
                     if (googleAudioRef.current) {
                       googleAudioRef.current.volume = newVol;
                     }
+                    
+                    // Xử lý giọng Nam: Không còn thực hiện cancel và restart ở giữa chừng nữa để tránh ngắt quãng.
+                    // Với cơ chế Aggressive Chunking (chia nhỏ theo dấu phẩy), volume sẽ thay đổi mượt mà 
+                    // ngay sau khi kết thúc 1 cụm từ ngắn (vài giây), không gây lặp chữ hay khựng tiếng.
                   }} 
                   className="w-16 md:w-20 accent-blue-500 h-1.5 bg-slate-600 rounded-full appearance-none outline-none cursor-pointer" 
                 />
