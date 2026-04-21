@@ -44,10 +44,11 @@ const generateQuizFromAI = async (topic, limit = 5) => {
     ---
     YÊU CẦU BẮT BUỘC:
     1. Chỉ trả về duy nhất một mảng JSON (không có văn bản giải thích ở đầu hay cuối).
-    2. Mỗi phần tử trong mảng phải có cấu trúc: {"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": "...", "explanation": "..."}.
+    2. Mỗi phần tử trong mảng phải có cấu trúc: {"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": "...", "explanation": "...", "contentReference": "sec-1"}.
     3. 'correct_answer' phải trùng khớp hoàn toàn với một trong các phần tử trong 'options'.
     4. 'explanation' là lời giải chi tiết (khoảng 1-2 câu ngắn gọn) giải thích tại sao đáp án lại đúng dựa trên nội dung tài liệu.
-    5. Không dùng markdown code block (như \`\`\`json).`;
+    5. 'contentReference' là mã phần nội dung liên quan nhất, ví dụ "sec-1", "sec-2", "sec-3"... tương ứng với các tiêu đề ## lần lượt trong tài liệu. Nếu không rõ, dùng "sec-1".
+    6. Không dùng markdown code block (như \`\`\`json).`;
 
     try {
         const text = await generateContent(prompt);
@@ -65,7 +66,8 @@ const generateQuizFromAI = async (topic, limit = 5) => {
                 question: `Câu hỏi trắc nghiệm số ${i} về nội dung này? (Mẫu)`,
                 options: ["Đáp án A (Đúng mẫu)", "Đáp án B", "Đáp án C", "Đáp án D"],
                 correct_answer: "Đáp án A (Đúng mẫu)",
-                explanation: "Đây là lời giải mẫu được tạo tự động để kiểm thử giao diện vì AI đang bận."
+                explanation: "Đây là lời giải mẫu được tạo tự động để kiểm thử giao diện vì AI đang bận.",
+                contentReference: `sec-${i}`
             });
         }
         return mockQuestions;

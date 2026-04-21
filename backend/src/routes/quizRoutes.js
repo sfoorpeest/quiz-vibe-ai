@@ -9,7 +9,10 @@ router.post('/generate', auth, quizController.createAiQuiz);
 // 2. Lưu kết quả làm bài
 router.post('/submit', auth, quizController.saveQuizResult);
 
-// 3. Lấy bảng xếp hạng (Leaderboard)
+// 3. Kiểm tra đáp án và xác định cần ôn lại không
+router.post('/check-answers', auth, quizController.checkAnswers);
+
+// 4. Lấy bảng xếp hạng (Leaderboard)
 router.get('/leaderboard', auth, quizController.getLeaderboard);
 
 module.exports = router;
