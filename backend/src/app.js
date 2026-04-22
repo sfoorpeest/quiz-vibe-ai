@@ -10,13 +10,19 @@ const profileRoutes = require('./routes/profileRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const materialRoutes = require('./routes/materialRoutes');
 const myLessonRoutes = require('./routes/myLessonRoutes');
+const chatRoutes = require('./routes/chatRoutes'); // Thêm route cho chat
 const path = require('path');
-
+const http = require('http'); // Import http để tạo server chung cho Express và Socket
+const { initSocket } = require('./socket/socket'); // Import hàm khởi tạo socket
 require('dotenv').config();
 
 const { connectDB } = require('./config/database');
 
 const app = express();
+const server = http.createServer(app); // Tạo HTTP server từ app Express
+
+// Khởi tạo Socket.IO
+initSocket(server);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
@@ -31,6 +37,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/materials', materialRoutes);
 app.use('/my-lessons', myLessonRoutes);
+app.use('/api/chat', chatRoutes); // Đăng ký route chat
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -44,6 +51,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// Lắng nghe trên 'server' thay vì 'app' để Socket.IO cũng hoạt động được
+server.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
-});
+});
