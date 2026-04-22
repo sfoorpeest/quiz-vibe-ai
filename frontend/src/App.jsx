@@ -22,6 +22,7 @@ import EduGames from './pages/EduGames';
 import TeacherGroupManagement from './pages/TeacherGroupManagement';
 import WorksheetBuilder from './pages/WorksheetBuilder';
 import WorksheetPublic from './pages/WorksheetPublic';
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -81,6 +82,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/chat" 
+            element={
+              <ProtectedRoute>
+                <Chat />
               </ProtectedRoute>
             } 
           />

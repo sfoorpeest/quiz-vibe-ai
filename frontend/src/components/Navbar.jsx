@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings } from 'lucide-react';
+import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -34,6 +34,20 @@ export default function Navbar() {
           </div>
           <div className="flex items-center gap-4">
             {user ? (
+              <>
+              {/* Nút Chat */}
+              <button 
+                onClick={() => navigate('/chat')}
+                className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 hover:border-blue-500/50 transition-all text-slate-300 hover:text-blue-400 group shadow-lg"
+                title="Tin nhắn"
+              >
+                <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border border-slate-900"></span>
+                </span>
+              </button>
+
               <div className="relative" ref={profileRef}>
                 <button 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -165,6 +179,7 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
+              </>
             ) : (
               <>
                 <Link to="/login" className="text-sm font-bold text-slate-200 hover:text-blue-400 transition-colors px-2 py-1">
