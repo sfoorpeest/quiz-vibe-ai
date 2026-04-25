@@ -50,8 +50,11 @@ export default function MyLessons() {
           title: m.title || 'Bài học',
           author: 'Hệ thống / Giảng viên', 
           authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('HT')}&background=0D8ABC&color=fff`,
-          progress: m.progress || 0,
-          status: m.progress >= 100 ? 'done' : m.progress > 0 ? 'learning' : 'new',
+          progress: Number.isFinite(Number(m.progress)) ? Number(m.progress) : 0,
+          lastScore: Number.isFinite(Number(m.last_score)) ? Number(m.last_score) : null,
+          quizStatus: m.quiz_status || null,
+          lastAttemptDate: m.last_attempt_date ? new Date(m.last_attempt_date).toLocaleDateString('vi-VN') : null,
+          status: Number(m.progress) >= 100 ? 'done' : Number(m.progress) > 0 ? 'learning' : 'new',
           isFavorite: false,
           updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
         }));
@@ -274,6 +277,15 @@ export default function MyLessons() {
                   <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
                     <img src={lesson.authorAvatar} className="w-4 h-4 rounded-full md:hidden" alt="" />
                     {lesson.author}
+                  </p>
+                  <p className="text-xs mt-1">
+                    {lesson.lastScore !== null ? (
+                      <span className={lesson.quizStatus === 'PASS' ? 'text-emerald-400 font-bold' : 'text-rose-300 font-bold'}>
+                        Quiz gần nhất: {lesson.lastScore}/5 • {lesson.quizStatus} • {lesson.lastAttemptDate || 'Không rõ ngày'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">Chưa có kết quả quiz</span>
+                    )}
                   </p>
                 </div>
 

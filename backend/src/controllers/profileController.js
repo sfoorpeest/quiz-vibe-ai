@@ -3,6 +3,7 @@ const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
+const { getMaterialLearningSnapshot } = require('../services/materialService');
 
 // --- LẤY THÔNG TIN PROFILE ---
 exports.getProfile = async (req, res) => {
@@ -172,28 +173,49 @@ exports.getActivity = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Lấy lịch sử học tập từ bảng learning_history (cùng bảng Home dùng)
+        // Gộp lịch sử học tập + lịch sử làm quiz (từ results)
         const activities = await sequelize.query(`
-            SELECT 
-                lh.id,
-                lh.action,
-                CASE 
-                    WHEN lh.material_id IS NOT NULL THEN 'material'
-                    WHEN lh.quiz_id IS NOT NULL THEN 'quiz'
-                    ELSE 'other'
-                END AS itemType,
-                COALESCE(m.title, q.title) AS title,
-                q.subject AS subject,
-                lh.progress,
-                r.score AS score,
-                lh.created_at AS date
-            FROM learning_history lh
-            LEFT JOIN materials m ON lh.material_id = m.id
-            LEFT JOIN quizzes q ON lh.quiz_id = q.id
-            LEFT JOIN results r ON r.user_id = lh.user_id AND r.quiz_id = lh.quiz_id
-            WHERE lh.user_id = :userId
-            ORDER BY lh.created_at DESC
-            LIMIT 20
+            SELECT * FROM (
+                SELECT
+                    CONCAT('lh-', lh.id) AS id,
+                    lh.action,
+                    CASE
+                        WHEN lh.material_id IS NOT NULL THEN 'material'
+                        WHEN lh.quiz_id IS NOT NULL THEN 'quiz'
+                        ELSE 'other'
+                    END AS itemType,
+                    COALESCE(m.title, q.title) AS title,
+                    q.subject AS subject,
+                    lh.progress,
+                    NULL AS score,
+                    lh.created_at AS createdAt,
+                    lh.material_id AS materialId,
+                    lh.quiz_id AS quizId
+                FROM learning_history lh
+                LEFT JOIN materials m ON lh.material_id = m.id
+                LEFT JOIN quizzes q ON lh.quiz_id = q.id
+                WHERE lh.user_id = :userId
+
+                UNION ALL
+
+                SELECT
+                    CONCAT('rs-', r.id) AS id,
+                    'QUIZ_ATTEMPT' AS action,
+                    'quiz' AS itemType,
+                    COALESCE(m.title, q.title, 'Bài kiểm tra') AS title,
+                    q.subject AS subject,
+                    NULL AS progress,
+                    COALESCE(r.correct_count, ROUND(r.score), 0) AS score,
+                    COALESCE(r.created_at, r.submitted_at) AS createdAt,
+                    r.material_id AS materialId,
+                    r.quiz_id AS quizId
+                FROM results r
+                LEFT JOIN quizzes q ON r.quiz_id = q.id
+                LEFT JOIN materials m ON r.material_id = m.id
+                WHERE r.user_id = :userId
+            ) all_activities
+            ORDER BY createdAt DESC
+            LIMIT 100
         `, {
             replacements: { userId },
             type: QueryTypes.SELECT
@@ -243,6 +265,26 @@ exports.getDashboardSummary = async (req, res) => {
             };
         } else {
             // Student — dùng đúng bảng learning_history + results (như Home)
+            const [totalLessons] = await sequelize.query(
+                `SELECT COUNT(*) as total FROM materials`,
+                { type: QueryTypes.SELECT }
+            );
+                        const [completedLessons] = await sequelize.query(
+                                `SELECT COUNT(DISTINCT r.material_id) as total
+                                 FROM results r
+                                 WHERE r.user_id = :userId
+                                     AND r.material_id IS NOT NULL
+                                     AND COALESCE(r.correct_count, ROUND(r.score), 0) >= 3
+                                     AND EXISTS (
+                                         SELECT 1
+                                         FROM learning_history lh
+                                         WHERE lh.user_id = r.user_id
+                                             AND lh.material_id = r.material_id
+                                             AND lh.action = 'VIEWED_MATERIAL'
+                                             AND COALESCE(lh.progress, 0) >= 90
+                                     )`,
+                                { replacements: { userId }, type: QueryTypes.SELECT }
+                        );
             const [learnedCount] = await sequelize.query(
                 `SELECT COUNT(DISTINCT material_id) as total 
                  FROM learning_history 
@@ -253,24 +295,78 @@ exports.getDashboardSummary = async (req, res) => {
                 `SELECT AVG(score) as avg FROM results WHERE user_id = :userId`,
                 { replacements: { userId }, type: QueryTypes.SELECT }
             );
+            const [completedQuizCount] = await sequelize.query(
+                `SELECT COUNT(*) as total
+                 FROM results
+                 WHERE user_id = :userId`,
+                { replacements: { userId }, type: QueryTypes.SELECT }
+            );
+
+            const totalLessonsNum = Number(totalLessons?.total || 0);
+            const completedLessonsNum = Number(completedLessons?.total || 0);
+            const completionPercentage = totalLessonsNum > 0
+                ? Math.round((completedLessonsNum / totalLessonsNum) * 100)
+                : 0;
+            const completedQuizCountNum = Number(completedQuizCount?.total || 0);
+
             stats = {
                 totalLearned: Number(learnedCount?.total || 0),
                 avgScore: avgScore?.avg ? parseFloat(avgScore.avg).toFixed(1) : 0,
+                totalLessons: totalLessonsNum,
+                completedLessons: completedLessonsNum,
+                completionPercentage,
+                completedQuizCount: completedQuizCountNum,
+                quizCompleted: completedQuizCountNum > 0,
             };
         }
 
         // Bài học đang xem dở gần nhất (đúng query của Home)
         let lastMaterial = null;
         try {
-            const [mat] = await sequelize.query(`
-                SELECT m.id, m.title, m.description, lh.progress
-                FROM learning_history lh
-                JOIN materials m ON lh.material_id = m.id
-                WHERE lh.user_id = :userId AND lh.action = 'VIEWED_MATERIAL'
-                ORDER BY lh.created_at DESC LIMIT 1
-            `, { replacements: { userId }, type: QueryTypes.SELECT });
-            if (mat) {
-                lastMaterial = mat;
+            const [latestMaterialActivity] = await sequelize.query(
+                `SELECT activity.material_id, MAX(activity.activity_at) AS activity_at
+                 FROM (
+                     SELECT material_id, created_at AS activity_at
+                     FROM learning_history
+                     WHERE user_id = :userId
+                       AND material_id IS NOT NULL
+                       AND action = 'VIEWED_MATERIAL'
+
+                     UNION ALL
+
+                     SELECT material_id, COALESCE(created_at, submitted_at) AS activity_at
+                     FROM results
+                     WHERE user_id = :userId
+                       AND material_id IS NOT NULL
+                 ) activity
+                 GROUP BY activity.material_id
+                 ORDER BY activity_at DESC
+                 LIMIT 1`,
+                { replacements: { userId }, type: QueryTypes.SELECT }
+            );
+
+            if (latestMaterialActivity?.material_id) {
+                const [materialRow] = await sequelize.query(
+                    `SELECT id, title, description
+                     FROM materials
+                     WHERE id = :materialId
+                     LIMIT 1`,
+                    {
+                        replacements: { materialId: latestMaterialActivity.material_id },
+                        type: QueryTypes.SELECT
+                    }
+                );
+
+                if (materialRow) {
+                    const snapshot = await getMaterialLearningSnapshot(userId, latestMaterialActivity.material_id);
+                    lastMaterial = {
+                        ...materialRow,
+                        progress: snapshot.progress,
+                        readingProgress: snapshot.readingProgress,
+                        quizStatus: snapshot.quizStatus,
+                        lastScore: snapshot.lastScore,
+                    };
+                }
             }
         } catch (e) { }
 

@@ -20,6 +20,101 @@ const TYPE_CASE_SQL = `
 
 const ALLOWED_TYPES = new Set(['video', 'audio', 'document']);
 
+function normalizeReadProgress(progress) {
+    const parsed = Number(progress);
+    if (!Number.isFinite(parsed)) {
+        return 0;
+    }
+
+    return Math.max(0, Math.min(90, Math.round(parsed)));
+}
+
+function toTimeValue(value) {
+    if (!value) {
+        return 0;
+    }
+
+    const timeValue = new Date(value).getTime();
+    return Number.isFinite(timeValue) ? timeValue : 0;
+}
+
+function computeEffectiveProgress({ readingProgress, readingUpdatedAt, quizStatus, quizAttemptedAt }) {
+    const normalizedReading = normalizeReadProgress(readingProgress);
+    const readAt = toTimeValue(readingUpdatedAt);
+    const quizAt = toTimeValue(quizAttemptedAt);
+
+    if (quizStatus === 'FAIL' && (!readAt || quizAt >= readAt)) {
+        return 0;
+    }
+
+    if (quizStatus === 'PASS') {
+        return Math.min(100, normalizedReading + 10);
+    }
+
+    return normalizedReading;
+}
+
+async function getMaterialLearningSnapshot(userId, materialId) {
+    const normalizedMaterialId = Number(materialId);
+    if (!Number.isInteger(normalizedMaterialId) || normalizedMaterialId <= 0) {
+        return {
+            readingProgress: 0,
+            progress: 0,
+            quizStatus: null,
+            lastScore: null,
+            readingUpdatedAt: null,
+            quizAttemptedAt: null,
+        };
+    }
+
+    const [latestView] = await sequelize.query(
+        `SELECT progress, created_at
+         FROM learning_history
+         WHERE user_id = ?
+           AND material_id = ?
+           AND action = 'VIEWED_MATERIAL'
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        {
+            replacements: [userId, normalizedMaterialId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    const [latestQuiz] = await sequelize.query(
+        `SELECT
+            COALESCE(correct_count, ROUND(score), 0) AS last_score,
+            CASE WHEN COALESCE(correct_count, ROUND(score), 0) >= 3 THEN 'PASS' ELSE 'FAIL' END AS quiz_status,
+            COALESCE(created_at, submitted_at) AS last_attempt_date
+         FROM results
+         WHERE user_id = ?
+           AND material_id = ?
+         ORDER BY COALESCE(created_at, submitted_at) DESC, id DESC
+         LIMIT 1`,
+        {
+            replacements: [userId, normalizedMaterialId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    const readingProgress = normalizeReadProgress(latestView?.progress);
+    const quizStatus = latestQuiz?.quiz_status || null;
+
+    return {
+        readingProgress,
+        progress: computeEffectiveProgress({
+            readingProgress,
+            readingUpdatedAt: latestView?.created_at || null,
+            quizStatus,
+            quizAttemptedAt: latestQuiz?.last_attempt_date || null,
+        }),
+        quizStatus,
+        lastScore: latestQuiz ? Number(latestQuiz.last_score) : null,
+        readingUpdatedAt: latestView?.created_at || null,
+        quizAttemptedAt: latestQuiz?.last_attempt_date || null,
+    };
+}
+
 function normalizePagination(page, limit) {
     const parsedPage = Number.parseInt(page, 10);
     const parsedLimit = Number.parseInt(limit, 10);
@@ -165,7 +260,15 @@ async function getMyLessons(userId) {
                 m.content,
                 m.created_at,
                 um.assigned_at,
-                COALESCE((SELECT MAX(progress) FROM learning_history WHERE user_id = um.user_id AND material_id = m.id), 0) as progress
+                                COALESCE((
+                                        SELECT lh2.progress
+                                        FROM learning_history lh2
+                                        WHERE lh2.user_id = um.user_id
+                                            AND lh2.material_id = m.id
+                                            AND lh2.action = 'VIEWED_MATERIAL'
+                                        ORDER BY lh2.created_at DESC, lh2.id DESC
+                                        LIMIT 1
+                                ), 0) as progress
             FROM user_materials um
             INNER JOIN materials m ON m.id = um.material_id
             WHERE um.user_id = ?
@@ -187,21 +290,25 @@ async function getMyLessons(userId) {
         INNER JOIN materials m ON m.id = lh.material_id
         WHERE lh.user_id = ?
           AND lh.material_id IS NOT NULL
-          AND lh.id = (SELECT MAX(id) FROM learning_history WHERE user_id = lh.user_id AND material_id = m.id)
+                    AND lh.action = 'VIEWED_MATERIAL'
+                    AND lh.id = (
+                            SELECT MAX(id)
+                            FROM learning_history
+                            WHERE user_id = lh.user_id
+                                AND material_id = m.id
+                                AND action = 'VIEWED_MATERIAL'
+                    )
         ORDER BY activity_at DESC
     `;
 
-    // Preferred source for My Lessons is explicit assignment relation.
-    // Fallback keeps API usable before migration/data backfill is completed.
+    // Preferred source remains assignments, but read-history rows must be merged in so
+    // progress does not drop when a material is learned outside assignment mapping.
+    let assignedRows = [];
     try {
-        const assignedRows = await sequelize.query(assignmentQuery, {
+        assignedRows = await sequelize.query(assignmentQuery, {
             replacements: [userId],
             type: QueryTypes.SELECT
         });
-
-        if (assignedRows.length > 0) {
-            return assignedRows;
-        }
     } catch (error) {
         console.error('MY LESSONS ERROR:', error);
         // If user_materials does not exist yet, continue with fallback query.
@@ -214,9 +321,98 @@ async function getMyLessons(userId) {
         }
     }
 
-    return sequelize.query(fallbackQuery, {
+    const fallbackRows = await sequelize.query(fallbackQuery, {
         replacements: [userId],
         type: QueryTypes.SELECT
+    });
+
+    const mergedById = new Map();
+    [...assignedRows, ...fallbackRows].forEach((row) => {
+        const id = Number(row?.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return;
+        }
+
+        const existing = mergedById.get(id);
+        if (!existing) {
+            mergedById.set(id, row);
+            return;
+        }
+
+        const existingRead = normalizeReadProgress(existing.progress);
+        const candidateRead = normalizeReadProgress(row.progress);
+        const existingTime = toTimeValue(existing.activity_at || existing.assigned_at || existing.created_at);
+        const candidateTime = toTimeValue(row.activity_at || row.assigned_at || row.created_at);
+
+        if (candidateRead > existingRead || (candidateRead === existingRead && candidateTime > existingTime)) {
+            mergedById.set(id, { ...existing, ...row });
+        }
+    });
+
+    return attachLatestQuizResult([...mergedById.values()], userId);
+}
+
+async function attachLatestQuizResult(lessons, userId) {
+    if (!Array.isArray(lessons) || lessons.length === 0) {
+        return lessons;
+    }
+
+    const materialIds = [...new Set(lessons.map((lesson) => Number(lesson.id)).filter((id) => Number.isInteger(id) && id > 0))];
+    if (materialIds.length === 0) {
+        return lessons;
+    }
+
+    const placeholders = materialIds.map(() => '?').join(', ');
+    const latestQuizQuery = `
+        SELECT
+            r.material_id,
+            COALESCE(r.correct_count, ROUND(r.score), 0) AS last_score,
+            CASE WHEN COALESCE(r.correct_count, ROUND(r.score), 0) >= 3 THEN 'PASS' ELSE 'FAIL' END AS quiz_status,
+            COALESCE(r.created_at, r.submitted_at) AS last_attempt_date
+        FROM results r
+        INNER JOIN (
+            SELECT
+                material_id,
+                MAX(COALESCE(created_at, submitted_at)) AS max_attempt_date
+            FROM results
+            WHERE user_id = ?
+              AND material_id IS NOT NULL
+            GROUP BY material_id
+        ) latest
+            ON latest.material_id = r.material_id
+           AND COALESCE(r.created_at, r.submitted_at) = latest.max_attempt_date
+        WHERE r.user_id = ?
+          AND r.material_id IN (${placeholders})
+    `;
+
+    const latestRows = await sequelize.query(latestQuizQuery, {
+        replacements: [userId, userId, ...materialIds],
+        type: QueryTypes.SELECT
+    });
+
+    const quizByMaterialId = new Map(
+        latestRows.map((row) => [Number(row.material_id), row])
+    );
+
+    return lessons.map((lesson) => {
+        const latestQuiz = quizByMaterialId.get(Number(lesson.id));
+        const baseProgress = normalizeReadProgress(lesson.progress);
+        const quizStatus = latestQuiz?.quiz_status || null;
+        const effectiveProgress = computeEffectiveProgress({
+            readingProgress: baseProgress,
+            readingUpdatedAt: lesson.activity_at || lesson.assigned_at || lesson.created_at || null,
+            quizStatus,
+            quizAttemptedAt: latestQuiz?.last_attempt_date || null,
+        });
+
+        return {
+            ...lesson,
+            progress: effectiveProgress,
+            reading_progress: baseProgress,
+            last_score: latestQuiz ? Number(latestQuiz.last_score) : null,
+            quiz_status: quizStatus,
+            last_attempt_date: latestQuiz?.last_attempt_date || null,
+        };
     });
 }
 
@@ -224,5 +420,7 @@ module.exports = {
     listMaterials,
     getMaterialDetailById,
     getMyLessons,
+    getMaterialLearningSnapshot,
+    computeEffectiveProgress,
     ALLOWED_TYPES
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Bookmark, BookCopy, LayoutDashboard, RefreshCcw, Settings2, TriangleAlert } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -11,10 +11,11 @@ import ProfileSettings from '../components/profile/ProfileSettings';
 import ProfileTabs from '../components/profile/ProfileTabs';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
+import { materialService } from '../services/materialService';
 
 const tabs = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'courses', label: 'Khóa học', icon: BookCopy },
+  { id: 'courses', label: 'Tiến trình học tập', icon: BookCopy },
   { id: 'saved', label: 'Đã lưu', icon: Bookmark },
   { id: 'settings', label: 'Cài đặt', icon: Settings2 },
 ];
@@ -83,7 +84,10 @@ export default function Profile() {
   const activeTab = tabs.some((tab) => tab.id === requestedTab) ? requestedTab : 'overview';
   const [profile, setProfile] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [quizHistory, setQuizHistory] = useState([]);
   const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [myLessons, setMyLessons] = useState([]);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [bioDraft, setBioDraft] = useState('');
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
@@ -92,6 +96,8 @@ export default function Profile() {
   const [pageError, setPageError] = useState('');
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
+  const [isQuizHistoryLoading, setIsQuizHistoryLoading] = useState(true);
+  const [isLessonsLoading, setIsLessonsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
@@ -131,6 +137,8 @@ export default function Profile() {
     }
 
     setIsActivityLoading(true);
+    setIsQuizHistoryLoading(true);
+    setIsLessonsLoading(true);
     setPageError('');
 
     try {
@@ -144,12 +152,36 @@ export default function Profile() {
       setActivity(activityResponse);
       setDashboardSummary(summaryResponse);
       updateUser(profileResponse);
+
+      try {
+        const quizHistoryResponse = await profileService.getQuizHistory();
+        setQuizHistory(Array.isArray(quizHistoryResponse) ? quizHistoryResponse : []);
+      } catch (historyError) {
+        console.error('Không thể tải lịch sử quiz:', historyError);
+        setQuizHistory([]);
+      }
+
+      try {
+        const lessonsResponse = await materialService.getMyLessons();
+        const lessonsData = Array.isArray(lessonsResponse?.data)
+          ? lessonsResponse.data
+          : Array.isArray(lessonsResponse)
+            ? lessonsResponse
+            : [];
+        setMyLessons(lessonsData);
+      } catch (lessonsError) {
+        console.error('Không thể tải tiến trình bài học:', lessonsError);
+        setMyLessons([]);
+      }
+
     } catch (error) {
       console.error('Không thể tải trang hồ sơ:', error);
       setPageError(error.response?.data?.message || 'Không thể tải dữ liệu hồ sơ. Vui lòng thử lại.');
     } finally {
       setIsPageLoading(false);
       setIsActivityLoading(false);
+      setIsQuizHistoryLoading(false);
+      setIsLessonsLoading(false);
       setIsRefreshing(false);
     }
   }, [hydrateProfileState, updateUser]);
@@ -261,10 +293,122 @@ export default function Profile() {
     : [
         { label: 'Đã học', value: dashboardSummary?.stats?.totalLearned || 0, helper: 'Chủ đề đã trải nghiệm' },
         { label: 'Điểm TB', value: dashboardSummary?.stats?.avgScore || 0, helper: 'Điểm trung bình bài quiz' },
-        { label: 'Hoạt động', value: activity.length, helper: 'Bản ghi gần đây' },
+        {
+          label: 'Tiến độ',
+          value: `${dashboardSummary?.stats?.completionPercentage || 0}%`,
+          helper: `${dashboardSummary?.stats?.completedLessons || 0}/${dashboardSummary?.stats?.totalLessons || 0} bài hoàn thành`,
+        },
       ];
 
-  const courseActivities = activity.filter((item) => item.itemType === 'material' || item.itemType === 'quiz');
+
+
+
+  // Unified learning items: merge quiz history (latest per material) + activity materials not yet quizzed
+  // Unified learning tracker: lessons (progress) + latest quiz attempts
+  const unifiedLearningItems = useMemo(() => {
+    const items = new Map();
+
+    // Base from my lessons so every row has materialId, title, progress
+    (myLessons || []).forEach((lesson, idx) => {
+      const materialId = Number(lesson?.id);
+      if (!materialId || materialId <= 0) return;
+      const progressValue = Number(lesson?.progress);
+      const hasProgress = Number.isFinite(progressValue);
+      const quizScore = Number(lesson?.last_score);
+      const quizOutcome = Number.isFinite(quizScore)
+        ? (quizScore >= 3 ? 'PASS' : 'FAIL')
+        : null;
+      items.set(materialId, {
+        materialId,
+        materialTitle: lesson?.title || `Học liệu #${materialId}`,
+        learningProgress: hasProgress ? progressValue : null,
+        correctCount: Number.isFinite(quizScore) ? quizScore : null,
+        quizStatus: quizOutcome,
+        createdAt: lesson?.last_attempt_date || lesson?.updated_at || lesson?.created_at || null,
+        key: `lesson-${materialId}-${idx}`,
+      });
+    });
+
+    // Process quiz history — keep latest attempt per material
+    (quizHistory || []).forEach((item) => {
+      const materialId = Number(item?.materialId);
+      if (!materialId || materialId <= 0) return;
+      const itemDate = item.createdAt || item.date;
+      const existing = items.get(materialId);
+      if (!existing || new Date(itemDate) > new Date(existing.createdAt)) {
+        const correctCount = Number(item.correctCount || item.score || 0);
+        const baseProgress = Number(existing?.learningProgress || 0);
+        const effectiveProgress = correctCount >= 3
+          ? Math.min(100, Math.max(0, baseProgress) + 10)
+          : 0;
+        const quizStatus = correctCount >= 3 ? 'PASS' : 'FAIL';
+        items.set(materialId, {
+          materialId,
+          materialTitle: item.materialTitle || existing?.materialTitle || `Học liệu #${materialId}`,
+          learningProgress: effectiveProgress,
+          correctCount,
+          quizStatus,
+          createdAt: itemDate || existing?.createdAt || null,
+          key: `quiz-${materialId}`,
+        });
+      }
+    });
+
+    // Add fallback rows from activity so user actions still appear when a lesson is not in assignments list.
+    const seenTitleKeys = new Set(
+      [...items.values()]
+        .map((item) => String(item.materialTitle || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    (activity || [])
+      .filter((item) => item?.itemType === 'material')
+      .forEach((item, idx) => {
+        const title = String(item?.title || '').trim();
+        if (!title) return;
+        const materialId = Number(item?.materialId);
+        const titleKey = title.toLowerCase();
+        if (seenTitleKeys.has(titleKey) && !(Number.isInteger(materialId) && materialId > 0 && !items.has(materialId))) return;
+
+        seenTitleKeys.add(titleKey);
+        const progressValue = Number(item?.progress);
+        const hasProgress = Number.isFinite(progressValue);
+        const itemKey = Number.isInteger(materialId) && materialId > 0 ? materialId : `activity-${titleKey}-${idx}`;
+        items.set(itemKey, {
+          materialId: Number.isInteger(materialId) && materialId > 0 ? materialId : null,
+          materialTitle: title,
+          learningProgress: hasProgress ? progressValue : null,
+          correctCount: null,
+          quizStatus: hasProgress && progressValue <= 0 ? 'NOT_STARTED' : 'IN_PROGRESS',
+          createdAt: item?.createdAt || null,
+          key: `activity-${titleKey}-${idx}`,
+        });
+      });
+
+    return [...items.values()].sort((a, b) => {
+      if (!a.createdAt && !b.createdAt) return 0;
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [quizHistory, myLessons, activity]);
+
+  const filteredLearningItems = useMemo(() => {
+    if (courseFilter === 'completed') return unifiedLearningItems.filter((i) => Number(i.learningProgress) >= 100);
+    if (courseFilter === 'incomplete') return unifiedLearningItems.filter((i) => Number(i.learningProgress) < 100);
+    return unifiedLearningItems;
+  }, [unifiedLearningItems, courseFilter]);
+
+  const formatLearningDate = (value) => {
+    if (!value) return 'Không rõ thời gian';
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  };
 
   const renderOverview = () => (
     <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
@@ -290,6 +434,12 @@ export default function Profile() {
           items={activity}
           isLoading={isActivityLoading}
           emptyMessage="Hãy bắt đầu một khóa học hoặc bài kiểm tra để lịch sử hoạt động xuất hiện ở đây."
+          onNavigateItem={(item) => {
+            const materialId = Number(item?.materialId);
+            if (Number.isInteger(materialId) && materialId > 0) {
+              navigate(`/learn/${materialId}`);
+            }
+          }}
         />
       </div>
 
@@ -333,33 +483,111 @@ export default function Profile() {
     </div>
   );
 
-  const renderCourses = () => (
-    <div className="space-y-6">
-      {dashboardSummary?.lastMaterial && (
-        <section className="rounded-4xl border border-blue-500/20 bg-slate-900/75 p-6 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-300">Khóa học đang tiếp tục</p>
-              <h2 className="mt-2 text-2xl font-extrabold text-white">{dashboardSummary.lastMaterial.title}</h2>
-              <p className="mt-2 text-sm text-slate-400">{dashboardSummary.lastMaterial.description || 'Tiếp tục từ điểm dừng gần nhất để duy trì tiến độ học tập.'}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-700/60 bg-slate-950/50 px-5 py-4 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Tiến độ</p>
-              <p className="mt-2 text-3xl font-extrabold text-white">{dashboardSummary.lastMaterial.progress || 0}%</p>
-            </div>
-          </div>
-        </section>
-      )}
+  const renderCourses = () => {
+    const filterTabs = [
+      { id: 'all', label: 'Tất cả' },
+      { id: 'completed', label: 'Đã hoàn thành' },
+      { id: 'incomplete', label: 'Chưa hoàn thành' },
+    ];
 
-      <ProfileActivity
-        title="Khóa học và bài kiểm tra"
-        description="Danh sách các nội dung bạn đã học hoặc bắt đầu gần đây."
-        items={courseActivities}
-        isLoading={isActivityLoading}
-        emptyMessage="Hiện chưa có khóa học hoặc bài quiz nào được ghi nhận trong hồ sơ của bạn."
-      />
-    </div>
-  );
+    const getStatusInfo = (item) => {
+      const progressValue = Number(item.learningProgress || 0);
+      if (progressValue >= 100) {
+        return { text: `hoàn thành (điểm: ${item.correctCount}/5) • đã đạt`, cls: 'text-emerald-300' };
+      }
+      if (item.quizStatus === 'PASS') {
+        return { text: `đã đạt quiz (điểm: ${item.correctCount}/5) • cần đọc bài để hoàn thành`, cls: 'text-cyan-300' };
+      }
+      if (item.quizStatus === 'FAIL') {
+        return { text: `chưa hoàn thành (điểm: ${item.correctCount}/5) • cần học lại`, cls: 'text-rose-300' };
+      }
+      if (item.quizStatus === 'NOT_STARTED') {
+        return { text: 'chưa bắt đầu', cls: 'text-slate-300' };
+      }
+      return { text: 'đang tiến hành', cls: 'text-amber-300' };
+    };
+
+    const getAction = (item) => {
+      if (!item.materialId) return null;
+      if (item.quizStatus === 'FAIL') return { label: 'Học lại', path: `/learn/${item.materialId}` };
+      if (item.quizStatus === 'NOT_STARTED') return { label: 'Làm quiz', path: `/learn/${item.materialId}` };
+      if (item.quizStatus === 'PASS' && Number(item.learningProgress) < 100) return { label: 'Đọc bài', path: `/learn/${item.materialId}` };
+      if (item.quizStatus === 'IN_PROGRESS') return { label: 'Tiếp tục', path: `/learn/${item.materialId}` };
+      return null;
+    };
+
+    return (
+      <section className="rounded-4xl border border-slate-700/50 bg-slate-900/75 p-6 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
+        <div className="mb-5">
+          <h2 className="text-xl font-extrabold text-white">Tiến trình học tập</h2>
+          <p className="mt-1 text-sm text-slate-400">Tổng hợp lịch sử học và kết quả quiz của bạn.</p>
+        </div>
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setCourseFilter(tab.id)}
+              className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${
+                courseFilter === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-700 bg-slate-900/60 text-slate-300 hover:border-blue-500/40 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {(isActivityLoading || isQuizHistoryLoading || isLessonsLoading) ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-20 animate-pulse rounded-3xl border border-slate-700/60 bg-slate-950/40" />
+            ))}
+          </div>
+        ) : filteredLearningItems.length > 0 ? (
+          <div className="space-y-3">
+            {filteredLearningItems.map((item, idx) => {
+              const statusInfo = getStatusInfo(item);
+              const action = getAction(item);
+              return (
+                <article
+                  key={`${item.materialId || 'na'}-${idx}`}
+                  className="rounded-3xl border border-slate-700/60 bg-slate-950/40 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">{item.materialTitle}</p>
+                      {typeof item.learningProgress === 'number' && (
+                        <p className="mt-1 text-xs text-slate-400">Tiến độ học: {Math.max(0, Math.min(100, Math.round(item.learningProgress)))}%</p>
+                      )}
+                      <p className={`mt-1 text-xs font-semibold ${statusInfo.cls}`}>{statusInfo.text}</p>
+                      <p className="mt-1 text-xs text-slate-500">{formatLearningDate(item.createdAt)}</p>
+                    </div>
+                    {action && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(action.path)}
+                        className="shrink-0 rounded-2xl border border-blue-500/40 bg-blue-600/10 px-4 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-600/20 hover:text-white"
+                      >
+                        {action.label}
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-950/30 px-6 py-12 text-center">
+            <p className="text-base font-semibold text-white">Chưa có dữ liệu</p>
+            <p className="mt-2 text-sm text-slate-400">Hãy bắt đầu học để tiến trình xuất hiện tại đây.</p>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const renderSaved = () => (
     <section className="rounded-4xl border border-dashed border-slate-700 bg-slate-900/75 px-6 py-16 text-center shadow-xl shadow-blue-950/10 backdrop-blur-xl">
@@ -372,6 +600,7 @@ export default function Profile() {
       </p>
     </section>
   );
+
 
   const renderSettings = () => (
     <ProfileSettings

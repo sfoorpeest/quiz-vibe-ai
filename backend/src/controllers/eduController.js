@@ -2,6 +2,7 @@ const { sequelize } = require('../config/database');
 const aiService = require('../services/aiService');
 const { QueryTypes } = require('sequelize');
 const { extractTextFromBuffer, extractTextFromUrl } = require('../services/fileParserService');
+const { getMaterialLearningSnapshot } = require('../services/materialService');
 
 /**
  * 1. AI xử lý học liệu: Tóm tắt và Trích xuất từ khóa từ học liệu có sẵn
@@ -30,11 +31,11 @@ exports.processMaterialWithAI = async (req, res) => {
         
         const aiResult = await aiService.generateContent(prompt);
 
-        // Ghi lại lịch sử là người dùng đã xem tài liệu này (Progress 100%)
+        // Ghi lại lịch sử là người dùng đã xem tài liệu này (đọc hết bài = 90%)
         await sequelize.query(
             'INSERT INTO learning_history (user_id, material_id, action, progress) VALUES (?, ?, ?, ?)',
             {
-                replacements: [req.user.id, materialId, 'VIEWED_MATERIAL', 100],
+                replacements: [req.user.id, materialId, 'VIEWED_MATERIAL', 90],
                 type: QueryTypes.INSERT
             }
         );
@@ -155,12 +156,20 @@ exports.createMaterial = async (req, res) => {
 exports.trackProgress = async (req, res) => {
     try {
         const { material_id, quiz_id, action, progress } = req.body;
-        const userId = req.user.id; 
+        const userId = req.user.id;
+
+        // Rule: đọc hết bài chỉ đạt 90%; 100% chỉ được nâng khi quiz đạt (xử lý ở tầng tổng hợp dữ liệu)
+        let normalizedProgress = Number(progress) || 0;
+        if (action === 'VIEWED_MATERIAL') {
+            normalizedProgress = Math.max(0, Math.min(90, normalizedProgress));
+        } else {
+            normalizedProgress = Math.max(0, Math.min(100, normalizedProgress));
+        }
 
         await sequelize.query(
             'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress) VALUES (?, ?, ?, ?, ?)',
             {
-                replacements: [userId, material_id || null, quiz_id || null, action, progress],
+                replacements: [userId, material_id || null, quiz_id || null, action, normalizedProgress],
                 type: QueryTypes.INSERT
             }
         );
@@ -397,15 +406,14 @@ exports.getMaterialProgress = async (req, res) => {
     try {
         const { material_id } = req.params;
         const userId = req.user.id;
-
-        const results = await sequelize.query(
-            'SELECT MAX(progress) as max_progress FROM learning_history WHERE user_id = ? AND material_id = ? AND action = "VIEWED_MATERIAL"',
-            { replacements: [userId, material_id], type: QueryTypes.SELECT }
-        );
+        const snapshot = await getMaterialLearningSnapshot(userId, material_id);
 
         res.status(200).json({
             status: 'success',
-            progress: results[0]?.max_progress || 0
+            progress: snapshot.progress,
+            readingProgress: snapshot.readingProgress,
+            quizStatus: snapshot.quizStatus,
+            lastScore: snapshot.lastScore
         });
     } catch (error) {
         res.status(500).json({ message: 'Không thể tải tiến độ học tập.' });
@@ -445,14 +453,27 @@ exports.getUserDashboard = async (req, res) => {
         }
 
         // Xử lý cho Sinh viên (1)
-        const lastMaterials = await sequelize.query(
-            `SELECT m.id, m.title, m.description, lh.progress, lh.created_at 
-             FROM learning_history lh
-             JOIN materials m ON lh.material_id = m.id
-             WHERE lh.user_id = ? AND lh.action = 'VIEWED_MATERIAL'
-             ORDER BY lh.created_at DESC LIMIT 1`,
-            { replacements: [userId], type: QueryTypes.SELECT }
-        );
+                const [latestMaterialActivity] = await sequelize.query(
+                        `SELECT activity.material_id, MAX(activity.activity_at) AS activity_at
+                         FROM (
+                                 SELECT material_id, created_at AS activity_at
+                                 FROM learning_history
+                                 WHERE user_id = ?
+                                     AND material_id IS NOT NULL
+                                     AND action = 'VIEWED_MATERIAL'
+
+                                 UNION ALL
+
+                                 SELECT material_id, COALESCE(created_at, submitted_at) AS activity_at
+                                 FROM results
+                                 WHERE user_id = ?
+                                     AND material_id IS NOT NULL
+                         ) activity
+                         GROUP BY activity.material_id
+                         ORDER BY activity_at DESC
+                         LIMIT 1`,
+                        { replacements: [userId, userId], type: QueryTypes.SELECT }
+                );
 
         const statsResult = await sequelize.query(
             `SELECT COUNT(DISTINCT material_id) as total_learned FROM learning_history 
@@ -462,10 +483,32 @@ exports.getUserDashboard = async (req, res) => {
 
         const avgScoreResult = await sequelize.query('SELECT AVG(score) as avg_score FROM results WHERE user_id = ?', { replacements: [userId], type: QueryTypes.SELECT });
 
+        let lastMaterial = null;
+        if (latestMaterialActivity?.material_id) {
+            const [materialRow] = await sequelize.query(
+                `SELECT id, title, description
+                 FROM materials
+                 WHERE id = ?
+                 LIMIT 1`,
+                { replacements: [latestMaterialActivity.material_id], type: QueryTypes.SELECT }
+            );
+
+            if (materialRow) {
+                const snapshot = await getMaterialLearningSnapshot(userId, latestMaterialActivity.material_id);
+                lastMaterial = {
+                    ...materialRow,
+                    progress: snapshot.progress,
+                    readingProgress: snapshot.readingProgress,
+                    quizStatus: snapshot.quizStatus,
+                    lastScore: snapshot.lastScore,
+                };
+            }
+        }
+
         res.status(200).json({
             status: 'success',
             data: {
-                lastMaterial: lastMaterials[0] || null,
+                lastMaterial,
                 stats: {
                     totalLearned: statsResult[0]?.total_learned || 0,
                     avgScore: avgScoreResult[0]?.avg_score ? parseFloat(avgScoreResult[0].avg_score).toFixed(1) : 0

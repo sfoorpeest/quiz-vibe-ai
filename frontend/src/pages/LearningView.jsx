@@ -31,6 +31,7 @@ export default function LearningView() {
   const [readingProgress, setReadingProgress] = useState(0);
   const [maxProgress, setMaxProgress] = useState(0); // Để biết đã đọc xa nhất tới đâu
   const [lastSavedProgress, setLastSavedProgress] = useState(0); // Để hạn chế spam API
+  const [quizProgressStatus, setQuizProgressStatus] = useState(null);
   const [showToc, setShowToc] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
@@ -109,9 +110,11 @@ export default function LearningView() {
               const progressRes = await api.get(`/api/edu/learning/progress/${id}`);
               if (progressRes.data && progressRes.data.status === 'success') {
                 const savedProgress = progressRes.data.progress || 0;
+                const savedReadingProgress = progressRes.data.readingProgress || 0;
                 setMaxProgress(savedProgress);
-                setLastSavedProgress(savedProgress);
+                setLastSavedProgress(savedReadingProgress);
                 setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
+                setQuizProgressStatus(progressRes.data.quizStatus || null);
               }
             } catch (pErr) {
               console.error("Lỗi khi tải tiến độ cũ:", pErr);
@@ -452,17 +455,17 @@ export default function LearningView() {
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     if (scrollHeight - clientHeight <= 0) {
-      if (maxProgress < 100) {
-        setReadingProgress(100);
-        setMaxProgress(100);
-        saveProgress(100);
-        setLastSavedProgress(100);
+      if (maxProgress < 90) {
+        setReadingProgress(90);
+        setMaxProgress(90);
+        saveProgress(90);
+        setLastSavedProgress(90);
       }
       return;
     }
 
     const currentProgress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-    const roundedProgress = Math.min(100, Math.max(0, Math.round(currentProgress)));
+    const roundedProgress = Math.min(90, Math.max(0, Math.round(currentProgress * 0.9)));
 
     setReadingProgress(roundedProgress);
 
@@ -470,8 +473,8 @@ export default function LearningView() {
     if (roundedProgress > maxProgress) {
       setMaxProgress(roundedProgress);
 
-      // Gửi API chỉ khi đủ 5% chênh lệch so với lần vừa gửi HOẶC đạt 100%
-      if (roundedProgress - lastSavedProgress >= 5 || roundedProgress === 100) {
+      // Gửi API chỉ khi đủ 5% chênh lệch so với lần vừa gửi HOẶC đạt mốc đọc hết bài (90%)
+      if (roundedProgress - lastSavedProgress >= 5 || roundedProgress === 90) {
         saveProgress(roundedProgress);
         setLastSavedProgress(roundedProgress);
       }
@@ -673,8 +676,14 @@ export default function LearningView() {
               </div>
               <h2 className="text-xl font-bold text-slate-100 flex items-center gap-3">
                 Nội dung chi tiết
-                <span className={`text-xs font-semibold px-2 py-1 rounded-md ${maxProgress >= 100 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>
-                  {maxProgress >= 100 ? '✓ Hoàn thành' : `Tiến độ: ${maxProgress}%`}
+                <span className={`text-xs font-semibold px-2 py-1 rounded-md ${maxProgress >= 100 ? 'bg-emerald-500/20 text-emerald-300' : maxProgress >= 90 ? 'bg-cyan-500/20 text-cyan-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                  {maxProgress >= 100
+                    ? '✓ Hoàn thành bài học (100%)'
+                    : quizProgressStatus === 'PASS' && maxProgress === 10
+                      ? 'Đã đạt quiz, chưa đọc bài (10%)'
+                      : maxProgress >= 90
+                        ? '✓ Đã đọc hết bài (90%)'
+                        : `Tiến độ học: ${maxProgress}%`}
                 </span>
               </h2>
             </div>
@@ -694,7 +703,7 @@ export default function LearningView() {
           <div className="w-full h-1 bg-slate-800 z-10 relative">
             {/* Track đã xem nhiều nhất (maxProgress - màu chính) */}
             <div
-              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`}
+              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : maxProgress >= 90 ? 'bg-cyan-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`}
               style={{ width: `${maxProgress}%` }}
             />
             {/* Vị trí cuộn hiện tại (mờ hơn, chỉ hiện nếu đang cuộn ngược) */}
