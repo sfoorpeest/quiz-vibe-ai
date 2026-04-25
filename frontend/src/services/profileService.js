@@ -29,4 +29,14 @@ export const profileService = {
     const response = await api.get('/api/profile/summary');
     return response.data;
   },
+
+  getQuizHistory: async () => {
+    const response = await api.get('/api/quiz/quiz-history');
+    return response.data?.data || [];
+  },
+
+  getRecommendation: async () => {
+    const response = await api.get('/api/quiz/recommendation');
+    return response.data || { message: '', suggestedLessons: [] };
+  },
 };

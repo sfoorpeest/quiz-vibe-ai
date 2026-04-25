@@ -68,24 +68,58 @@ exports.createAiQuiz = async (req, res) => {
  */
 exports.saveQuizResult = async (req, res) => {
     try {
-        const { quizId, score, total } = req.body;
+        const {
+            quizId,
+            materialId,
+            score,
+            total,
+            correctCount,
+            wrongCount,
+            wrongQuestions
+        } = req.body;
         const userId = req.user.id;
 
+        const resolvedCorrectCount = Number.isInteger(correctCount)
+            ? correctCount
+            : Number.isInteger(score)
+                ? score
+                : 0;
+
+        const resolvedWrongCount = Number.isInteger(wrongCount)
+            ? wrongCount
+            : Number.isInteger(total)
+                ? Math.max(total - resolvedCorrectCount, 0)
+                : 0;
+
+        const resolvedWrongQuestions = Array.isArray(wrongQuestions)
+            ? wrongQuestions
+            : [];
+
         // Lưu vào bảng results
-        // Vì DB hiện tại score là decimal(5,2), ta có thể lưu điểm số thực tế
+        // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions
         await sequelize.query(
-            'INSERT INTO results (user_id, quiz_id, score) VALUES (?, ?, ?)',
+            `INSERT INTO results
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
-                replacements: [userId, quizId || null, score],
+                replacements: [
+                    userId,
+                    quizId || null,
+                    materialId || null,
+                    resolvedCorrectCount,
+                    resolvedCorrectCount,
+                    resolvedWrongCount,
+                    JSON.stringify(resolvedWrongQuestions)
+                ],
                 type: QueryTypes.INSERT
             }
         );
 
         // Ghi log hành động hoàn thành Quiz
         await sequelize.query(
-            'INSERT INTO learning_history (user_id, quiz_id, action, progress) VALUES (?, ?, ?, ?)',
+            'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress) VALUES (?, ?, ?, ?, ?)',
             {
-                replacements: [userId, quizId || null, 'COMPLETED_QUIZ', 100],
+                replacements: [userId, materialId || null, quizId || null, 'COMPLETED_QUIZ', resolvedCorrectCount >= 3 ? 10 : 0],
                 type: QueryTypes.INSERT
             }
         );
@@ -105,7 +139,7 @@ exports.saveQuizResult = async (req, res) => {
  */
 exports.checkAnswers = async (req, res) => {
     try {
-        const { quizId, selectedAnswers } = req.body;
+        const { quizId, materialId, selectedAnswers } = req.body;
         const userId = req.user.id;
 
         if (!Array.isArray(selectedAnswers) || selectedAnswers.length === 0) {
@@ -144,20 +178,38 @@ exports.checkAnswers = async (req, res) => {
             }
         });
 
-        // Sai từ 3 câu trở lên → cần ôn lại
-        if (wrongAnswers.length >= 3) {
-            return res.status(200).json({ retryRequired: true, wrongAnswers });
-        }
+        // Lưu mọi lần làm quiz để đánh giá tiến độ nhất quán (đúng hoặc sai)
+        await sequelize.query(
+            `INSERT INTO results
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+            {
+                replacements: [
+                    userId,
+                    quizId || null,
+                    materialId || null,
+                    correctCount,
+                    correctCount,
+                    wrongAnswers.length,
+                    JSON.stringify(wrongAnswers)
+                ],
+                type: QueryTypes.INSERT
+            }
+        );
 
-        // Lưu kết quả khi đạt yêu cầu
+        const retryRequired = wrongAnswers.length >= 3;
+
         await sequelize.query(
-            'INSERT INTO results (user_id, quiz_id, score) VALUES (?, ?, ?)',
-            { replacements: [userId, quizId || null, correctCount], type: QueryTypes.INSERT }
+            'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress) VALUES (?, ?, ?, ?, ?)',
+            {
+                replacements: [userId, materialId || null, quizId || null, 'COMPLETED_QUIZ', retryRequired ? 0 : 10],
+                type: QueryTypes.INSERT
+            }
         );
-        await sequelize.query(
-            'INSERT INTO learning_history (user_id, quiz_id, action, progress) VALUES (?, ?, ?, ?)',
-            { replacements: [userId, quizId || null, 'COMPLETED_QUIZ', 100], type: QueryTypes.INSERT }
-        );
+
+        if (retryRequired) {
+            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount });
+        }
 
         return res.status(200).json({ retryRequired: false, score: correctCount });
     } catch (error) {
@@ -192,5 +244,118 @@ exports.getLeaderboard = async (req, res) => {
     } catch (error) {
         console.error("Leaderboard Error:", error);
         res.status(500).json({ message: "Lỗi khi tải bảng xếp hạng" });
+    }
+};
+
+/**
+ * 6. Gợi ý học tập đơn giản theo luật (không dùng AI)
+ */
+exports.getRecommendation = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const [latestResult] = await sequelize.query(
+            `SELECT
+                r.id,
+                r.material_id,
+                COALESCE(r.correct_count, ROUND(r.score), 0) AS correct_count,
+                COALESCE(r.wrong_count, GREATEST(0, 5 - COALESCE(r.correct_count, ROUND(r.score), 0))) AS wrong_count,
+                r.wrong_questions,
+                COALESCE(r.created_at, r.submitted_at) AS attempt_at,
+                m.title AS material_title
+             FROM results r
+             LEFT JOIN materials m ON m.id = r.material_id
+             WHERE r.user_id = :userId
+             ORDER BY COALESCE(r.created_at, r.submitted_at) DESC
+             LIMIT 1`,
+            {
+                replacements: { userId },
+                type: QueryTypes.SELECT
+            }
+        );
+
+        if (!latestResult) {
+            return res.status(200).json({
+                message: 'Chưa có dữ liệu quiz để đưa ra gợi ý.',
+                suggestedLessons: []
+            });
+        }
+
+        let wrongQuestions = [];
+        if (Array.isArray(latestResult.wrong_questions)) {
+            wrongQuestions = latestResult.wrong_questions;
+        } else if (typeof latestResult.wrong_questions === 'string' && latestResult.wrong_questions.trim()) {
+            try {
+                wrongQuestions = JSON.parse(latestResult.wrong_questions);
+            } catch {
+                wrongQuestions = [];
+            }
+        }
+
+        const wrongCount = Number(latestResult.wrong_count || 0);
+        const hasWrongQuestions = wrongQuestions.length > 0;
+
+        let message = 'Bạn đang làm rất tốt. Hãy tiếp tục bài học tiếp theo.';
+        if (wrongCount >= 3) {
+            message = 'Bạn nên ôn lại bài học một lần nữa.';
+        } else if (hasWrongQuestions) {
+            message = 'Bạn nên ôn lại các chủ đề đã trả lời sai.';
+        }
+
+        const focusTopics = [...new Set(
+            wrongQuestions
+                .map((item) => item?.contentReference)
+                .filter((ref) => typeof ref === 'string' && ref.trim())
+        )];
+
+        const suggestedLessons = latestResult.material_id ? [
+            {
+                materialId: Number(latestResult.material_id),
+                title: latestResult.material_title || null,
+                focusTopics
+            }
+        ] : [];
+
+        return res.status(200).json({
+            message,
+            suggestedLessons
+        });
+    } catch (error) {
+        console.error('Recommendation Error:', error);
+        return res.status(500).json({ message: 'Lỗi khi tạo gợi ý học tập', suggestedLessons: [] });
+    }
+};
+
+/**
+ * 5. Lấy lịch sử kết quả quiz của user hiện tại
+ */
+exports.getQuizHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const rows = await sequelize.query(
+            `SELECT
+                r.material_id AS materialId,
+                m.title AS materialTitle,
+                COALESCE(r.correct_count, ROUND(r.score), 0) AS score,
+                COALESCE(r.correct_count, ROUND(r.score), 0) AS correctCount,
+                COALESCE(r.wrong_count, GREATEST(0, 5 - COALESCE(r.correct_count, ROUND(r.score), 0))) AS wrongCount,
+                r.wrong_questions AS wrongQuestions,
+                COALESCE(r.created_at, r.submitted_at) AS date,
+                COALESCE(r.created_at, r.submitted_at) AS createdAt
+             FROM results r
+             LEFT JOIN materials m ON m.id = r.material_id
+             WHERE r.user_id = :userId
+             ORDER BY COALESCE(r.created_at, r.submitted_at) DESC`,
+            {
+                replacements: { userId },
+                type: QueryTypes.SELECT
+            }
+        );
+
+        return res.status(200).json({ data: rows });
+    } catch (error) {
+        console.error('Quiz History Error:', error);
+        return res.status(500).json({ message: 'Lỗi khi tải lịch sử quiz' });
     }
 };

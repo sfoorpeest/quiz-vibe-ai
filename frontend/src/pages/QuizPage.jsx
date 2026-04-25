@@ -124,6 +124,7 @@ export default function QuizPage() {
   const [retryResult, setRetryResult] = useState(null);
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false);
   const [showRetryPrompt, setShowRetryPrompt] = useState(false);
+  const [resultNotice, setResultNotice] = useState('');
 
   const materialId = location.state?.materialId;
 
@@ -225,8 +226,10 @@ export default function QuizPage() {
     const checkAndSubmit = async () => {
       setIsCheckingAnswers(true);
       try {
+        setResultNotice('');
         const res = await api.post('/api/quiz/check-answers', {
           quizId,
+          materialId,
           selectedAnswers: answersRef.current
         });
 
@@ -267,6 +270,7 @@ export default function QuizPage() {
         }
       } catch (error) {
         console.error('Lỗi kiểm tra đáp án:', error);
+        setResultNotice('Không thể chấm điểm từ máy chủ. Hệ thống đang hiển thị kết quả tạm tính.');
         // Fallback dùng điểm cục bộ
         const fallbackReview = questions.map((q, idx) => {
           const parts = q.content ? q.content.split('\n\n[EXPLAIN]') : ['', ''];
@@ -507,6 +511,11 @@ export default function QuizPage() {
                   : percentage >= 90 ? 'Tuyệt đỉnh! Bạn là một bậc thầy thực thụ.' : 'Làm tốt lắm, hãy tiếp tục phát huy nhé!'}
               </p>
             </div>
+            {resultNotice && (
+              <p className="mt-3 text-xs font-semibold text-slate-700">
+                {resultNotice}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">
