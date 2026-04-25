@@ -21,8 +21,10 @@ const { connectDB } = require('./config/database');
 const app = express();
 const server = http.createServer(app); // Tạo HTTP server từ app Express
 
-// Khởi tạo Socket.IO
-initSocket(server);
+// Khởi tạo Socket.IO và lưu instance 'io' vào app để các controller có thể truy cập
+// Workflow: chatController cần io để emit event đến receiver sau khi upload/forward file
+const io = initSocket(server);
+app.set('io', io); // Gắn io vào app để dùng qua req.app.get('io')
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
@@ -41,6 +43,10 @@ app.use('/api/chat', chatRoutes); // Đăng ký route chat
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Phục vụ file tĩnh chat (PDF, DOCX, TXT được upload qua chat)
+// URL format: /chat-files/1745678901234-filename.pdf
+app.use('/chat-files', express.static(path.join(__dirname, '../uploads/chat-files')));
 
 // Kết nối Database
 connectDB();

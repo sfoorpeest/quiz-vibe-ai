@@ -1,10 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Send, User, Search, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, User, Search, MessageSquare, Loader2, Paperclip, FileText, Download, Forward, X, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import { getContacts, getChatHistory, searchUsers } from '../services/chatService';
+import { getContacts, getChatHistory, searchUsers, uploadFileMessage, forwardMessage, markMessagesSeen } from '../services/chatService';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Helper: Lấy icon và màu sắc phù hợp với loại file dựa trên MIME type
+const getFileIcon = (fileType) => {
+    if (fileType?.includes('pdf')) return { label: 'PDF', color: 'text-red-400 bg-red-400/10' };
+    if (fileType?.includes('word') || fileType?.includes('document')) return { label: 'DOCX', color: 'text-blue-400 bg-blue-400/10' };
+    if (fileType?.includes('text')) return { label: 'TXT', color: 'text-slate-300 bg-slate-500/20' };
+    return { label: 'FILE', color: 'text-slate-300 bg-slate-500/20' };
+};
 
 export default function Chat() {
     const { user, token } = useAuth();
@@ -19,8 +27,24 @@ export default function Chat() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
-    
-    // Lưu trữ socket instance và messages end ref để auto-scroll
+
+    // File upload states
+    // selectedFile: file người dùng đã chọn (chưa gửi)
+    // isUploading: đang trong quá trình upload lên server
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef(null); // Ref đến input[type=file] ẩn
+
+    // Forward modal states
+    // forwardingMessage: tin nhắn đang được chọn để forward
+    // forwardSearchQuery/Results: tìm kiếm user để forward đến
+    const [forwardingMessage, setForwardingMessage] = useState(null);
+    const [isForwarding, setIsForwarding] = useState(false);
+    const [forwardSearchQuery, setForwardSearchQuery] = useState('');
+    const [forwardSearchResults, setForwardSearchResults] = useState([]);
+
+    // Ref lưu selectedContact.id để dùng trong socket callback (tránh stale closure)
+    const selectedContactIdRef = useRef(null);
     const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
 
@@ -60,54 +84,71 @@ export default function Chat() {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
-    // 2. Khởi tạo Socket.IO
+    // 2. Khởi tạo Socket.IO và lắng nghe các sự kiện real-time
     useEffect(() => {
         if (!token) return;
 
-        // Khởi tạo kết nối tới server kèm token
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        // Vì trong file vite config có thể không có VITE_API_URL, ta gọi thẳng tới localhost:5000
-        const serverUrl = API_URL.replace('/api', ''); 
-        
-        socketRef.current = io(serverUrl, {
-            auth: { token }
-        });
+        const serverUrl = API_URL.replace('/api', '');
+
+        socketRef.current = io(serverUrl, { auth: { token } });
 
         socketRef.current.on('connect', () => {
             console.log('✅ Socket connected:', socketRef.current.id);
         });
 
-        // Lắng nghe tin nhắn tới
+        // Lắng nghe tin nhắn mới đến. Dùng selectedContactIdRef tránh stale closure.
         socketRef.current.on('receive_message', (message) => {
-            console.log("📩 Nhận tin nhắn:", message);
-            // Workflow: Cập nhật tin nhắn mới vào state. 
-            // Cần cẩn thận để đảm bảo tin nhắn thuộc về người đang chat hiện tại.
-            // Vì ta không có selectedContact trong closure này (trừ khi dùng dependency, ta dùng setState callback)
-            setMessages((prev) => {
-                // Ta có thể kiểm tra xem tin nhắn này có phải của người đang chọn không (so sánh sender_id)
-                // Tuy nhiên trong setState callback, ta không có selectedContact hiện tại dễ dàng, 
-                // cách tốt nhất là lưu selectedContactId vào một ref.
-                // Ở đây ta cứ push vào mảng, sau này có thể filter hoặc lưu ref.
-                return [...prev, message]; 
+            setMessages(prev => {
+                if (message.sender_id === selectedContactIdRef.current) {
+                    return [...prev, message];
+                }
+                return prev;
             });
         });
 
+        // Server thông báo tin nhắn đã delivered → cập nhật icon ✓ → ✓✓
+        socketRef.current.on('message_delivered', ({ messageId, status }) => {
+            setMessages(prev =>
+                prev.map(msg => msg.id === messageId ? { ...msg, status } : msg)
+            );
+        });
+
+        // Người nhận đã xem → cập nhật tất cả tin nhắn gửi cho họ thành 'seen'
+        socketRef.current.on('messages_seen', ({ by }) => {
+            setMessages(prev =>
+                prev.map(msg =>
+                    msg.receiver_id === by ? { ...msg, status: 'seen' } : msg
+                )
+            );
+        });
+
         return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-            }
+            if (socketRef.current) socketRef.current.disconnect();
         };
     }, [token]);
+
 
     // 3. Fetch lịch sử tin nhắn khi chọn một người liên hệ
     useEffect(() => {
         if (!selectedContact) return;
+
+        // Cập nhật ref để socket callback có thể kiểm tra đúng contact đang mở
+        selectedContactIdRef.current = selectedContact.id;
 
         const fetchHistory = async () => {
             setIsLoadingHistory(true);
             try {
                 const history = await getChatHistory(selectedContact.id);
                 setMessages(history);
+
+                // Sau khi load xong lịch sử, emit 'mark_seen' qua socket để thông báo
+                // rằng mình đã đọc tất cả tin nhắn từ người này
+                if (socketRef.current?.connected) {
+                    socketRef.current.emit('mark_seen', { senderId: selectedContact.id });
+                }
+                // Fallback: gọi HTTP nếu cần (socket đã xử lý DB, nên HTTP chỉ là backup)
+                markMessagesSeen(selectedContact.id);
             } catch (error) {
                 console.error("Error fetching history:", error);
             } finally {
@@ -116,14 +157,34 @@ export default function Chat() {
         };
 
         fetchHistory();
+
+        // Cleanup: xóa ref khi bỏ chọn contact
+        return () => { selectedContactIdRef.current = null; };
     }, [selectedContact]);
+
+    // 3.5. Debounce tìm kiếm user để forward file
+    useEffect(() => {
+        if (!forwardSearchQuery.trim()) {
+            setForwardSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            try {
+                const results = await searchUsers(forwardSearchQuery);
+                setForwardSearchResults(results);
+            } catch (err) {
+                console.error('Lỗi tìm kiếm forward:', err);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [forwardSearchQuery]);
 
     // 4. Tự động cuộn xuống tin nhắn mới nhất
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 5. Gửi tin nhắn
+    // 5. Gửi tin nhắn văn bản qua socket
     const handleSendMessage = (e) => {
         e.preventDefault();
         if (!inputMessage.trim() || !selectedContact) return;
@@ -134,10 +195,8 @@ export default function Chat() {
             type: 'text'
         };
 
-        // Gửi qua socket
         socketRef.current.emit('send_message', messageData, (response) => {
             if (response.success) {
-                // Thêm tin nhắn của mình vào màn hình ngay lập tức
                 setMessages(prev => [...prev, response.message]);
             } else {
                 console.error("Gửi tin thất bại:", response.error);
@@ -145,6 +204,67 @@ export default function Chat() {
         });
 
         setInputMessage('');
+    };
+
+    // 6. Xử lý khi người dùng chọn file từ input[type=file]
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Kiểm tra kích thước: tối đa 10MB
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File quá lớn! Giới hạn tối đa là 10MB.');
+            e.target.value = '';
+            return;
+        }
+        setSelectedFile(file);
+    };
+
+    // 7. Upload và gửi file qua HTTP (POST /api/chat/upload)
+    const handleSendFile = async () => {
+        if (!selectedFile || !selectedContact) return;
+        setIsUploading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('receiver_id', selectedContact.id);
+            if (inputMessage.trim()) formData.append('content', inputMessage);
+
+            const newMessage = await uploadFileMessage(formData);
+            // Thêm tin nhắn vào danh sách hiển thị ngay lập tức
+            setMessages(prev => [...prev, newMessage]);
+            setSelectedFile(null);
+            setInputMessage('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (error) {
+            alert('Upload thất bại. Vui lòng thử lại.');
+            console.error('Upload error:', error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    // 8. Xử lý forward file đến một user khác
+    const handleForward = async (receiverId) => {
+        if (!forwardingMessage) return;
+        setIsForwarding(true);
+        try {
+            const newMsg = await forwardMessage(forwardingMessage.id, receiverId);
+            // Nếu người nhận là contact hiện tại đang mở, hiển thị luôn
+            if (receiverId === selectedContactIdRef.current) {
+                setMessages(prev => [...prev, newMsg]);
+            }
+            setForwardingMessage(null);
+            setForwardSearchQuery('');
+            setForwardSearchResults([]);
+            alert('Đã chuyển tiếp thành công!');
+        } catch (error) {
+            alert('Chuyển tiếp thất bại. Vui lòng thử lại.');
+            console.error('Forward error:', error);
+        } finally {
+            setIsForwarding(false);
+        }
     };
 
     return (
@@ -237,22 +357,101 @@ export default function Chat() {
                                     <AnimatePresence initial={false}>
                                         {messages.map((msg, index) => {
                                             const isMine = msg.sender_id === user.id;
+                                            const isFile = msg.type === 'file';
+                                            const fileInfo = isFile ? getFileIcon(msg.file_type) : null;
+                                            const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace('/api', '');
+
                                             return (
                                                 <motion.div
                                                     key={msg.id || index}
                                                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                                                    className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}
                                                 >
-                                                    <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm ${
-                                                        isMine 
-                                                            ? 'bg-blue-600 text-white rounded-br-sm' 
-                                                            : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/50'
-                                                    }`}>
-                                                        <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
-                                                        <span className={`text-[10px] block mt-1 ${isMine ? 'text-blue-200 text-right' : 'text-slate-500 text-left'}`}>
-                                                            {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
+                                                    <div className="flex flex-col gap-1 max-w-[75%]">
+                                                        {/* Badge "Đã chuyển tiếp" nếu là forwarded message */}
+                                                        {msg.is_forwarded && (
+                                                            <span className={`text-[10px] flex items-center gap-1 ${isMine ? 'text-blue-300 justify-end' : 'text-slate-500'}`}>
+                                                                <Forward className="w-3 h-3" /> Đã chuyển tiếp
+                                                            </span>
+                                                        )}
+
+                                                        <div className="flex items-end gap-2">
+                                                            {/* Nút Forward (hiện khi hover vào tin nhắn có file) */}
+                                                            {isFile && !isMine && (
+                                                                <button
+                                                                    onClick={() => setForwardingMessage(msg)}
+                                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white shrink-0"
+                                                                    title="Chuyển tiếp file"
+                                                                >
+                                                                    <Forward className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+
+                                                            {/* Bubble tin nhắn */}
+                                                            <div className={`px-4 py-2.5 rounded-2xl shadow-sm ${
+                                                                isMine
+                                                                    ? 'bg-blue-600 text-white rounded-br-sm'
+                                                                    : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/50'
+                                                            }`}>
+                                                                {/* Nội dung: file bubble hoặc text */}
+                                                                {isFile ? (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {/* Hiển thị file với icon và tên */}
+                                                                        <a
+                                                                            href={`${API_BASE}${msg.file_path}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            download={msg.file_name}
+                                                                            className="flex items-center gap-3 group/file"
+                                                                        >
+                                                                            <span className={`text-xs font-bold px-2 py-1 rounded ${fileInfo?.color} shrink-0`}>
+                                                                                {fileInfo?.label}
+                                                                            </span>
+                                                                            <span className={`text-sm truncate max-w-[160px] ${isMine ? 'text-blue-100' : 'text-slate-300'} group-hover/file:underline`}>
+                                                                                {msg.file_name || 'Tệp đính kèm'}
+                                                                            </span>
+                                                                            <Download className={`w-4 h-4 shrink-0 ${isMine ? 'text-blue-200' : 'text-slate-400'}`} />
+                                                                        </a>
+                                                                        {/* Lời nhắn kèm file (nếu có) */}
+                                                                        {msg.content && (
+                                                                            <p className="text-[14px] leading-relaxed border-t border-white/10 pt-2">{msg.content}</p>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                                                                )}
+
+                                                                {/* Thời gian + Status icon (chỉ hiện với tin của mình) */}
+                                                                <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                                                                    <span className={`text-[10px] ${isMine ? 'text-blue-200' : 'text-slate-500'}`}>
+                                                                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                    {/* Icon trạng thái: chỉ hiện bên phải tin nhắn của mình */}
+                                                                    {isMine && (
+                                                                        <span title={msg.status === 'seen' ? 'Đã xem' : msg.status === 'delivered' ? 'Đã nhận' : 'Đã gửi'}>
+                                                                            {msg.status === 'seen'
+                                                                                ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+                                                                                : msg.status === 'delivered'
+                                                                                    ? <CheckCheck className="w-3.5 h-3.5 text-blue-200" />
+                                                                                    : <Check className="w-3.5 h-3.5 text-blue-200/60" />
+                                                                            }
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Nút Forward bên phải (tin nhắn của mình) */}
+                                                            {isFile && isMine && (
+                                                                <button
+                                                                    onClick={() => setForwardingMessage(msg)}
+                                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white shrink-0"
+                                                                    title="Chuyển tiếp file"
+                                                                >
+                                                                    <Forward className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </motion.div>
                                             );
@@ -271,21 +470,56 @@ export default function Chat() {
                             </div>
 
                             {/* Khu vực nhập tin nhắn */}
-                            <div className="p-4 border-t border-slate-800/80 bg-slate-900/50 backdrop-blur-md">
-                                <form onSubmit={handleSendMessage} className="flex gap-3 relative">
-                                    <input 
-                                        type="text" 
+                            <div className="p-4 border-t border-slate-800/80 bg-slate-900/50 backdrop-blur-md flex flex-col gap-2">
+                                {/* Preview file đã chọn (trước khi gửi) */}
+                                {selectedFile && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl border border-slate-700 text-sm text-slate-300">
+                                        <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                                        <span className="truncate flex-1">{selectedFile.name}</span>
+                                        <button onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="text-slate-500 hover:text-white">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <form onSubmit={selectedFile ? (e) => { e.preventDefault(); handleSendFile(); } : handleSendMessage} className="flex gap-2">
+                                    {/* Input file ẩn — chỉ hiện nút 📎 bên ngoài */}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileSelect}
+                                        accept=".pdf,.docx,.doc,.txt"
+                                        className="hidden"
+                                        id="chat-file-input"
+                                    />
+
+                                    {/* Nút đính kèm file — chỉ Giáo viên (role_id=2) và Admin (role_id=3) */}
+                                    {(user?.role_id === 2 || user?.role_id === 3) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all shrink-0"
+                                            title="Đính kèm tài liệu (PDF, DOCX, TXT)"
+                                        >
+                                            <Paperclip className="w-5 h-5" />
+                                        </button>
+                                    )}
+
+                                    <input
+                                        type="text"
                                         value={inputMessage}
                                         onChange={(e) => setInputMessage(e.target.value)}
-                                        placeholder="Nhập tin nhắn của bạn..." 
+                                        placeholder={selectedFile ? "Thêm lời nhắn kèm file (tuỳ chọn)..." : "Nhập tin nhắn của bạn..."}
                                         className="flex-1 bg-slate-800 text-slate-100 placeholder:text-slate-500 rounded-full px-6 py-3 border border-slate-700 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-inner"
                                     />
-                                    <button 
+
+                                    {/* Nút gửi */}
+                                    <button
                                         type="submit"
-                                        disabled={!inputMessage.trim()}
-                                        className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 transition-all disabled:opacity-50 disabled:hover:bg-blue-600 shadow-lg shadow-blue-600/20 active:scale-95"
+                                        disabled={(!inputMessage.trim() && !selectedFile) || isUploading}
+                                        className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-500 transition-all disabled:opacity-50 shadow-lg shadow-blue-600/20 active:scale-95 shrink-0"
                                     >
-                                        <Send className="w-5 h-5 ml-0.5" />
+                                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
                                     </button>
                                 </form>
                             </div>
@@ -303,8 +537,80 @@ export default function Chat() {
                         </div>
                     )}
                 </div>
-
             </div>
+
+            {/* ===== MODAL FORWARD FILE ===== */}
+            <AnimatePresence>
+                {forwardingMessage && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={(e) => { if (e.target === e.currentTarget) setForwardingMessage(null); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-6 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Forward className="w-5 h-5 text-blue-400" /> Chuyển tiếp tài liệu
+                                </h3>
+                                <button onClick={() => setForwardingMessage(null)} className="text-slate-400 hover:text-white">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Thông tin file đang được forward */}
+                            <div className="mb-4 p-3 bg-slate-800 rounded-xl border border-slate-700 flex items-center gap-3 text-sm">
+                                <FileText className="w-5 h-5 text-blue-400 shrink-0" />
+                                <span className="text-slate-300 truncate">{forwardingMessage.file_name || 'Tài liệu'}</span>
+                            </div>
+
+                            {/* Tìm kiếm người nhận */}
+                            <div className="relative mb-3">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={forwardSearchQuery}
+                                    onChange={(e) => setForwardSearchQuery(e.target.value)}
+                                    placeholder="Tìm người để chuyển tiếp..."
+                                    className="w-full bg-slate-800 text-sm text-slate-200 placeholder:text-slate-500 rounded-xl pl-9 pr-4 py-2.5 border border-slate-700 focus:outline-none focus:border-blue-500/50 transition-all"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Danh sách kết quả tìm kiếm */}
+                            <div className="max-h-52 overflow-y-auto space-y-1">
+                                {/* Hiện contacts hiện tại nếu chưa tìm */}
+                                {(forwardSearchQuery.trim() ? forwardSearchResults : contacts).map(contact => (
+                                    <button
+                                        key={contact.id}
+                                        onClick={() => handleForward(contact.id)}
+                                        disabled={isForwarding}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 transition-all text-left disabled:opacity-60"
+                                    >
+                                        <div className="w-9 h-9 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                                            <User className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-200">{contact.name}</p>
+                                            <p className="text-xs text-slate-500">{contact.role_id === 3 ? 'Admin' : contact.role_id === 2 ? 'Giáo viên' : 'Học sinh'}</p>
+                                        </div>
+                                        {isForwarding && <Loader2 className="w-4 h-4 animate-spin text-blue-400 ml-auto" />}
+                                    </button>
+                                ))}
+                                {forwardSearchQuery.trim() && forwardSearchResults.length === 0 && (
+                                    <p className="text-center text-slate-500 text-sm py-4">Không tìm thấy người dùng</p>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

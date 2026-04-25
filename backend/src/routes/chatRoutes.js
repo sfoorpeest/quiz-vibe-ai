@@ -2,21 +2,40 @@ const express = require('express');
 const router = express.Router();
 const chatController = require('../controllers/chatController');
 const authMiddleware = require('../middleware/authMiddleware');
+const upload = require('../middleware/uploadMiddleware');
 
-// Workflow: Tất cả các API liên quan đến chat đều cần đăng nhập (có token)
-// nên chúng ta sử dụng authMiddleware cho toàn bộ router này.
+/**
+ * Routes: Chat
+ * 
+ * Tất cả các API chat đều yêu cầu xác thực (JWT token).
+ * authMiddleware được áp dụng cho toàn bộ router.
+ * 
+ * Danh sách endpoint:
+ * GET  /api/chat/contacts        → Danh bạ (những người đã nhắn tin)
+ * GET  /api/chat/search          → Tìm kiếm người dùng mới
+ * GET  /api/chat/history/:userId → Lịch sử chat với một người
+ * POST /api/chat/upload          → Upload file và gửi qua chat
+ * POST /api/chat/forward         → Chuyển tiếp file sang người khác
+ * PUT  /api/chat/seen/:senderId  → Đánh dấu đã xem tin nhắn
+ */
 router.use(authMiddleware);
 
-// Route: GET /api/chat/contacts
-// Mục đích: Lấy danh sách những người dùng đã từng nhắn tin.
+// --- Danh bạ & Tìm kiếm ---
 router.get('/contacts', chatController.getContacts);
-
-// Route: GET /api/chat/search
-// Mục đích: Tìm kiếm người dùng để nhắn tin mới.
 router.get('/search', chatController.searchUsers);
 
-// Route: GET /api/chat/history/:userId
-// Mục đích: Lấy lịch sử nhắn tin giữa người dùng hiện tại và user có id là :userId.
+// --- Lịch sử chat ---
 router.get('/history/:userId', chatController.getChatHistory);
+
+// --- Upload file ---
+// upload.single('file'): multer xử lý 1 file duy nhất với field name là 'file'
+// Multer sẽ validate loại file và kích thước trước khi đến controller
+router.post('/upload', upload.single('file'), chatController.uploadFile);
+
+// --- Chuyển tiếp tin nhắn ---
+router.post('/forward', chatController.forwardMessage);
+
+// --- Đánh dấu đã xem ---
+router.put('/seen/:senderId', chatController.markMessagesAsSeen);
 
 module.exports = router;

@@ -1,15 +1,29 @@
 const { Op } = require('sequelize');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { onlineUsers } = require('../socket/socket');
 
 /**
- * Controller: Lấy lịch sử chat giữa người dùng hiện tại và một người dùng khác
+ * Controller: chatController
+ * 
+ * Xử lý toàn bộ logic HTTP cho chức năng chat:
+ * - Lấy lịch sử tin nhắn
+ * - Lấy danh bạ (những người đã nhắn tin)
+ * - Tìm kiếm người dùng mới
+ * - Upload và gửi file qua chat
+ * - Đánh dấu tin nhắn đã xem (seen)
+ * - Chuyển tiếp (forward) file sang user khác
+ */
+
+
+/**
+ * [GET] /api/chat/history/:userId
+ * Lấy lịch sử chat giữa người dùng hiện tại và một người dùng khác.
+ * 
  * Workflow:
  * 1. Nhận userId của người đang được chat cùng từ params.
  * 2. Lấy ID của người dùng hiện tại từ req.user (được gán bởi authMiddleware).
- * 3. Truy vấn bảng Messages để tìm tất cả tin nhắn thỏa mãn:
- *    (sender = current_user VÀ receiver = other_user) 
- *    HOẶC (sender = other_user VÀ receiver = current_user).
+ * 3. Truy vấn bảng Messages để tìm tất cả tin nhắn giữa 2 người.
  * 4. Sắp xếp theo thời gian tăng dần để hiển thị đúng thứ tự trên UI.
  */
 exports.getChatHistory = async (req, res) => {
@@ -33,7 +47,7 @@ exports.getChatHistory = async (req, res) => {
                 {
                     model: User,
                     as: 'Sender',
-                    attributes: ['id', 'name'] // Chỉ lấy những thông tin cơ bản
+                    attributes: ['id', 'name'] // Chỉ lấy thông tin cần thiết
                 }
             ]
         });
@@ -49,18 +63,20 @@ exports.getChatHistory = async (req, res) => {
     }
 };
 
+
 /**
- * Controller: Lấy danh sách những người có thể chat (Lịch sử nhắn tin gần đây)
+ * [GET] /api/chat/contacts
+ * Lấy danh sách những người có thể chat (Lịch sử nhắn tin gần đây).
+ * 
  * Workflow:
- * 1. Truy vấn bảng Messages để tìm tất cả tin nhắn gửi hoặc nhận bởi current_user.
- * 2. Lọc ra các user ID độc nhất.
- * 3. Truy vấn bảng Users để lấy thông tin những người đó.
+ * 1. Tìm tất cả tin nhắn gửi hoặc nhận bởi current_user.
+ * 2. Lọc ra các user ID độc nhất đã từng tương tác.
+ * 3. Truy vấn bảng Users để lấy thông tin hiển thị.
  */
 exports.getContacts = async (req, res) => {
     try {
         const currentUserId = req.user.id;
 
-        // Lấy tất cả tin nhắn liên quan đến user hiện tại
         const messages = await Message.findAll({
             where: {
                 [Op.or]: [
@@ -78,22 +94,16 @@ exports.getContacts = async (req, res) => {
             if (msg.receiver_id !== currentUserId) userIds.add(msg.receiver_id);
         });
 
-        // Nếu chưa từng nhắn cho ai
         if (userIds.size === 0) {
             return res.status(200).json({ success: true, data: [] });
         }
 
         const contacts = await User.findAll({
-            where: {
-                id: Array.from(userIds)
-            },
+            where: { id: Array.from(userIds) },
             attributes: ['id', 'name', 'email', 'role_id']
         });
 
-        res.status(200).json({
-            success: true,
-            data: contacts
-        });
+        res.status(200).json({ success: true, data: contacts });
 
     } catch (error) {
         console.error("❌ Get Contacts Error:", error);
@@ -101,8 +111,11 @@ exports.getContacts = async (req, res) => {
     }
 };
 
+
 /**
- * Controller: Tìm kiếm người dùng (để bắt đầu trò chuyện mới)
+ * [GET] /api/chat/search
+ * Tìm kiếm người dùng để bắt đầu trò chuyện mới.
+ * Không trả về chính bản thân người đang tìm kiếm.
  */
 exports.searchUsers = async (req, res) => {
     try {
@@ -116,7 +129,7 @@ exports.searchUsers = async (req, res) => {
         const users = await User.findAll({
             where: {
                 [Op.and]: [
-                    { id: { [Op.ne]: currentUserId } }, // Không tìm chính mình
+                    { id: { [Op.ne]: currentUserId } }, // Loại trừ bản thân
                     {
                         [Op.or]: [
                             { name: { [Op.like]: `%${q}%` } },
@@ -129,10 +142,7 @@ exports.searchUsers = async (req, res) => {
             attributes: ['id', 'name', 'email', 'role_id']
         });
 
-        res.status(200).json({
-            success: true,
-            data: users
-        });
+        res.status(200).json({ success: true, data: users });
 
     } catch (error) {
         console.error("❌ Search Users Error:", error);
@@ -140,3 +150,278 @@ exports.searchUsers = async (req, res) => {
     }
 };
 
+
+/**
+ * [POST] /api/chat/upload
+ * Upload file và tạo tin nhắn loại 'file' trong cuộc trò chuyện.
+ * 
+ * Phân quyền upload:
+ * - role_id = 2 (Giáo viên): Được phép upload
+ * - role_id = 3 (Admin): Được phép upload
+ * - role_id = 1 (Học sinh): KHÔNG được phép upload mới (chỉ có thể forward)
+ * 
+ * Workflow:
+ * 1. Kiểm tra quyền của người dùng dựa trên role_id.
+ * 2. Multer đã xử lý file và lưu vào disk trước khi vào đây (via middleware).
+ * 3. Tạo bản ghi Message mới với type='file' và thông tin file.
+ * 4. Emit qua socket đến người nhận nếu họ đang online.
+ * 5. Trả về messagePayload để frontend cập nhật UI ngay lập tức.
+ * 
+ * Body (multipart/form-data):
+ * - file: File được upload
+ * - receiver_id: ID người nhận
+ * - content: (optional) Lời nhắn kèm theo file
+ */
+exports.uploadFile = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const currentUserRole = req.user.role_id;
+
+        // --- Kiểm tra quyền upload ---
+        // Chỉ Giáo viên (role_id=2) và Admin (role_id=3) mới được upload file mới
+        if (currentUserRole === 1) {
+            // Xóa file đã lưu tạm (nếu multer đã lưu)
+            if (req.file) {
+                const fs = require('fs');
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(403).json({
+                message: "Học sinh không có quyền upload tài liệu. Bạn chỉ có thể chuyển tiếp tài liệu đã nhận."
+            });
+        }
+
+        // --- Kiểm tra file có tồn tại không ---
+        if (!req.file) {
+            return res.status(400).json({ message: "Không tìm thấy file được upload" });
+        }
+
+        const { receiver_id, content } = req.body;
+
+        if (!receiver_id) {
+            return res.status(400).json({ message: "Thiếu receiver_id" });
+        }
+
+        // --- Tạo đường dẫn tương đối để lưu vào DB ---
+        // Frontend sẽ ghép với VITE_API_URL để tạo URL đầy đủ
+        const relativeFilePath = `/chat-files/${req.file.filename}`;
+
+        // --- Lưu tin nhắn vào Database ---
+        const newMessage = await Message.create({
+            sender_id: currentUserId,
+            receiver_id: parseInt(receiver_id),
+            content: content || null,     // Lời nhắn tùy chọn kèm file
+            type: 'file',
+            file_path: relativeFilePath,
+            file_name: req.file.originalname, // Tên gốc để hiển thị
+            file_type: req.file.mimetype,     // MIME type
+            status: 'sent',
+            is_forwarded: false
+        });
+
+        // --- Lấy thông tin người gửi để đính kèm vào response ---
+        const sender = await User.findByPk(currentUserId, {
+            attributes: ['id', 'name']
+        });
+
+        const messagePayload = {
+            ...newMessage.toJSON(),
+            Sender: sender
+        };
+
+        // --- Emit qua Socket đến người nhận (nếu online) ---
+        // Import onlineUsers từ socket module để tìm socket ID của receiver
+        const io = req.app.get('io');
+        const receiverSocketId = onlineUsers.get(parseInt(receiver_id));
+
+        if (receiverSocketId && io) {
+            // Gửi tin nhắn đến receiver
+            io.to(receiverSocketId).emit('receive_message', messagePayload);
+
+            // Cập nhật status thành 'delivered' vì receiver đang online
+            await newMessage.update({ status: 'delivered' });
+            messagePayload.status = 'delivered';
+
+            // Thông báo cho sender biết message đã được delivered
+            const senderSocketId = onlineUsers.get(currentUserId);
+            if (senderSocketId) {
+                io.to(senderSocketId).emit('message_delivered', {
+                    messageId: newMessage.id,
+                    status: 'delivered'
+                });
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            data: messagePayload
+        });
+
+    } catch (error) {
+        console.error("❌ Upload File Error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ khi upload file" });
+    }
+};
+
+
+/**
+ * [PUT] /api/chat/seen/:senderId
+ * Đánh dấu tất cả tin nhắn từ senderId → currentUser là 'seen'.
+ * 
+ * Được gọi khi người dùng mở một cuộc trò chuyện (chọn contact).
+ * 
+ * Workflow:
+ * 1. Update tất cả tin nhắn chưa seen từ senderId đến currentUser.
+ * 2. Emit event 'messages_seen' đến sender (nếu đang online) để cập nhật icon tick.
+ */
+exports.markMessagesAsSeen = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const senderId = parseInt(req.params.senderId);
+
+        // --- Cập nhật tất cả tin nhắn chưa được xem ---
+        const [updatedCount] = await Message.update(
+            { status: 'seen' },
+            {
+                where: {
+                    sender_id: senderId,
+                    receiver_id: currentUserId,
+                    status: { [Op.ne]: 'seen' } // Chỉ update những tin chưa seen
+                }
+            }
+        );
+
+        // --- Thông báo cho sender biết tin nhắn đã được xem ---
+        if (updatedCount > 0) {
+            const io = req.app.get('io');
+            const senderSocketId = onlineUsers.get(senderId);
+
+            if (senderSocketId && io) {
+                io.to(senderSocketId).emit('messages_seen', {
+                    by: currentUserId,   // Ai đã xem
+                    from: senderId       // Tin nhắn của ai được xem
+                });
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Đã đánh dấu ${updatedCount} tin nhắn là đã xem`
+        });
+
+    } catch (error) {
+        console.error("❌ Mark Seen Error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ khi cập nhật trạng thái tin nhắn" });
+    }
+};
+
+
+/**
+ * [POST] /api/chat/forward
+ * Chuyển tiếp (forward) một file/tài liệu từ tin nhắn hiện có đến người dùng khác.
+ * 
+ * Tất cả user đều có thể forward file mà họ đã nhận hoặc đã gửi.
+ * Không cần copy file vật lý - chỉ tạo bản ghi Message mới tham chiếu cùng file_path.
+ * 
+ * Workflow:
+ * 1. Tìm tin nhắn gốc theo messageId.
+ * 2. Xác minh người forward có quyền (là sender hoặc receiver của tin nhắn gốc).
+ * 3. Tạo Message mới với cùng file_path/material_id, is_forwarded=true.
+ * 4. Emit qua socket đến người nhận mới.
+ * 
+ * Body (JSON):
+ * - messageId: ID của tin nhắn gốc cần forward
+ * - receiver_id: ID người nhận mới
+ */
+exports.forwardMessage = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const { messageId, receiver_id } = req.body;
+
+        if (!messageId || !receiver_id) {
+            return res.status(400).json({ message: "Thiếu messageId hoặc receiver_id" });
+        }
+
+        // --- Tìm tin nhắn gốc ---
+        const originalMessage = await Message.findByPk(messageId);
+
+        if (!originalMessage) {
+            return res.status(404).json({ message: "Không tìm thấy tin nhắn gốc" });
+        }
+
+        // --- Kiểm tra quyền: chỉ sender hoặc receiver của tin nhắn gốc mới được forward ---
+        const canForward =
+            originalMessage.sender_id === currentUserId ||
+            originalMessage.receiver_id === currentUserId;
+
+        if (!canForward) {
+            return res.status(403).json({
+                message: "Bạn không có quyền chuyển tiếp tin nhắn này"
+            });
+        }
+
+        // --- Kiểm tra tin nhắn có file hoặc material không ---
+        const hasFile = originalMessage.type === 'file' && originalMessage.file_path;
+        const hasMaterial = originalMessage.type === 'material' && originalMessage.material_id;
+
+        if (!hasFile && !hasMaterial) {
+            return res.status(400).json({
+                message: "Chỉ có thể chuyển tiếp tin nhắn có chứa file hoặc tài liệu"
+            });
+        }
+
+        // --- Tạo tin nhắn mới (forward) ---
+        // Không copy file vật lý - chỉ tham chiếu cùng file_path hoặc material_id
+        const forwardedMessage = await Message.create({
+            sender_id: currentUserId,
+            receiver_id: parseInt(receiver_id),
+            content: originalMessage.content, // Giữ nguyên lời nhắn gốc (nếu có)
+            type: originalMessage.type,
+            material_id: originalMessage.material_id || null,
+            file_path: originalMessage.file_path || null,
+            file_name: originalMessage.file_name || null,
+            file_type: originalMessage.file_type || null,
+            is_forwarded: true, // Đánh dấu đây là tin nhắn được forward
+            status: 'sent'
+        });
+
+        // --- Lấy thông tin người forward ---
+        const sender = await User.findByPk(currentUserId, {
+            attributes: ['id', 'name']
+        });
+
+        const messagePayload = {
+            ...forwardedMessage.toJSON(),
+            Sender: sender
+        };
+
+        // --- Emit qua Socket đến người nhận mới ---
+        const io = req.app.get('io');
+        const receiverSocketId = onlineUsers.get(parseInt(receiver_id));
+
+        if (receiverSocketId && io) {
+            io.to(receiverSocketId).emit('receive_message', messagePayload);
+
+            // Cập nhật status thành delivered vì receiver đang online
+            await forwardedMessage.update({ status: 'delivered' });
+            messagePayload.status = 'delivered';
+
+            // Thông báo cho sender biết đã delivered
+            const senderSocketId = onlineUsers.get(currentUserId);
+            if (senderSocketId) {
+                io.to(senderSocketId).emit('message_delivered', {
+                    messageId: forwardedMessage.id,
+                    status: 'delivered'
+                });
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            data: messagePayload
+        });
+
+    } catch (error) {
+        console.error("❌ Forward Message Error:", error);
+        res.status(500).json({ message: "Lỗi máy chủ khi chuyển tiếp tin nhắn" });
+    }
+};
