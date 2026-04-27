@@ -6,10 +6,11 @@ import {
   Sparkles, ArrowLeft, MoreHorizontal, Mail, ClipboardList
 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { useAuth } from '../context/AuthContext';
-import { MOCK_GROUPS as INITIAL_GROUPS, MOCK_STUDENTS as INITIAL_STUDENTS } from '../data/mockGroups';
+import { eduService } from '../services/eduService';
+import { toast } from 'react-hot-toast';
 
 // ═══════════════════════════════════════════════════════════════
 // TEACHER GROUP MANAGEMENT — Giai đoạn 1
@@ -25,16 +26,49 @@ export default function TeacherGroupManagement() {
   const { user } = useAuth();
 
   // ─── State ───
-  const [groups, setGroups] = useState(INITIAL_GROUPS);
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
+  const [groups, setGroups] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [groupDetails, setGroupDetails] = useState({}); // { groupId: { students: [], materials: [] } }
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState(null); // groupId to assign to
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+
+  // ─── Fetch Data ───
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [groupsRes, studentsRes] = await Promise.all([
+        eduService.getGroups(),
+        eduService.getStudents()
+      ]);
+      setGroups(groupsRes.data || []);
+      setStudents(studentsRes.data || []);
+    } catch (error) {
+      toast.error('Không thể tải dữ liệu lớp học');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchGroupDetails = async (groupId) => {
+    if (groupDetails[groupId]) return;
+    try {
+      const res = await eduService.getGroupDetails(groupId);
+      setGroupDetails(prev => ({ ...prev, [groupId]: res.data }));
+    } catch (error) {
+      toast.error('Không thể tải chi tiết nhóm');
+    }
+  };
 
   // ─── Derived data ───
   const freeStudents = useMemo(
@@ -69,42 +103,42 @@ export default function TeacherGroupManagement() {
     }
   };
 
-  const assignStudentsToGroup = (groupId) => {
-    setStudents(prev => prev.map(s =>
-      selectedStudents.includes(s.id) ? { ...s, groupId } : s
-    ));
-    setSelectedStudents([]);
-    setShowAssignModal(false);
-    setAssignTarget(null);
+  const assignStudentsToGroup = async (groupId) => {
+    try {
+      await eduService.addMembers(groupId, selectedStudents);
+      toast.success('Đã thêm học sinh vào nhóm');
+      setSelectedStudents([]);
+      setShowAssignModal(false);
+      setAssignTarget(null);
+      fetchData(); // Reload
+      // Clear group details to force refresh
+      setGroupDetails(prev => {
+        const next = { ...prev };
+        delete next[groupId];
+        return next;
+      });
+    } catch (error) {
+      toast.error('Lỗi khi thêm học sinh');
+    }
   };
 
   const removeStudentFromGroup = (studentId) => {
-    setStudents(prev => prev.map(s =>
-      s.id === studentId ? { ...s, groupId: null } : s
-    ));
+    toast.error('Chức năng này đang được phát triển');
   };
 
   const deleteGroup = (groupId) => {
-    // Move all students in that group to "free"
-    setStudents(prev => prev.map(s =>
-      s.groupId === groupId ? { ...s, groupId: null } : s
-    ));
-    setGroups(prev => prev.filter(g => g.id !== groupId));
-    setShowDeleteConfirm(null);
-    if (expandedGroup === groupId) setExpandedGroup(null);
+    toast.error('Chức năng này đang được phát triển');
   };
 
-  const createGroup = (formData) => {
-    const newGroup = {
-      id: `grp-${Date.now()}`,
-      name: formData.name,
-      description: formData.description,
-      color: formData.color,
-      memberCount: 0,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setGroups(prev => [...prev, newGroup]);
-    setShowCreateModal(false);
+  const createGroup = async (formData) => {
+    try {
+      await eduService.createGroup(formData);
+      toast.success('Đã tạo nhóm học tập mới');
+      setShowCreateModal(false);
+      fetchData();
+    } catch (error) {
+      toast.error('Không thể tạo nhóm');
+    }
   };
 
   const updateGroup = (formData) => {
@@ -206,7 +240,11 @@ export default function TeacherGroupManagement() {
                       {/* Group Header */}
                       <div
                         className="flex items-center justify-between p-5 cursor-pointer select-none"
-                        onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
+                        onClick={() => {
+                          const nextState = !isExpanded;
+                          setExpandedGroup(nextState ? group.id : null);
+                          if (nextState) fetchGroupDetails(group.id);
+                        }}
                       >
                         <div className="flex items-center gap-4 min-w-0">
                           <div
@@ -264,14 +302,18 @@ export default function TeacherGroupManagement() {
                       {/* Expanded: Student list */}
                       {isExpanded && (
                         <div className="border-t border-slate-700/30 bg-slate-950/30">
-                          {groupStudents.length === 0 ? (
+                          {!groupDetails[group.id] ? (
+                            <div className="py-8 text-center animate-pulse">
+                              <p className="text-slate-500 text-sm font-medium">Đang tải danh sách...</p>
+                            </div>
+                          ) : groupDetails[group.id].students?.length === 0 ? (
                             <div className="py-8 text-center">
                               <Users className="w-10 h-10 text-slate-700 mx-auto mb-2" />
                               <p className="text-slate-500 text-sm font-medium">Nhóm này chưa có học sinh nào.</p>
                             </div>
                           ) : (
                             <div className="divide-y divide-slate-800/40">
-                              {groupStudents.map(student => (
+                              {groupDetails[group.id].students.map(student => (
                                 <div key={student.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40 transition-colors group">
                                   <div className="flex items-center gap-3 min-w-0">
                                     <img

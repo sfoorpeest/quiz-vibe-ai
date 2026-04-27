@@ -42,7 +42,23 @@ router.get('/dashboard/stats', auth, eduController.getUserDashboard);
 // 4.5. Trợ lý AI giải đáp thắc mắc
 router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
 
-// 5. Quản trị hệ thống (Chỉ Admin mới có quyền)
+// 5. Quản lý lớp học (Chỉ Teacher/Admin)
+router.post('/groups', auth, checkRole([2, 3]), eduController.createGroup);
+router.get('/groups', auth, checkRole([2, 3]), eduController.getTeacherGroups);
+router.get('/groups/:id', auth, checkRole([2, 3]), eduController.getGroupDetails);
+router.get('/students', auth, checkRole([2, 3]), eduController.getStudentsForTeacher);
+router.post('/groups/members', auth, checkRole([2, 3]), eduController.addGroupMembers);
+router.post('/groups/assign', auth, checkRole([2, 3]), eduController.assignMaterialToGroup);
+
+// 6. Phiếu học tập (Worksheets)
+router.get('/worksheets/all', auth, checkRole([2, 3]), eduController.getAllWorksheetsForTeacher);
+router.get('/worksheets/public/:id', eduController.getWorksheetById);
+router.get('/worksheets/assigned', auth, checkRole([1]), eduController.getWorksheetsForStudent);
+router.post('/worksheets/generate', auth, checkRole([2, 3]), eduController.generateWorksheetWithAI);
+router.post('/worksheets/submit', auth, checkRole([1, 2, 3]), eduController.submitWorksheet);
+router.get('/worksheets/material/:material_id', auth, eduController.getWorksheetsByMaterial);
+
+// 7. Quản trị hệ thống (Chỉ Admin mới có quyền)
 router.get('/admin/stats', auth, checkRole([3]), eduController.getSystemStats);
 router.delete('/admin/materials/:id', auth, checkRole([3]), eduController.deleteMaterialByAdmin);
 

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star } from 'lucide-react';
+import { BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star, Edit3 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import { eduService } from '../services/eduService';
+import { ClipboardList } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════
 import { materialService } from '../services/materialService';
@@ -27,6 +29,7 @@ const MOCK_CONTINUE_LESSON = {
 const TABS = [
   { key: 'all', label: 'Tất cả', icon: BookOpen },
   { key: 'learning', label: 'Đang học', icon: Play },
+  { key: 'worksheet', label: 'Phiếu học tập', icon: ClipboardList },
   { key: 'done', label: 'Đã xong', icon: CheckCircle2 },
   { key: 'favorite', label: 'Yêu thích', icon: Heart },
 ];
@@ -37,51 +40,67 @@ export default function MyLessons() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [lessons, setLessons] = useState([]);
+  const [worksheets, setWorksheets] = useState([]);
   const [stats, setStats] = useState({ totalLessons: 0, totalHours: 45 });
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
-    const fetchLessons = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await materialService.getMyLessons();
-        const apiLessons = (res.data || []).map(m => ({
+        const [lessonsRes, wsRes] = await Promise.all([
+          materialService.getMyLessons(),
+          eduService.getAssignedWorksheets()
+        ]);
+
+        const apiLessons = (lessonsRes.data || []).map(m => ({
           id: m.id,
+          type: 'lesson',
           title: m.title || 'Bài học',
-          author: 'Hệ thống / Giảng viên', 
-          authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('HT')}&background=0D8ABC&color=fff`,
+          author: 'Giảng viên', 
+          authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('GV')}&background=0D8ABC&color=fff`,
           progress: Number.isFinite(Number(m.progress)) ? Number(m.progress) : 0,
-          lastScore: Number.isFinite(Number(m.last_score)) ? Number(m.last_score) : null,
-          quizStatus: m.quiz_status || null,
-          lastAttemptDate: m.last_attempt_date ? new Date(m.last_attempt_date).toLocaleDateString('vi-VN') : null,
           status: Number(m.progress) >= 100 ? 'done' : Number(m.progress) > 0 ? 'learning' : 'new',
-          isFavorite: false,
           updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
         }));
+
+        const apiWorksheets = (wsRes.data || []).map(w => ({
+          id: w.id,
+          type: 'worksheet',
+          title: w.title || 'Phiếu học tập',
+          groupName: w.group_name,
+          materialTitle: w.material_title,
+          status: 'worksheet',
+          updatedAt: new Date(w.created_at).toLocaleDateString('vi-VN')
+        }));
+
         setLessons(apiLessons);
-        if (res.stats) {
-          setStats(res.stats);
+        setWorksheets(apiWorksheets);
+        if (lessonsRes.stats) {
+          setStats(lessonsRes.stats);
         }
       } catch (err) {
-        console.error("Failed to fetch my lessons:", err);
+        console.error("Failed to fetch data:", err);
       } finally {
         setLoading(false);
       }
     };
     if (user) {
-      fetchLessons();
+      fetchData();
     }
   }, [user]);
 
   // Filter logic
-  const filteredLessons = lessons.filter(lesson => {
+  const combinedList = activeTab === 'worksheet' ? worksheets : lessons;
+
+  const filteredItems = combinedList.filter(item => {
     const matchTab =
       activeTab === 'all' ||
-      (activeTab === 'learning' && lesson.status === 'learning') ||
-      (activeTab === 'done' && lesson.status === 'done') ||
-      (activeTab === 'favorite' && lesson.isFavorite);
-    const matchSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lesson.author.toLowerCase().includes(searchQuery.toLowerCase());
+      activeTab === 'worksheet' || // worksheet tab already uses worksheet list
+      (activeTab === 'learning' && item.status === 'learning') ||
+      (activeTab === 'done' && item.status === 'done') ||
+      (activeTab === 'favorite' && item.isFavorite);
+    const matchSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchTab && matchSearch;
   });
 
@@ -190,6 +209,7 @@ export default function MyLessons() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
               const count = tab.key === 'all' ? lessons.length
+                : tab.key === 'worksheet' ? worksheets.length
                 : tab.key === 'favorite' ? lessons.filter(l => l.isFavorite).length
                 : lessons.filter(l => l.status === tab.key).length;
               return (
@@ -247,81 +267,99 @@ export default function MyLessons() {
               <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-slate-400 font-bold">Đang tải...</p>
             </div>
-          ) : filteredLessons.length > 0 ? (
-            filteredLessons.map((lesson, idx) => (
+          ) : filteredItems.length > 0 ? (
+            filteredItems.map((item, idx) => (
               <div
-                key={lesson.id}
-                onClick={() => navigate(`/learn/${lesson.id}`)}
+                key={`${item.type}-${item.id}`}
+                onClick={() => {
+                  if (item.type === 'lesson') navigate(`/learn/${item.id}`);
+                  else navigate(`/shared/worksheet/${item.id}`);
+                }}
                 className={`group grid grid-cols-1 md:grid-cols-[auto_1fr_140px_100px_120px] items-center gap-4 px-6 py-4 cursor-pointer transition-all duration-200 hover:bg-slate-800/60 ${
-                  idx < filteredLessons.length - 1 ? 'border-b border-slate-800/30' : ''
+                  idx < filteredItems.length - 1 ? 'border-b border-slate-800/30' : ''
                 }`}
               >
-                {/* Avatar */}
+                {/* Icon/Avatar */}
                 <div className="hidden md:flex">
-                  <img
-                    src={lesson.authorAvatar}
-                    alt={lesson.author}
-                    className="w-10 h-10 rounded-full border-2 border-slate-700 group-hover:border-cyan-500/50 transition-colors shadow-md"
-                  />
+                  {item.type === 'lesson' ? (
+                    <img
+                      src={item.authorAvatar}
+                      alt={item.author}
+                      className="w-10 h-10 rounded-full border-2 border-slate-700 group-hover:border-cyan-500/50 transition-colors shadow-md"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                      <ClipboardList className="w-6 h-6" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Title + Author */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="text-sm font-bold text-slate-100 group-hover:text-cyan-300 transition-colors truncate">
-                      {lesson.title}
+                      {item.title}
                     </h4>
-                    {lesson.isFavorite && <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 shrink-0" />}
-                    {lesson.progress >= 100 && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                    {item.isFavorite && <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 shrink-0" />}
+                    {item.progress >= 100 && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   </div>
-                  <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-                    <img src={lesson.authorAvatar} className="w-4 h-4 rounded-full md:hidden" alt="" />
-                    {lesson.author}
+                  <p className="text-xs text-slate-500 font-medium">
+                    {item.type === 'lesson' ? item.author : `Lớp: ${item.groupName}`}
                   </p>
-                  <p className="text-xs mt-1">
-                    {lesson.lastScore !== null ? (
-                      <span className={lesson.quizStatus === 'PASS' ? 'text-emerald-400 font-bold' : 'text-rose-300 font-bold'}>
-                        Quiz gần nhất: {lesson.lastScore}/5 • {lesson.quizStatus} • {lesson.lastAttemptDate || 'Không rõ ngày'}
-                      </span>
-                    ) : (
-                      <span className="text-slate-500">Chưa có kết quả quiz</span>
-                    )}
-                  </p>
+                  {item.type === 'worksheet' && (
+                    <p className="text-[10px] text-slate-600 mt-1 italic">Dựa trên: {item.materialTitle}</p>
+                  )}
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar or Badge */}
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${getProgressColor(lesson.progress)}`}
-                      style={{ width: `${lesson.progress}%` }}
-                    ></div>
-                  </div>
-                  <span className={`text-xs font-bold min-w-[32px] text-right ${lesson.progress >= 100 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {lesson.progress}%
-                  </span>
+                  {item.type === 'lesson' ? (
+                    <>
+                      <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${getProgressColor(item.progress)}`}
+                          style={{ width: `${item.progress}%` }}
+                        ></div>
+                      </div>
+                      <span className={`text-xs font-bold min-w-[32px] text-right ${item.progress >= 100 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        {item.progress}%
+                      </span>
+                    </>
+                  ) : (
+                    <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-black rounded uppercase border border-blue-500/20">
+                      Bài tập tự luận
+                    </span>
+                  )}
                 </div>
 
                 {/* Updated At */}
                 <div className="hidden md:flex justify-center">
-                  <span className="text-xs text-slate-500 font-medium">{lesson.updatedAt}</span>
+                  <span className="text-xs text-slate-500 font-medium">{item.updatedAt}</span>
                 </div>
 
                 {/* Action Button */}
                 <div className="flex justify-end">
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/learn/${lesson.id}`); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (item.type === 'lesson') navigate(`/learn/${item.id}`);
+                      else navigate(`/shared/worksheet/${item.id}`);
+                    }}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                      lesson.progress >= 100
+                      item.type === 'worksheet' 
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                        : item.progress >= 100
                         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-                        : lesson.progress > 0
+                        : item.progress > 0
                         ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20'
                         : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
                     }`}
                   >
-                    {lesson.progress >= 100 ? (
+                    {item.type === 'worksheet' ? (
+                      <><Edit3 className="w-3.5 h-3.5" /> Làm bài</>
+                    ) : item.progress >= 100 ? (
                       <><CheckCircle2 className="w-3.5 h-3.5" /> Xem lại</>
-                    ) : lesson.progress > 0 ? (
+                    ) : item.progress > 0 ? (
                       <><Play className="w-3.5 h-3.5" /> Học tiếp</>
                     ) : (
                       <><Bookmark className="w-3.5 h-3.5" /> Bắt đầu</>

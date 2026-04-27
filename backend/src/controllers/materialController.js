@@ -15,7 +15,9 @@ exports.getMaterials = async (req, res) => {
             subject,
             grade,
             page,
-            limit
+            limit,
+            userId: req.user?.id,
+            roleId: req.user?.role_id
         });
 
         return res.status(200).json(result);

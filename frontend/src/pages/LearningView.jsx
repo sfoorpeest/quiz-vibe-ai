@@ -10,11 +10,15 @@ import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
 import ReactMarkdown from 'react-markdown';
+import { eduService } from '../services/eduService';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export default function LearningView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // Đọc dữ liệu ôn lại từ QuizPage (nếu có), sau đó fallback localStorage
   const locationState = location.state || {};
@@ -628,6 +632,26 @@ export default function LearningView() {
               >
                 <Download className="w-4 h-4" /> TẢI VỀ
               </button>
+
+              {(user?.role_id === 2 || user?.role_id === 3) && (
+                <button 
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true);
+                      const res = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
+                      toast.success('Đã sinh phiếu học tập bằng AI!');
+                      navigate(`/teacher/worksheets?id=${res.data.id}`);
+                    } catch (error) {
+                      toast.error('AI không thể sinh phiếu lúc này');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 transition-colors font-bold ml-2" 
+                >
+                  <Sparkles className="w-4 h-4 animate-pulse" /> PHIẾU AI
+                </button>
+              )}
             </div>
 
             <div className="flex items-center px-4 py-2 bg-slate-800/80 rounded-2xl border border-slate-700/50 text-sm font-semibold text-slate-300 gap-4">

@@ -23,12 +23,16 @@ import TeacherGroupManagement from './pages/TeacherGroupManagement';
 import WorksheetBuilder from './pages/WorksheetBuilder';
 import WorksheetPublic from './pages/WorksheetPublic';
 import Chat from './pages/Chat';
+import { Toaster } from 'react-hot-toast';
 
+// Educational App Main Router
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster position="top-center" reverseOrder={false} />
         <Routes>
+          <Route path="/test" element={<div style={{color:'white', padding:'50px'}}>React is Working!</div>} />
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

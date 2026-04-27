@@ -45,6 +45,7 @@ export default function UploadCenter() {
     summary: '',
     tags: []
   });
+  const [visibility, setVisibility] = useState('public'); // 'public' or 'private'
 
   // Hiệu ứng "AI Cào Phím" cho Summary
   const [displayedSummary, setDisplayedSummary] = useState('');
@@ -152,7 +153,8 @@ export default function UploadCenter() {
         title: previewData.title || "Tài liệu học tập mới",
         description: combinedDescription,
         content_url: file ? `https://file-server.local/uploads/temp_${file.name.replace(/\s+/g, '_')}` : (linkInput || "https://file-server.local/demo.pdf"),
-        content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống."
+        content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống.",
+        visibility: visibility
       });
       showToast("Đã phân tích xong và lưu học liệu thành công!", "success");
       // Delay navigation a bit to let the user admire the toast animation
@@ -444,6 +446,32 @@ export default function UploadCenter() {
                       ))}
                       <button className="flex items-center gap-1 border-2 border-dashed border-slate-600 text-slate-400 hover:text-blue-400 hover:border-blue-500 hover:bg-blue-500/10 transition-all text-sm font-semibold px-3 py-1.5 rounded-lg">
                         <Plus className="w-4 h-4" /> Thêm Tag
+                      </button>
+                   </div>
+                </div>
+
+                {/* Visibility Setting */}
+                <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-700 rounded-3xl p-6 shadow-md">
+                   <div className="flex items-center gap-2 mb-4">
+                      <div className="p-1.5 bg-amber-500/20 rounded text-amber-400">
+                        <CheckCircle className="w-4 h-4" />
+                      </div>
+                      <label className="text-sm font-bold text-slate-200">Quyền riêng tư</label>
+                   </div>
+                   <div className="flex gap-4">
+                      <button 
+                        onClick={() => setVisibility('public')}
+                        className={`flex-1 p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${visibility === 'public' ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 bg-slate-800/40 opacity-60'}`}
+                      >
+                        <span className="font-bold text-sm">Công khai</span>
+                        <span className="text-[10px] text-slate-400">Tất cả mọi người đều thấy trong Ngân hàng đề</span>
+                      </button>
+                      <button 
+                        onClick={() => setVisibility('private')}
+                        className={`flex-1 p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${visibility === 'private' ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700 bg-slate-800/40 opacity-60'}`}
+                      >
+                        <span className="font-bold text-sm">Riêng tư</span>
+                        <span className="text-[10px] text-slate-400">Chỉ mình bạn thấy hoặc chia sẻ riêng cho lớp</span>
                       </button>
                    </div>
                 </div>

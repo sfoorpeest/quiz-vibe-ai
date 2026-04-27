@@ -92,20 +92,21 @@ exports.analyzeDraftMaterial = async (req, res) => {
 
 /**
  * 2. Lưu học liệu mới vào Database và Đồng bộ lại toàn bộ file JSON
+ * Cập nhật: Thêm thuộc tính visibility (Quyền riêng tư)
  */
 const fs = require('fs');
 const path = require('path');
 
 exports.createMaterial = async (req, res) => {
     try {
-        const { title, description, content_url, content } = req.body;
+        const { title, description, content_url, content, visibility = 'public' } = req.body;
         const teacherId = req.user.id; 
 
-        // 1. Lưu bản ghi mới vào Database (MySQL)
+        // 1. Lưu bản ghi mới vào Database (MySQL) kèm trạng thái hiển thị
         const [resultId] = await sequelize.query(
-            'INSERT INTO materials (title, description, content_url, content, created_by) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO materials (title, description, content_url, content, created_by, visibility) VALUES (?, ?, ?, ?, ?, ?)',
             {
-                replacements: [title, description, content_url, content, teacherId],
+                replacements: [title, description, content_url, content, teacherId, visibility],
                 type: QueryTypes.INSERT
             }
         );
@@ -128,6 +129,7 @@ exports.createMaterial = async (req, res) => {
             description: item.description,
             file_path: item.content_url,
             content: item.content,
+            visibility: item.visibility,
             created_at: item.created_at,
             _status: "Synced from Database"
         }));
@@ -531,5 +533,281 @@ exports.deleteMaterialByAdmin = async (req, res) => {
         res.status(200).json({ status: 'success', message: "Admin đã xóa học liệu thành công" });
     } catch (error) {
         res.status(500).json({ message: "Lỗi khi xóa học liệu" });
+    }
+};
+
+/**
+ * 12. QUẢN LÝ LỚP HỌC (GROUPS)
+ */
+// Tạo lớp học mới (Dành cho Teacher/Admin)
+exports.createGroup = async (req, res) => {
+    try {
+        const { name, description } = req.body;
+        const teacherId = req.user.id;
+
+        const [groupId] = await sequelize.query(
+            'INSERT INTO `groups` (name, description, teacher_id) VALUES (?, ?, ?)',
+            { replacements: [name, description, teacherId], type: QueryTypes.INSERT }
+        );
+
+        res.status(201).json({ status: 'success', data: { id: groupId, name } });
+    } catch (error) {
+        console.error('Create Group Error:', error);
+        res.status(500).json({ message: 'Không thể tạo lớp học' });
+    }
+};
+
+// Lấy danh sách các lớp học mà Giáo viên đang quản lý
+exports.getTeacherGroups = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+        const groups = await sequelize.query(
+            `SELECT g.*, COUNT(gm.user_id) as student_count 
+             FROM \`groups\` g 
+             LEFT JOIN group_members gm ON g.id = gm.group_id 
+             WHERE g.teacher_id = ? 
+             GROUP BY g.id 
+             ORDER BY g.created_at DESC`,
+            { replacements: [teacherId], type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: groups });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách lớp học' });
+    }
+};
+
+// Thêm danh sách học sinh vào lớp học (Sử dụng INSERT IGNORE để tránh trùng lặp)
+exports.addGroupMembers = async (req, res) => {
+    try {
+        const { group_id, user_ids } = req.body; // user_ids là mảng [1, 2, 3]
+
+        if (!Array.isArray(user_ids) || user_ids.length === 0) {
+            return res.status(400).json({ message: 'Danh sách học sinh không hợp lệ' });
+        }
+
+        const values = user_ids.map(uid => `(${group_id}, ${uid})`).join(',');
+        await sequelize.query(
+            `INSERT IGNORE INTO group_members (group_id, user_id) VALUES ${values}`,
+            { type: QueryTypes.INSERT }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Đã thêm học sinh vào lớp' });
+    } catch (error) {
+        res.status(500).json({ message: 'Không thể thêm học sinh' });
+    }
+};
+
+// Giao học liệu cho cả lớp (Tất cả học sinh trong lớp sẽ thấy tài liệu này trong "My Lessons")
+exports.assignMaterialToGroup = async (req, res) => {
+    try {
+        const { group_id, material_id } = req.body;
+
+        await sequelize.query(
+            'INSERT IGNORE INTO group_materials (group_id, material_id) VALUES (?, ?)',
+            { replacements: [group_id, material_id], type: QueryTypes.INSERT }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Đã giao bài cho lớp' });
+    } catch (error) {
+        res.status(500).json({ message: 'Không thể giao bài học' });
+    }
+};
+
+// Lấy thông tin chi tiết một lớp học: Tên lớp, Danh sách học sinh, Danh sách bài học đã giao
+exports.getGroupDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Lấy thông tin cơ bản của lớp
+        const group = await sequelize.query('SELECT * FROM `groups` WHERE id = ?', { replacements: [id], type: QueryTypes.SELECT });
+        
+        if (!group[0]) return res.status(404).json({ message: 'Không tìm thấy lớp' });
+
+        // Lấy danh sách học sinh thuộc lớp
+        const students = await sequelize.query(
+            `SELECT u.id, u.name, u.email, up.avatar_url as avatar 
+             FROM users u 
+             LEFT JOIN user_profiles up ON u.id = up.user_id
+             INNER JOIN group_members gm ON u.id = gm.user_id 
+             WHERE gm.group_id = ?`,
+            { replacements: [id], type: QueryTypes.SELECT }
+        );
+
+        // Lấy danh sách học liệu đã được giao cho lớp này
+        const materials = await sequelize.query(
+            `SELECT m.id, m.title 
+             FROM materials m 
+             INNER JOIN group_materials gm ON m.id = gm.material_id 
+             WHERE gm.group_id = ?`,
+            { replacements: [id], type: QueryTypes.SELECT }
+        );
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                ...group[0],
+                students,
+                materials
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy chi tiết lớp học' });
+    }
+};
+
+// Lấy danh sách toàn bộ học sinh (Role = 1) để giáo viên có thể thêm vào lớp
+exports.getStudentsForTeacher = async (req, res) => {
+    try {
+        const students = await sequelize.query(
+            `SELECT u.id, u.name, u.email, up.avatar_url as avatar, 
+             (SELECT gm.group_id FROM group_members gm WHERE gm.user_id = u.id LIMIT 1) as group_id
+             FROM users u 
+             LEFT JOIN user_profiles up ON u.id = up.user_id
+             WHERE u.role_id = 1`,
+            { type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: students });
+    } catch (error) {
+        console.error('Get Students Error:', error);
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách học sinh' });
+    }
+};
+
+// Lấy danh sách toàn bộ phiếu học tập do giáo viên tạo
+exports.getAllWorksheetsForTeacher = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+        const worksheets = await sequelize.query(
+            'SELECT * FROM worksheets WHERE created_by = ? ORDER BY created_at DESC',
+            { replacements: [teacherId], type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: worksheets });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
+    }
+};
+
+/**
+ * 13. PHIẾU HỌC TẬP (WORKSHEETS) - TỰ ĐỘNG SINH BẰNG AI
+ */
+// Hàm gọi AI để sinh ra một Phiếu học tập gồm các câu hỏi tự luận và bài tập từ nội dung học liệu
+exports.generateWorksheetWithAI = async (req, res) => {
+    try {
+        const { material_id, title } = req.body;
+
+        // Lấy nội dung học liệu từ DB để cung cấp context cho AI
+        const material = await sequelize.query(
+            'SELECT * FROM materials WHERE id = ?',
+            { replacements: [material_id], type: QueryTypes.SELECT }
+        );
+
+        if (!material[0]) return res.status(404).json({ message: 'Không tìm thấy học liệu' });
+
+        // Prompt yêu cầu AI đóng vai giáo viên để tạo câu hỏi tự luận
+        const prompt = `Bạn là một giáo viên chuyên nghiệp. Dựa vào nội dung tài liệu sau, hãy tạo một "Phiếu học tập" gồm 5 câu hỏi tự luận giúp học sinh đào sâu kiến thức.
+        Nội dung: ${material[0].content.substring(0, 4000)}
+        
+        Vui lòng trả về kết quả theo cấu trúc JSON:
+        {
+           "title": "Tên phiếu học tập",
+           "questions": [
+              {"id": 1, "question": "Câu hỏi 1...", "hint": "Gợi ý trả lời..."},
+              ...
+           ]
+        }
+        Lưu ý: Chỉ trả về JSON, không kèm văn bản khác.`;
+
+        let aiResult = await aiService.generateContent(prompt);
+        // Làm sạch dữ liệu trả về từ AI (loại bỏ markdown block nếu có)
+        aiResult = aiResult.replace(/```json\n|\n```|```/g, '').trim();
+        const parsedContent = JSON.parse(aiResult);
+
+        // Lưu thông tin phiếu học tập đã sinh vào Database
+        const [worksheetId] = await sequelize.query(
+            'INSERT INTO worksheets (material_id, title, content, created_by) VALUES (?, ?, ?, ?)',
+            {
+                replacements: [material_id, title || parsedContent.title, JSON.stringify(parsedContent.questions), req.user.id],
+                type: QueryTypes.INSERT
+            }
+        );
+
+        res.status(201).json({
+            status: 'success',
+            data: { id: worksheetId, title: title || parsedContent.title, questions: parsedContent.questions }
+        });
+    } catch (error) {
+        console.error('Generate Worksheet Error:', error);
+        res.status(500).json({ message: 'AI hiện không thể sinh phiếu học tập' });
+    }
+};
+
+// Hàm lưu bài làm của học sinh cho Phiếu học tập
+exports.submitWorksheet = async (req, res) => {
+    try {
+        const { worksheet_id, answers } = req.body; // Cấu trúc answers: [{question_id: 1, answer: "..."}]
+        const userId = req.user.id;
+
+        await sequelize.query(
+            'INSERT INTO worksheet_submissions (worksheet_id, user_id, answers) VALUES (?, ?, ?)',
+            {
+                replacements: [worksheet_id, userId, JSON.stringify(answers)],
+                type: QueryTypes.INSERT
+            }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Đã nộp phiếu học tập thành công' });
+    } catch (error) {
+        res.status(500).json({ message: 'Không thể nộp bài' });
+    }
+};
+
+// Lấy danh sách phiếu học tập dành cho học sinh (Dựa vào các lớp mà học sinh tham gia)
+exports.getWorksheetsForStudent = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const worksheets = await sequelize.query(
+            `SELECT w.*, g.name as group_name, m.title as material_title 
+             FROM worksheets w
+             INNER JOIN materials m ON w.material_id = m.id
+             INNER JOIN group_materials gm ON m.id = gm.material_id
+             INNER JOIN group_members gmb ON gm.group_id = gmb.group_id
+             INNER JOIN \`groups\` g ON gm.group_id = g.id
+             WHERE gmb.user_id = ?
+             ORDER BY w.created_at DESC`,
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: worksheets });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
+    }
+};
+
+// Lấy chi tiết một phiếu học tập cụ thể (Cho phép xem công khai)
+exports.getWorksheetById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const worksheet = await sequelize.query(
+            'SELECT * FROM worksheets WHERE id = ?',
+            { replacements: [id], type: QueryTypes.SELECT }
+        );
+
+        if (!worksheet[0]) return res.status(404).json({ message: 'Không tìm thấy phiếu học tập' });
+
+        res.status(200).json({ status: 'success', data: worksheet[0] });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy thông tin phiếu học tập' });
+    }
+};
+
+// Lấy danh sách toàn bộ phiếu học tập thuộc về một học liệu cụ thể
+exports.getWorksheetsByMaterial = async (req, res) => {
+    try {
+        const { material_id } = req.params;
+        const worksheets = await sequelize.query(
+            'SELECT * FROM worksheets WHERE material_id = ? ORDER BY created_at DESC',
+            { replacements: [material_id], type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: worksheets });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
     }
 };

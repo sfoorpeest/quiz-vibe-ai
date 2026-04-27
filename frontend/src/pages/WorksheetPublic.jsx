@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Printer, Download, BookOpen } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
-import { MOCK_WORKSHEETS } from '../data/mockWorksheets';
+import { eduService } from '../services/eduService';
+import { Loader2, AlertCircle } from 'lucide-react';
 import {
   HeaderBlock,
   TableBlock,
@@ -16,14 +17,63 @@ import '../components/worksheet/worksheet.css';
 export default function WorksheetPublic() {
   const { id } = useParams();
 
-  const worksheet = useMemo(() => MOCK_WORKSHEETS.find(w => w.id === id), [id]);
+  const [worksheet, setWorksheet] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
 
-  if (!worksheet) {
+  React.useEffect(() => {
+    const fetchWorksheet = async () => {
+      try {
+        setLoading(true);
+        const res = await eduService.getPublicWorksheet(id);
+        const ws = res.data;
+        
+        // Transform backend data to frontend structure
+        let blocks = [];
+        try {
+          const content = JSON.parse(ws.content);
+          blocks = [
+            { id: `blk-h-${ws.id}`, type: 'header', data: { schoolName: '', className: '', studentName: '', phone: '' } },
+            ...content.map(q => ({
+              id: `blk-q-${q.id}`,
+              type: 'open_question',
+              data: { question: q.question, lines: 4 }
+            }))
+          ];
+        } catch (e) {
+          blocks = [];
+        }
+
+        setWorksheet({
+          ...ws,
+          subtitle: 'Phiếu học tập AI sinh',
+          blocks
+        });
+      } catch (err) {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWorksheet();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <AnimatedBackground />
+        <Loader2 className="w-12 h-12 text-cyan-500 animate-spin mb-4" />
+        <p className="text-slate-400 font-bold animate-pulse">Đang tải tri thức...</p>
+      </div>
+    );
+  }
+
+  if (error || !worksheet) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
         <AnimatedBackground />
         <div className="relative z-10 bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-12 rounded-3xl max-w-md w-full">
-          <BookOpen className="w-16 h-16 text-slate-600 mx-auto mb-6" />
+          <AlertCircle className="w-16 h-16 text-red-500/50 mx-auto mb-6" />
           <h2 className="text-2xl font-bold text-slate-200 mb-2">Không tìm thấy phiếu học tập</h2>
           <p className="text-slate-400 mb-8 text-sm leading-relaxed">Đường dẫn có thể đã hết hạn hoặc không tồn tại. Vui lòng kiểm tra lại liên kết.</p>
           <Link to="/" className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-6 py-3 rounded-xl transition-colors">

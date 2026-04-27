@@ -125,11 +125,39 @@ function normalizePagination(page, limit) {
     return { page: normalizedPage, limit: normalizedLimit, offset: (normalizedPage - 1) * normalizedLimit };
 }
 
-async function listMaterials({ search, type, subject, grade, page, limit }) {
+async function listMaterials({ search, type, subject, grade, page, limit, userId, roleId }) {
     const { page: normalizedPage, limit: normalizedLimit, offset } = normalizePagination(page, limit);
 
-    const whereClauses = ['1=1'];
+    /**
+     * LOGIC PHÂN QUYỀN TRUY CẬP (ACCESS CONTROL):
+     * 1. Public: Mọi người đều thấy (visibility = 'public').
+     * 2. Private: Chỉ người tạo thấy (created_by = userId).
+     * 3. Group Shared: Thấy nếu thuộc group được giao bài (group_materials).
+     * 4. Personal Shared: Thấy nếu được giao bài cá nhân (user_materials).
+     */
+    const whereClauses = ['(visibility = "public"'];
     const replacements = [];
+
+    if (userId) {
+        // Nếu là Teacher hoặc Admin, họ được quyền xem các học liệu do chính họ tạo ra (kể cả đang để private)
+        if (roleId === 2 || roleId === 3) {
+            whereClauses[0] += ' OR created_by = ?';
+            replacements.push(userId);
+        }
+        
+        // Truy vấn con: Tìm các tài liệu được giao cho các Lớp (Group) mà User này là thành viên
+        whereClauses[0] += ` OR id IN (
+            SELECT material_id FROM group_materials WHERE group_id IN (
+                SELECT group_id FROM group_members WHERE user_id = ?
+            )
+        )`;
+        replacements.push(userId);
+
+        // Truy vấn con: Tìm các tài liệu được giao đích danh cho cá nhân User này
+        whereClauses[0] += ' OR id IN (SELECT material_id FROM user_materials WHERE user_id = ?)';
+        replacements.push(userId);
+    }
+    whereClauses[0] += ')';
 
     if (search && search.trim()) {
         whereClauses.push('(title LIKE ? OR description LIKE ?)');
@@ -252,6 +280,7 @@ async function getMyLessons(userId) {
             q.created_at,
             q.progress
         FROM (
+            /* Giao bài cá nhân */
             SELECT DISTINCT
                 m.id,
                 m.title,
@@ -260,18 +289,43 @@ async function getMyLessons(userId) {
                 m.content,
                 m.created_at,
                 um.assigned_at,
-                                COALESCE((
-                                        SELECT lh2.progress
-                                        FROM learning_history lh2
-                                        WHERE lh2.user_id = um.user_id
-                                            AND lh2.material_id = m.id
-                                            AND lh2.action = 'VIEWED_MATERIAL'
-                                        ORDER BY lh2.created_at DESC, lh2.id DESC
-                                        LIMIT 1
-                                ), 0) as progress
+                COALESCE((
+                    SELECT lh2.progress
+                    FROM learning_history lh2
+                    WHERE lh2.user_id = um.user_id
+                        AND lh2.material_id = m.id
+                        AND lh2.action = 'VIEWED_MATERIAL'
+                    ORDER BY lh2.created_at DESC, lh2.id DESC
+                    LIMIT 1
+                ), 0) as progress
             FROM user_materials um
             INNER JOIN materials m ON m.id = um.material_id
             WHERE um.user_id = ?
+
+            UNION
+
+            /* Giao bài theo lớp */
+            SELECT DISTINCT
+                m.id,
+                m.title,
+                ${TYPE_CASE_SQL} AS type,
+                m.content_url,
+                m.content,
+                m.created_at,
+                gm.assigned_at,
+                COALESCE((
+                    SELECT lh2.progress
+                    FROM learning_history lh2
+                    WHERE lh2.user_id = ?
+                        AND lh2.material_id = m.id
+                        AND lh2.action = 'VIEWED_MATERIAL'
+                    ORDER BY lh2.created_at DESC, lh2.id DESC
+                    LIMIT 1
+                ), 0) as progress
+            FROM group_materials gm
+            INNER JOIN group_members gmb ON gmb.group_id = gm.group_id
+            INNER JOIN materials m ON m.id = gm.material_id
+            WHERE gmb.user_id = ?
         ) q
         ORDER BY COALESCE(q.assigned_at, q.created_at) DESC
     `;
@@ -306,7 +360,7 @@ async function getMyLessons(userId) {
     let assignedRows = [];
     try {
         assignedRows = await sequelize.query(assignmentQuery, {
-            replacements: [userId],
+            replacements: [userId, userId, userId],
             type: QueryTypes.SELECT
         });
     } catch (error) {

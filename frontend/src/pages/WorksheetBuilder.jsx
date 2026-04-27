@@ -6,11 +6,11 @@ import {
   ClipboardList, Search, X, Users, FolderOpen, Share2, Check, Download
 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { useAuth } from '../context/AuthContext';
-import { MOCK_WORKSHEETS } from '../data/mockWorksheets';
-import { MOCK_GROUPS } from '../data/mockGroups';
+import { eduService } from '../services/eduService';
+import { toast } from 'react-hot-toast';
 import {
   HeaderBlock,
   TableBlock,
@@ -33,13 +33,67 @@ export default function WorksheetBuilder() {
   const { user } = useAuth();
 
   // ─── State ───
-  const [worksheets, setWorksheets] = useState(MOCK_WORKSHEETS);
-  const [selectedId, setSelectedId] = useState(id || null);
+  const [worksheets, setWorksheets] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(searchParams.get('id') || id || null);
   const [editMode, setEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssignGroup, setShowAssignGroup] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+
+  // ─── Fetch Data ───
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [wsRes, groupsRes] = await Promise.all([
+        eduService.getAllWorksheets(),
+        eduService.getGroups()
+      ]);
+      
+      // Transform backend data to frontend structure if needed
+      const transformedWs = (wsRes.data || []).map(ws => {
+        let blocks = [];
+        try {
+          const content = JSON.parse(ws.content);
+          blocks = [
+            { id: `blk-h-${ws.id}`, type: 'header', data: { schoolName: '', className: '', studentName: '', phone: '' } },
+            ...content.map(q => ({
+              id: `blk-q-${q.id}`,
+              type: 'open_question',
+              data: { question: q.question, lines: 4 }
+            }))
+          ];
+        } catch (e) {
+          blocks = [];
+        }
+        return {
+          ...ws,
+          subtitle: 'Phiếu học tập AI sinh',
+          subject: 'AI Generated',
+          grade: 'Tất cả',
+          blocks
+        };
+      });
+
+      setWorksheets(transformedWs);
+      setGroups(groupsRes.data || []);
+      
+      // If we came from a redirect with an ID, select it
+      const queryId = searchParams.get('id');
+      if (queryId) setSelectedId(Number(queryId));
+      
+    } catch (error) {
+      toast.error('Không thể tải danh sách phiếu học tập');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   const shareUrl = `${window.location.origin}/shared/worksheet/${selectedId}`;
 
@@ -51,9 +105,9 @@ export default function WorksheetBuilder() {
   };
 
   // ─── Group helpers ───
-  const filterGroup = filterGroupId ? MOCK_GROUPS.find(g => g.id === filterGroupId) : null;
-  const getGroupName = (gId) => MOCK_GROUPS.find(g => g.id === gId)?.name || gId;
-  const getGroupColor = (gId) => MOCK_GROUPS.find(g => g.id === gId)?.color || '#64748b';
+  const filterGroup = filterGroupId ? groups.find(g => g.id === filterGroupId) : null;
+  const getGroupName = (gId) => groups.find(g => g.id === gId)?.name || gId;
+  const getGroupColor = (gId) => groups.find(g => g.id === gId)?.color || '#64748b';
 
   // ─── Current worksheet ───
   const currentWorksheet = useMemo(
@@ -407,7 +461,7 @@ export default function WorksheetBuilder() {
                         <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700/50 rounded-xl shadow-2xl z-20 p-3">
                           <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Gán phiếu cho nhóm</p>
                           <div className="space-y-1 max-h-48 overflow-y-auto">
-                            {MOCK_GROUPS.map(g => {
+                            {groups.map(g => {
                               const isAssigned = currentWorksheet.assignedTo?.includes(g.id);
                               return (
                                 <button
@@ -419,7 +473,7 @@ export default function WorksheetBuilder() {
                                       : 'text-slate-400 hover:bg-slate-800/60 border border-transparent'
                                   }`}
                                 >
-                                  <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black" style={{ background: `${g.color}20`, color: g.color }}>
+                                  <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black" style={{ background: `${g.color || '#64748b'}20`, color: g.color || '#64748b' }}>
                                     {g.name.charAt(0)}
                                   </div>
                                   <span className="flex-1 truncate">{g.name}</span>
