@@ -8,7 +8,8 @@ const materialValidator = (req, res, next) => {
         content: Joi.string().min(20).required(),
         content_url: Joi.string().allow('', null).optional(),
         tags: Joi.array().items(Joi.string()).optional(),
-        type: Joi.string().valid('DOCUMENT', 'VIDEO', 'LINK').default('DOCUMENT')
+        type: Joi.string().valid('DOCUMENT', 'VIDEO', 'LINK').default('DOCUMENT'),
+        visibility: Joi.string().valid('public', 'private', 'shared').default('public')
     });
 
     const { error } = schema.validate(req.body);

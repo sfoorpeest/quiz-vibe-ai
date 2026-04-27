@@ -46,8 +46,11 @@ router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
 router.post('/groups', auth, checkRole([2, 3]), eduController.createGroup);
 router.get('/groups', auth, checkRole([2, 3]), eduController.getTeacherGroups);
 router.get('/groups/:id', auth, checkRole([2, 3]), eduController.getGroupDetails);
+router.delete('/groups/:id', auth, checkRole([2, 3]), eduController.deleteGroup);
+
 router.get('/students', auth, checkRole([2, 3]), eduController.getStudentsForTeacher);
 router.post('/groups/members', auth, checkRole([2, 3]), eduController.addGroupMembers);
+router.delete('/groups/:id/members/:studentId', auth, checkRole([2, 3]), eduController.removeGroupMember);
 router.post('/groups/assign', auth, checkRole([2, 3]), eduController.assignMaterialToGroup);
 
 // 6. Phiếu học tập (Worksheets)

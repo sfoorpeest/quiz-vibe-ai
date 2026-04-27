@@ -59,3 +59,11 @@ npm install
 - **Học Liệu & AI (`LearningView.jsx`)**: Thêm chức năng "PHIẾU AI" cho phép Giáo viên dùng AI sinh ngay bộ câu hỏi tự luận từ nội dung văn bản gốc.
 - **Quản lý Phiếu Học Tập (`WorksheetBuilder.jsx` & `WorksheetPublic.jsx`)**: Giáo viên có thể xem lại, in ấn phiếu và giao cho các nhóm. Giao diện chia sẻ liên kết công khai cũng đã hoạt động trơn tru lấy dữ liệu thật.
 - **Góc Học Tập Học Sinh (`MyLessons.jsx`)**: Thêm Tab "Phiếu Học Tập", tự động hiển thị các bài tập mà Giáo viên đã phân công cho Nhóm của học sinh đó.
+
+**4. Các Vấn đề đã Khắc phục (Bug Fixes & Refinements)**
+- **API `removeGroupMember`**: Đã bổ sung logic `DELETE /groups/:id/members/:studentId` ở backend (`eduRoutes.js`, `eduController.js`) và tích hợp vào frontend, cho phép xóa học sinh khỏi nhóm. Cập nhật giao diện tự động loại bỏ khỏi danh sách ngay lập tức.
+- **Thanh Tiến Độ Sĩ Số Lớp**: Chuyển đổi hiển thị từ `% hoàn thành` (mock data) thành `"Sĩ số: X / 50"` cho phù hợp với logic của quản lý Lớp học thực tế.
+- **Lỗi 400 Validation (Title & Visibility)**: 
+  - Đã thêm kiểm tra Validation trên Frontend (`UploadCenter.jsx`) để báo lỗi thân thiện nếu Tên bài giảng dưới 5 ký tự (Do AI lấy lỗi hoặc người dùng quên nhập).
+  - Cập nhật `Joi Validator` ở Backend (`eduValidator.js`) để cho phép chấp nhận giá trị của thuộc tính `visibility`.
+- **Lọc quyền riêng tư (Privacy Filter)**: Đã sửa lại câu lệnh SQL trong `getAllMaterials` và `searchMaterials` để các tài liệu `private` chỉ được hiển thị cho chính người tạo ra nó (`created_by = req.user.id`).

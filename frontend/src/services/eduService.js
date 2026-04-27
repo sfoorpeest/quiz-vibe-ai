@@ -18,6 +18,14 @@ export const eduService = {
     const response = await api.post('/api/edu/groups/members', { group_id: groupId, user_ids: userIds });
     return response.data;
   },
+  removeMember: async (groupId, studentId) => {
+    const response = await api.delete(`/api/edu/groups/${groupId}/members/${studentId}`);
+    return response.data;
+  },
+  deleteGroup: async (id) => {
+    const response = await api.delete(`/api/edu/groups/${id}`);
+    return response.data;
+  },
   assignMaterial: async (groupId, materialId) => {
     const response = await api.post('/api/edu/groups/assign', { group_id: groupId, material_id: materialId });
     return response.data;

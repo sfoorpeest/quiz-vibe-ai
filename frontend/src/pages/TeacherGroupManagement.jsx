@@ -72,7 +72,7 @@ export default function TeacherGroupManagement() {
 
   // ─── Derived data ───
   const freeStudents = useMemo(
-    () => students.filter(s => !s.groupId),
+    () => students.filter(s => !s.group_id),
     [students]
   );
 
@@ -84,7 +84,7 @@ export default function TeacherGroupManagement() {
     [freeStudents, searchQuery]
   );
 
-  const getGroupStudents = (groupId) => students.filter(s => s.groupId === groupId);
+  const getGroupStudents = (groupId) => students.filter(s => s.group_id === groupId);
 
   // ─── Handlers ───
   const toggleStudentSelection = (studentId) => {
@@ -122,12 +122,36 @@ export default function TeacherGroupManagement() {
     }
   };
 
-  const removeStudentFromGroup = (studentId) => {
-    toast.error('Chức năng này đang được phát triển');
+  const removeStudentFromGroup = async (groupId, studentId) => {
+    try {
+      await eduService.removeMember(groupId, studentId);
+      toast.success('Đã xóa học sinh khỏi lớp');
+      fetchData();
+      // Update local state without waiting for full refetch
+      setGroupDetails(prev => {
+        if (!prev[groupId]) return prev;
+        return {
+          ...prev,
+          [groupId]: {
+            ...prev[groupId],
+            students: prev[groupId].students.filter(s => s.id !== studentId)
+          }
+        };
+      });
+    } catch (error) {
+      toast.error('Lỗi khi xóa học sinh');
+    }
   };
 
-  const deleteGroup = (groupId) => {
-    toast.error('Chức năng này đang được phát triển');
+  const deleteGroup = async (groupId) => {
+    try {
+      await eduService.deleteGroup(groupId);
+      toast.success('Đã xóa nhóm thành công');
+      setShowDeleteConfirm(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Lỗi khi xóa nhóm');
+    }
   };
 
   const createGroup = async (formData) => {
@@ -228,7 +252,7 @@ export default function TeacherGroupManagement() {
               </div>
             ) : (
               <div className="space-y-4">
-                {groups.map(group => {
+                {groups.map((group, index) => {
                   const groupStudents = getGroupStudents(group.id);
                   const isExpanded = expandedGroup === group.id;
                   return (
@@ -251,25 +275,25 @@ export default function TeacherGroupManagement() {
                             className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shrink-0 shadow-lg"
                             style={{ background: `${group.color}20`, color: group.color }}
                           >
-                            {group.name.charAt(0)}
+                            {index + 1}
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="text-base font-extrabold text-slate-100 truncate">{group.name}</h3>
                             <div className="flex items-center gap-3 mt-1">
                               <p className="text-xs text-slate-500 font-medium truncate max-w-[150px]">{group.description}</p>
                               
-                              {/* Mock Progress Bar cho Giai đoạn 4 */}
+                              {/* Sĩ số lớp (Tạm định mức 50) */}
                               <div className="flex-1 max-w-[100px] h-1.5 bg-slate-800 rounded-full overflow-hidden hidden sm:block shadow-inner">
                                 <div 
                                   className="h-full rounded-full transition-all duration-1000" 
                                   style={{ 
-                                    width: `${Math.max(30, (groupStudents.length * 15) % 100)}%`,
+                                    width: `${Math.min(100, (groupStudents.length / 50) * 100)}%`,
                                     background: group.color 
                                   }}
                                 ></div>
                               </div>
                               <span className="text-[10px] font-bold hidden sm:block" style={{ color: group.color }}>
-                                {Math.max(30, (groupStudents.length * 15) % 100)}% hoàn thành
+                                Sĩ số: {groupStudents.length} / 50
                               </span>
                             </div>
                           </div>
@@ -329,7 +353,7 @@ export default function TeacherGroupManagement() {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => removeStudentFromGroup(student.id)}
+                                    onClick={() => removeStudentFromGroup(group.id, student.id)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                     title="Xóa khỏi nhóm"
                                   >

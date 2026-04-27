@@ -188,12 +188,14 @@ exports.trackProgress = async (req, res) => {
  */
 exports.getAllMaterials = async (req, res) => {
     try {
+        const userId = req.user.id;
         const rows = await sequelize.query(
             `SELECT materials.*, users.name as creator_name 
              FROM materials 
              LEFT JOIN users ON materials.created_by = users.id 
+             WHERE materials.visibility = 'public' OR materials.created_by = ?
              ORDER BY materials.created_at DESC`,
-            { type: QueryTypes.SELECT }
+            { replacements: [userId], type: QueryTypes.SELECT }
         );
         res.status(200).json({ status: 'success', data: rows });
     } catch (error) {
@@ -209,13 +211,14 @@ exports.searchMaterials = async (req, res) => {
         const { q = '', sort = 'latest', creatorId, tag } = req.query;
         const trimmed = q.trim();
 
+        const userId = req.user.id;
         let queryStr = `
             SELECT materials.*, users.name as creator_name 
             FROM materials 
             LEFT JOIN users ON materials.created_by = users.id 
-            WHERE 1=1
+            WHERE (materials.visibility = 'public' OR materials.created_by = ?)
         `;
-        const replacements = [];
+        const replacements = [userId];
 
         // Xử lý Search theo tiêu đề hoặc tag (kí hiệu @ hoặc #)
         if (trimmed) {
@@ -597,6 +600,34 @@ exports.addGroupMembers = async (req, res) => {
     }
 };
 
+// Xóa học sinh khỏi lớp học
+exports.removeGroupMember = async (req, res) => {
+    try {
+        const { id: groupId, studentId } = req.params;
+        const teacherId = req.user.id;
+
+        // Verify group belongs to teacher
+        const group = await sequelize.query('SELECT * FROM `groups` WHERE id = ? AND teacher_id = ?', { 
+            replacements: [groupId, teacherId], 
+            type: QueryTypes.SELECT 
+        });
+
+        if (!group || group.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền' });
+        }
+
+        await sequelize.query('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', {
+            replacements: [groupId, studentId],
+            type: QueryTypes.DELETE
+        });
+
+        res.status(200).json({ status: 'success', message: 'Đã xóa học sinh khỏi lớp' });
+    } catch (error) {
+        console.error('Remove Member Error:', error);
+        res.status(500).json({ message: 'Không thể xóa học sinh' });
+    }
+};
+
 // Giao học liệu cho cả lớp (Tất cả học sinh trong lớp sẽ thấy tài liệu này trong "My Lessons")
 exports.assignMaterialToGroup = async (req, res) => {
     try {
@@ -651,6 +682,34 @@ exports.getGroupDetails = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: 'Lỗi khi lấy chi tiết lớp học' });
+    }
+};
+
+// Xóa nhóm học tập
+exports.deleteGroup = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const teacherId = req.user.id;
+        
+        // Ensure the group belongs to the teacher before deleting
+        const group = await sequelize.query('SELECT * FROM `groups` WHERE id = ? AND teacher_id = ?', { 
+            replacements: [id, teacherId], 
+            type: QueryTypes.SELECT 
+        });
+
+        if (!group || group.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền xóa' });
+        }
+
+        await sequelize.query('DELETE FROM `groups` WHERE id = ?', { 
+            replacements: [id], 
+            type: QueryTypes.DELETE 
+        });
+
+        res.status(200).json({ status: 'success', message: 'Đã xóa nhóm thành công' });
+    } catch (error) {
+        console.error('Delete Group Error:', error);
+        res.status(500).json({ message: 'Lỗi khi xóa nhóm học tập' });
     }
 };
 

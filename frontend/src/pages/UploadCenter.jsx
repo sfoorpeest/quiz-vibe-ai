@@ -141,6 +141,12 @@ export default function UploadCenter() {
 
   // Logic gọi API lưu
   const handleSaveToDB = async () => {
+    const finalTitle = (previewData.title || "").trim();
+    if (finalTitle.length < 5) {
+      showToast("Tên bài giảng phải có ít nhất 5 ký tự. Vui lòng kiểm tra lại phần trên cùng.", "error");
+      return;
+    }
+
     try {
       // MẸO: Vì không được sửa DB, chúng ta sẽ "giấu" Tag vào trong trường description 
       // Định dạng: [TAGS:tag1,tag2,...]Mô tả thực tế
@@ -150,7 +156,7 @@ export default function UploadCenter() {
       const combinedDescription = tagString + (previewData.summary || "Nội dung tóm tắt sẽ được cập nhật sau.");
 
       await api.post('/api/edu/materials', {
-        title: previewData.title || "Tài liệu học tập mới",
+        title: finalTitle,
         description: combinedDescription,
         content_url: file ? `https://file-server.local/uploads/temp_${file.name.replace(/\s+/g, '_')}` : (linkInput || "https://file-server.local/demo.pdf"),
         content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống.",
