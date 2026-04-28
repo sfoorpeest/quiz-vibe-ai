@@ -152,6 +152,101 @@ exports.createMaterial = async (req, res) => {
     }
 };
 
+exports.updateMaterialVisibility = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { visibility } = req.body;
+        const userId = req.user.id;
+
+        if (!['public', 'private'].includes(visibility)) {
+            return res.status(400).json({ message: "Visibility không hợp lệ" });
+        }
+
+        // Cập nhật DB
+        const [result] = await sequelize.query(
+            'UPDATE materials SET visibility = ? WHERE id = ? AND created_by = ?',
+            { replacements: [visibility, id, userId], type: QueryTypes.UPDATE }
+        );
+
+        // Cập nhật file JSON
+        const jsonPath = path.join(__dirname, '../database/data/materials.json');
+        const allMaterials = await sequelize.query('SELECT * FROM materials ORDER BY id ASC', { type: QueryTypes.SELECT });
+        const formattedData = allMaterials.map(item => ({
+            id: item.id,
+            teacher_id: item.created_by,
+            title: item.title,
+            description: item.description,
+            file_path: item.content_url,
+            content: item.content,
+            visibility: item.visibility,
+            created_at: item.created_at,
+            _status: "Synced from Database"
+        }));
+        fs.writeFileSync(jsonPath, JSON.stringify(formattedData, null, 4), 'utf8');
+
+        res.status(200).json({ status: 'success', message: "Cập nhật quyền riêng tư thành công" });
+    } catch (error) {
+        console.error("Update Visibility Error:", error);
+        res.status(500).json({ message: "Lỗi cập nhật quyền riêng tư" });
+    }
+};
+
+/**
+ * 2.5 Lấy danh sách Giáo viên và Chia sẻ tài liệu cho Giáo viên
+ */
+exports.getTeachers = async (req, res) => {
+    try {
+        const teachers = await sequelize.query(
+            'SELECT id, name, email FROM users WHERE role_id IN (2, 3)',
+            { type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: teachers });
+    } catch (error) {
+        console.error("Get Teachers Error:", error);
+        res.status(500).json({ message: "Lỗi khi lấy danh sách giáo viên" });
+    }
+};
+
+exports.shareMaterialToTeachers = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { teacherIds } = req.body;
+        const userId = req.user.id;
+
+        // Xác nhận quyền sở hữu
+        const [materials] = await sequelize.query(
+            'SELECT id FROM materials WHERE id = ? AND created_by = ?',
+            { replacements: [id, userId], type: QueryTypes.SELECT }
+        );
+
+        if (!materials) {
+            return res.status(403).json({ message: "Bạn không có quyền chia sẻ tài liệu này" });
+        }
+
+        if (!Array.isArray(teacherIds) || teacherIds.length === 0) {
+            return res.status(400).json({ message: "Danh sách giáo viên không hợp lệ" });
+        }
+
+        // Xóa các chia sẻ cũ (hoặc chỉ insert mới tuỳ logic, ở đây insert ignore hoặc xoá rồi insert)
+        await sequelize.query(
+            'DELETE FROM user_materials WHERE material_id = ?',
+            { replacements: [id], type: QueryTypes.DELETE }
+        );
+
+        for (const teacherId of teacherIds) {
+            await sequelize.query(
+                'INSERT INTO user_materials (user_id, material_id) VALUES (?, ?)',
+                { replacements: [teacherId, id], type: QueryTypes.INSERT }
+            );
+        }
+
+        res.status(200).json({ status: 'success', message: "Chia sẻ tài liệu thành công" });
+    } catch (error) {
+        console.error("Share Material Error:", error);
+        res.status(500).json({ message: "Lỗi khi chia sẻ tài liệu" });
+    }
+};
+
 /**
  * 3. Tracking: Ghi nhận tiến độ học tập của học sinh
  */
@@ -193,9 +288,21 @@ exports.getAllMaterials = async (req, res) => {
             `SELECT materials.*, users.name as creator_name 
              FROM materials 
              LEFT JOIN users ON materials.created_by = users.id 
-             WHERE materials.visibility = 'public' OR materials.created_by = ?
+             WHERE materials.visibility = 'public' 
+                OR materials.created_by = ?
+                OR materials.id IN (
+                    SELECT gm.material_id 
+                    FROM group_materials gm
+                    JOIN group_members gmb ON gm.group_id = gmb.group_id
+                    WHERE gmb.user_id = ?
+                )
+                OR materials.id IN (
+                    SELECT um.material_id
+                    FROM user_materials um
+                    WHERE um.user_id = ?
+                )
              ORDER BY materials.created_at DESC`,
-            { replacements: [userId], type: QueryTypes.SELECT }
+            { replacements: [userId, userId, userId], type: QueryTypes.SELECT }
         );
         res.status(200).json({ status: 'success', data: rows });
     } catch (error) {
@@ -216,9 +323,21 @@ exports.searchMaterials = async (req, res) => {
             SELECT materials.*, users.name as creator_name 
             FROM materials 
             LEFT JOIN users ON materials.created_by = users.id 
-            WHERE (materials.visibility = 'public' OR materials.created_by = ?)
+            WHERE (materials.visibility = 'public' 
+               OR materials.created_by = ?
+               OR materials.id IN (
+                   SELECT gm.material_id 
+                   FROM group_materials gm
+                   JOIN group_members gmb ON gm.group_id = gmb.group_id
+                   WHERE gmb.user_id = ?
+               )
+               OR materials.id IN (
+                   SELECT um.material_id
+                   FROM user_materials um
+                   WHERE um.user_id = ?
+               ))
         `;
-        const replacements = [userId];
+        const replacements = [userId, userId, userId];
 
         // Xử lý Search theo tiêu đề hoặc tag (kí hiệu @ hoặc #)
         if (trimmed) {
@@ -324,13 +443,12 @@ exports.extractFileContent = async (req, res) => {
             // Trích xuất text thô (Server-side)
             extractedText = await extractTextFromBuffer(buffer, mimetype, decodedName);
 
-            if (!extractedText) {
-                return res.status(415).json({ message: `Định dạng file "${originalname}" không hỗ trợ.` });
-            }
-
-            // Nếu là PDF, chuẩn bị dữ liệu gửi trực tiếp cho Gemini (Native OCR)
-            if (mimetype === 'application/pdf' && buffer.length < 15 * 1024 * 1024) {
+            // Nếu file là ảnh hoặc không có text, thử gửi trực tiếp buffer lên Gemini (Native OCR)
+            if ((!extractedText || extractedText.trim().length < 50) && mimetype === 'application/pdf' && buffer.length < 15 * 1024 * 1024) {
                 fileDataForGemini = { buffer, mimeType: mimetype };
+                extractedText = "Tài liệu này là một dạng PDF hình ảnh. Vui lòng phân tích dựa trên tệp đính kèm.";
+            } else if (!extractedText || extractedText.trim().length < 50) {
+                return res.status(415).json({ message: `Không thể trích xuất nội dung từ file "${originalname}". File có thể bị lỗi hoặc là ảnh không được hỗ trợ.` });
             }
         } else if (req.body.url) {
             const { url } = req.body;
@@ -379,14 +497,13 @@ exports.extractFileContent = async (req, res) => {
         }
 
         // Bước 2: Sinh bài giảng Markdown chi tiết
-        // QUAN TRỌNG: Nhúng nội dung trực tiếp vào prompt thay vì truyền qua tham số fileData
-        // vì fileData chỉ hỗ trợ object {buffer, mimeType} (PDF binary), không hỗ trợ chuỗi text thuần
+        // Nếu fileDataForGemini được dùng (do trích xuất text thất bại), gửi file. Nếu không, chỉ gửi text (cực nhanh).
         const lessonPrompt = fileDataForGemini
             ? `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên tài liệu đính kèm. Hãy tập trung vào các kiến thức cốt lõi.`
             : `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên nội dung tài liệu sau. Hãy tập trung vào các kiến thức cốt lõi.
             
             Nội dung tài liệu:
-            ${extractedText.substring(0, 5000)}`;
+            ${extractedText.substring(0, 10000)}`;
         const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 
         return res.status(200).json({
@@ -576,6 +693,26 @@ exports.getTeacherGroups = async (req, res) => {
         res.status(200).json({ status: 'success', data: groups });
     } catch (error) {
         res.status(500).json({ message: 'Lỗi khi lấy danh sách lớp học' });
+    }
+};
+
+// Lấy danh sách các lớp học mà Học sinh đang tham gia
+exports.getStudentGroups = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const groups = await sequelize.query(
+            `SELECT g.*, u.name as teacher_name 
+             FROM \`groups\` g 
+             JOIN group_members gm ON g.id = gm.group_id 
+             JOIN users u ON g.teacher_id = u.id 
+             WHERE gm.user_id = ? 
+             ORDER BY gm.joined_at DESC`,
+            { replacements: [studentId], type: QueryTypes.SELECT }
+        );
+        res.status(200).json({ status: 'success', data: groups });
+    } catch (error) {
+        console.error('Get Student Groups Error:', error);
+        res.status(500).json({ message: 'Lỗi khi lấy danh sách lớp học của học sinh' });
     }
 };
 

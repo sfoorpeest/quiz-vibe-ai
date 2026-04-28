@@ -4,7 +4,7 @@ import {
   ArrowLeft, BrainCircuit, MessageSquare, FileText,
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
   ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square,
-  Video, Download, RotateCcw
+  Video, Download, RotateCcw, Users, X
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -45,6 +45,15 @@ export default function LearningView() {
   const [selectedReviewKeys, setSelectedReviewKeys] = useState([]);
   const [highlightNotice, setHighlightNotice] = useState('');
   const [isReviewVisible, setIsReviewVisible] = useState(true);
+
+  // Thêm state cho Modal Giao bài
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [teacherGroups, setTeacherGroups] = useState([]);
+
+  // Thêm state cho Modal Chia sẻ Giáo viên
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [teachersList, setTeachersList] = useState([]);
+  const [selectedTeachers, setSelectedTeachers] = useState([]);
 
   // Refs
   const volumeRef = useRef(1);
@@ -99,12 +108,15 @@ export default function LearningView() {
               : ['Chưa có tóm tắt.'];
 
             setMaterial({
+              id: found.id,
               title: found.title,
               author: found.creator_name || 'Giảng viên QuizVibe',
               readTime: '15 phút',
               content: found.content || 'Chưa có nội dung cho bài giảng này.',
               summary: summaryArr,
               toc: toc,
+              visibility: found.visibility,
+              created_by: found.created_by,
               prevLesson: null,
               nextLesson: null
             });
@@ -634,8 +646,27 @@ export default function LearningView() {
               </button>
 
               {(user?.role_id === 2 || user?.role_id === 3) && (
-                <button 
-                  onClick={async () => {
+                <>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        const res = await eduService.getGroups();
+                        setTeacherGroups(res.data || []);
+                        setShowAssignModal(true);
+                      } catch (err) {
+                        toast.error('Không thể tải danh sách lớp');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors font-bold ml-2" 
+                  >
+                    <Users className="w-4 h-4" /> GIAO BÀI
+                  </button>
+                  
+                  <button 
+                    onClick={async () => {
                     try {
                       setIsLoading(true);
                       const res = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
@@ -651,6 +682,29 @@ export default function LearningView() {
                 >
                   <Sparkles className="w-4 h-4 animate-pulse" /> PHIẾU AI
                 </button>
+                
+                {(material?.created_by === user.id && material?.visibility === 'private') && (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        const res = await eduService.getTeachers();
+                        // Lọc bỏ chính mình
+                        setTeachersList((res.data || []).filter(t => t.id !== user.id));
+                        setSelectedTeachers([]);
+                        setShowShareModal(true);
+                      } catch (err) {
+                        toast.error('Không thể tải danh sách giáo viên');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors font-bold ml-2" 
+                  >
+                    <Users className="w-4 h-4" /> CHIA SẺ
+                  </button>
+                )}
+              </>
               )}
             </div>
 
@@ -1013,6 +1067,144 @@ export default function LearningView() {
         </div>
 
       </main>
+
+      {/* MODAL GIAO BÀI CHO LỚP */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Users className="w-5 h-5 text-violet-400" />
+                Giao bài cho Lớp/Nhóm
+              </h3>
+              <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+              {teacherGroups.length > 0 ? (
+                <div className="space-y-3">
+                  {teacherGroups.map(group => (
+                    <div key={group.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/60 transition-colors">
+                      <div>
+                        <h4 className="font-bold text-slate-200">{group.name}</h4>
+                        <p className="text-xs text-slate-400 mt-1">{group.student_count || 0} học sinh</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            // setIsLoading(true); // Don't block whole page, but UI might freeze without it. Just use it for simplicity
+                            await eduService.assignMaterial(group.id, id);
+                            toast.success(`Đã giao bài cho lớp ${group.name}`);
+                            setShowAssignModal(false);
+                          } catch (err) {
+                            toast.error('Không thể giao bài. Vui lòng thử lại.');
+                          }
+                        }}
+                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap text-center"
+                      >
+                        Giao bài
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-400 mb-4">Bạn chưa tạo lớp học nào.</p>
+                  <Link to="/teacher/groups" className="text-violet-400 hover:text-violet-300 font-bold underline">Đến trang Quản lý lớp học</Link>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-slate-800 bg-slate-800/30 text-right">
+              <button 
+                onClick={() => setShowAssignModal(false)}
+                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold rounded-xl transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHIA SẺ GIÁO VIÊN */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-400" />
+                Chia sẻ tài liệu
+              </h3>
+              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+              <p className="text-sm text-slate-400 mb-4">Chọn các giáo viên mà bạn muốn chia sẻ tài liệu private này:</p>
+              {teachersList.length > 0 ? (
+                <div className="space-y-2">
+                  {teachersList.map(teacher => {
+                    const isSelected = selectedTeachers.includes(teacher.id);
+                    return (
+                      <div 
+                        key={teacher.id} 
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTeachers(prev => prev.filter(id => id !== teacher.id));
+                          } else {
+                            setSelectedTeachers(prev => [...prev, teacher.id]);
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-500/10 border-emerald-500/50' : 'bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/60'}`}
+                      >
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-600 bg-slate-800'}`}>
+                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-200">{teacher.name}</h4>
+                          <p className="text-[10px] text-slate-400">{teacher.email}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-400">Không có giáo viên nào khác trong hệ thống.</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-slate-800 bg-slate-800/30 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold rounded-xl transition-colors"
+              >
+                Hủy
+              </button>
+              <button 
+                disabled={selectedTeachers.length === 0}
+                onClick={async () => {
+                  try {
+                    await eduService.shareMaterial(id, selectedTeachers);
+                    toast.success('Chia sẻ tài liệu thành công!');
+                    setShowShareModal(false);
+                  } catch (err) {
+                    toast.error('Có lỗi xảy ra khi chia sẻ');
+                  }
+                }}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-bold rounded-xl transition-colors"
+              >
+                Chia sẻ ({selectedTeachers.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
 

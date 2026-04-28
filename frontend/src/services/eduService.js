@@ -6,6 +6,10 @@ export const eduService = {
     const response = await api.get('/api/edu/groups');
     return response.data;
   },
+  getStudentGroups: async () => {
+    const response = await api.get('/api/edu/student/groups');
+    return response.data;
+  },
   createGroup: async (data) => {
     const response = await api.post('/api/edu/groups', data);
     return response.data;
@@ -32,6 +36,18 @@ export const eduService = {
   },
   getStudents: async () => {
     const response = await api.get('/api/edu/students');
+    return response.data;
+  },
+  getTeachers: async () => {
+    const response = await api.get('/api/edu/teachers');
+    return response.data;
+  },
+  updateVisibility: async (materialId, visibility) => {
+    const response = await api.put(`/api/edu/materials/${materialId}/visibility`, { visibility });
+    return response.data;
+  },
+  shareMaterial: async (materialId, teacherIds) => {
+    const response = await api.post(`/api/edu/materials/${materialId}/share`, { teacherIds });
     return response.data;
   },
 

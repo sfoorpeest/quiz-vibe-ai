@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star, Edit3 } from 'lucide-react';
+import { BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star, Edit3, Users } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -41,6 +41,7 @@ export default function MyLessons() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lessons, setLessons] = useState([]);
   const [worksheets, setWorksheets] = useState([]);
+  const [myGroups, setMyGroups] = useState([]);
   const [stats, setStats] = useState({ totalLessons: 0, totalHours: 45 });
   const [loading, setLoading] = useState(false);
 
@@ -48,9 +49,10 @@ export default function MyLessons() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [lessonsRes, wsRes] = await Promise.all([
+        const [lessonsRes, wsRes, groupsRes] = await Promise.all([
           materialService.getMyLessons(),
-          eduService.getAssignedWorksheets()
+          eduService.getAssignedWorksheets(),
+          eduService.getStudentGroups()
         ]);
 
         const apiLessons = (lessonsRes.data || []).map(m => ({
@@ -76,6 +78,9 @@ export default function MyLessons() {
 
         setLessons(apiLessons);
         setWorksheets(apiWorksheets);
+        if (groupsRes.data) {
+          setMyGroups(groupsRes.data);
+        }
         if (lessonsRes.stats) {
           setStats(lessonsRes.stats);
         }
@@ -197,6 +202,35 @@ export default function MyLessons() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ LỚP HỌC CỦA TÔI (STUDENT GROUPS) ═══ */}
+        {myGroups.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 mb-6">
+              <Users className="w-5 h-5 text-cyan-400" />
+              Lớp Học Của Tôi
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {myGroups.map((group) => (
+                <div key={group.id} className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-5 shadow-lg flex flex-col justify-between hover:border-cyan-500/30 transition-colors">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-100 mb-1">{group.name}</h3>
+                    <p className="text-xs text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md inline-block mb-3 border border-slate-700/50">
+                      Giảng viên: <span className="font-semibold text-slate-300">{group.teacher_name}</span>
+                    </p>
+                    {group.description && (
+                      <p className="text-sm text-slate-500 line-clamp-2">{group.description}</p>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-700/50 text-xs text-slate-500 flex items-center justify-between">
+                    <span>Đã tham gia</span>
+                    <span className="font-medium">{new Date(group.joined_at || group.created_at).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

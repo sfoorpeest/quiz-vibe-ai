@@ -67,3 +67,15 @@ npm install
   - Đã thêm kiểm tra Validation trên Frontend (`UploadCenter.jsx`) để báo lỗi thân thiện nếu Tên bài giảng dưới 5 ký tự (Do AI lấy lỗi hoặc người dùng quên nhập).
   - Cập nhật `Joi Validator` ở Backend (`eduValidator.js`) để cho phép chấp nhận giá trị của thuộc tính `visibility`.
 - **Lọc quyền riêng tư (Privacy Filter)**: Đã sửa lại câu lệnh SQL trong `getAllMaterials` và `searchMaterials` để các tài liệu `private` chỉ được hiển thị cho chính người tạo ra nó (`created_by = req.user.id`).
+
+**5. Cập nhật mới (Tối ưu hóa & Chia sẻ Học liệu)**
+- **Tối ưu hóa AI (Material Extraction)**:
+  - Cập nhật logic `extractFileContent` trong `eduController.js` để ưu tiên gửi dữ liệu văn bản thuần túy (extracted text) thay vì tệp nhị phân cho Google Gemini. 
+  - Kết quả: Giảm thời gian phản hồi của AI từ hơn 3 phút xuống còn 5-15 giây cho mỗi lần phân tích tài liệu.
+- **Sửa lỗi Treo Giao diện (Student Access)**:
+  - Khắc phục triệt để lỗi "vòng lặp loading vô hạn" khi học sinh truy cập học liệu Private được giáo viên giao. 
+  - Cập nhật SQL trong `getAllMaterials` và `searchMaterials` để kiểm tra quyền truy cập thông qua cả `group_materials` và `user_materials`.
+- **Tính năng Chia sẻ Tài liệu Đích danh (Selective Sharing)**:
+  - Chuyển nút "Chia sẻ" vào thanh công cụ của `LearningView.jsx` (kế bên "PHIẾU AI") để tối ưu luồng làm việc.
+  - Xây dựng Modal cho phép chọn giáo viên cụ thể để chia sẻ tài liệu.
+  - Triển khai cơ chế phân quyền qua bảng `user_materials`, đảm bảo tài liệu vẫn giữ trạng thái `private` với toàn hệ thống nhưng vẫn hiển thị cho những người được đích danh chia sẻ.

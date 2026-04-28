@@ -6,6 +6,8 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
+import { eduService } from '../services/eduService';
+import { toast } from 'react-hot-toast';
 
 // Biến toàn cục (Module-level) để khóa vĩnh viễn vòng lặp bất kể React có remount bao nhiêu lần
 let isMaterialsFetched = false;
