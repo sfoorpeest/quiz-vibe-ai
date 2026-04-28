@@ -5,6 +5,9 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import { profileService } from '../services/profileService';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
@@ -34,6 +37,24 @@ export default function Practice() {
   const { user } = useAuth();
   const [promptValue, setPromptValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      const data = await profileService.getQuizHistory();
+      setHistory(data || []);
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGenerate = (e) => {
     e.preventDefault();
@@ -46,7 +67,7 @@ export default function Practice() {
   };
 
   const handleQuickCategory = (label) => {
-    setPromptValue(`Tạo 15 câu trắc nghiệm về ${label}`);
+    setPromptValue(`Tạo 5 câu trắc nghiệm về ${label}`);
   };
 
   return (
@@ -79,7 +100,7 @@ export default function Practice() {
                 type="text"
                 value={promptValue}
                 onChange={(e) => setPromptValue(e.target.value)}
-                placeholder="Bạn muốn luyện tập nội dung gì hôm nay? (VD: 20 câu trắc nghiệm Sinh 12 chương 1)..."
+                placeholder="Bạn muốn luyện tập nội dung gì hôm nay? (VD: 5 câu trắc nghiệm Sinh 12 chương 1)..."
                 className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 px-4 py-5 text-base font-medium focus:outline-none"
                 disabled={isGenerating}
               />
@@ -122,68 +143,94 @@ export default function Practice() {
               <History className="w-5 h-5 text-purple-400" />
               Lịch sử luyện tập
             </h2>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{MOCK_HISTORY.length} bài đã làm</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{history.length} bài đã làm</span>
           </div>
 
-          <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/30 rounded-3xl overflow-hidden shadow-2xl shadow-black/20">
-            {/* Table Header */}
-            <div className="hidden md:grid grid-cols-[1fr_100px_80px_120px_100px] items-center gap-4 px-6 py-3 border-b border-slate-700/30 text-[11px] font-black text-slate-500 uppercase tracking-widest">
-              <span>Chủ đề</span>
-              <span className="text-center">Kết quả</span>
-              <span className="text-center">Điểm</span>
-              <span className="text-center">Thời gian</span>
-              <span className="text-right">Trạng thái</span>
-            </div>
-
-            {MOCK_HISTORY.map((quiz, idx) => (
-              <div
-                key={quiz.id}
-                className={`group grid grid-cols-1 md:grid-cols-[1fr_100px_80px_120px_100px] items-center gap-4 px-6 py-4 cursor-pointer transition-all duration-200 hover:bg-slate-800/60 ${
-                  idx < MOCK_HISTORY.length - 1 ? 'border-b border-slate-800/30' : ''
-                }`}
-              >
-                {/* Topic */}
-                <div className="min-w-0">
-                  <h4 className="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition-colors truncate">{quiz.topic}</h4>
-                </div>
-
-                {/* Result */}
-                <div className="flex justify-center">
-                  <span className="text-xs font-bold text-slate-400">
-                    {quiz.correct}/{quiz.total}
-                  </span>
-                </div>
-
-                {/* Score */}
-                <div className="flex justify-center">
-                  <span className={`text-sm font-extrabold px-3 py-1 rounded-lg ${
-                    quiz.score >= 80 ? 'bg-emerald-500/15 text-emerald-400' :
-                    quiz.score >= 60 ? 'bg-amber-500/15 text-amber-400' :
-                    'bg-red-500/15 text-red-400'
-                  }`}>
-                    {quiz.score}
-                  </span>
-                </div>
-
-                {/* Date */}
-                <div className="hidden md:flex justify-center">
-                  <span className="text-xs text-slate-500 font-medium">{quiz.date}</span>
-                </div>
-
-                {/* Status */}
-                <div className="flex justify-end">
-                  {quiz.passed ? (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Đạt
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
-                      <XCircle className="w-3.5 h-3.5" /> Chưa đạt
-                    </span>
-                  )}
-                </div>
+          <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/30 rounded-3xl overflow-hidden shadow-2xl shadow-black/20 min-h-[400px] flex flex-col">
+            {loading ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-12">
+                <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium">Đang tải lịch sử...</p>
               </div>
-            ))}
+            ) : history.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                <History className="w-12 h-12 text-slate-700 mb-4" />
+                <h3 className="text-slate-300 font-bold mb-1">Chưa có lịch sử luyện tập</h3>
+                <p className="text-slate-500 text-sm max-w-xs">Hãy thử tạo một bài Quiz bằng AI ở trên để bắt đầu hành trình chinh phục kiến thức!</p>
+              </div>
+            ) : (
+              <>
+                {/* Table Header */}
+                <div className="hidden md:grid grid-cols-[1fr_100px_80px_120px_100px] items-center gap-4 px-6 py-3 border-b border-slate-700/30 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                  <span>Chủ đề</span>
+                  <span className="text-center">Kết quả</span>
+                  <span className="text-center">Điểm</span>
+                  <span className="text-center">Thời gian</span>
+                  <span className="text-right">Trạng thái</span>
+                </div>
+
+                {history.map((quiz, idx) => {
+                  const correct = Number(quiz.correctCount || 0);
+                  const wrong = Number(quiz.wrongCount || 0);
+                  const total = correct + wrong;
+                  const scorePercentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+                  const passed = scorePercentage >= 60;
+                  const timeAgo = quiz.date ? formatDistanceToNow(new Date(quiz.date), { addSuffix: true, locale: vi }) : 'Vừa xong';
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`group grid grid-cols-1 md:grid-cols-[1fr_100px_80px_120px_100px] items-center gap-4 px-6 py-4 cursor-pointer transition-all duration-200 hover:bg-slate-800/60 ${
+                        idx < history.length - 1 ? 'border-b border-slate-800/30' : ''
+                      }`}
+                    >
+                      {/* Topic */}
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition-colors truncate">
+                          {quiz.materialTitle || 'Bài luyện tập tự do'}
+                        </h4>
+                      </div>
+
+                      {/* Result */}
+                      <div className="flex justify-center">
+                        <span className="text-xs font-bold text-slate-400">
+                          {correct}/{total}
+                        </span>
+                      </div>
+
+                      {/* Score */}
+                      <div className="flex justify-center">
+                        <span className={`text-sm font-extrabold px-3 py-1 rounded-lg ${
+                          scorePercentage >= 80 ? 'bg-emerald-500/15 text-emerald-400' :
+                          scorePercentage >= 60 ? 'bg-amber-500/15 text-amber-400' :
+                          'bg-red-500/15 text-red-400'
+                        }`}>
+                          {scorePercentage}%
+                        </span>
+                      </div>
+
+                      {/* Date */}
+                      <div className="hidden md:flex justify-center">
+                        <span className="text-xs text-slate-500 font-medium capitalize-first">{timeAgo}</span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex justify-end">
+                        {passed ? (
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Đạt
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
+                            <XCircle className="w-3.5 h-3.5" /> Chưa đạt
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
 

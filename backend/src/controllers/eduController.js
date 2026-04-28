@@ -545,18 +545,47 @@ exports.deleteMaterialByAdmin = async (req, res) => {
 // Tạo lớp học mới (Dành cho Teacher/Admin)
 exports.createGroup = async (req, res) => {
     try {
-        const { name, description } = req.body;
+        const { name, description, color } = req.body;
         const teacherId = req.user.id;
 
         const [groupId] = await sequelize.query(
-            'INSERT INTO `groups` (name, description, teacher_id) VALUES (?, ?, ?)',
-            { replacements: [name, description, teacherId], type: QueryTypes.INSERT }
+            'INSERT INTO `groups` (name, description, color, teacher_id) VALUES (?, ?, ?, ?)',
+            { replacements: [name, description, color || '#06b6d4', teacherId], type: QueryTypes.INSERT }
         );
 
-        res.status(201).json({ status: 'success', data: { id: groupId, name } });
+        res.status(201).json({ status: 'success', data: { id: groupId, name, color: color || '#06b6d4' } });
     } catch (error) {
         console.error('Create Group Error:', error);
         res.status(500).json({ message: 'Không thể tạo lớp học' });
+    }
+};
+
+// Cập nhật thông tin lớp học
+exports.updateGroup = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, color } = req.body;
+        const teacherId = req.user.id;
+
+        // Verify ownership
+        const [group] = await sequelize.query('SELECT * FROM `groups` WHERE id = ? AND teacher_id = ?', {
+            replacements: [id, teacherId],
+            type: QueryTypes.SELECT
+        });
+
+        if (!group) {
+            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền' });
+        }
+
+        await sequelize.query(
+            'UPDATE `groups` SET name = ?, description = ?, color = ? WHERE id = ?',
+            { replacements: [name, description, color, id], type: QueryTypes.UPDATE }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Cập nhật nhóm thành công' });
+    } catch (error) {
+        console.error('Update Group Error:', error);
+        res.status(500).json({ message: 'Không thể cập nhật nhóm' });
     }
 };
 

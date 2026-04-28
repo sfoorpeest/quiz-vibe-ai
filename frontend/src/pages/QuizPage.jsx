@@ -437,7 +437,7 @@ export default function QuizPage() {
                   onClick={() => setShowRetryPrompt(false)}
                   variant="secondary"
                   fullWidth
-                  className="!rounded-xl !py-3 !text-sm !font-bold !bg-slate-100 !text-slate-700 !border !border-slate-300 hover:!bg-slate-50"
+                  className="rounded-xl! py-3! text-sm! font-bold! bg-slate-100! text-slate-700! border! border-slate-300! hover:bg-slate-50!"
                 >
                   Ở lại trang này
                 </Button>
@@ -447,7 +447,7 @@ export default function QuizPage() {
                     : navigate(-1)}
                   variant="primary"
                   fullWidth
-                  className="!rounded-xl !py-3 !text-sm !font-black"
+                  className="rounded-xl! py-3! text-sm! font-black!"
                 >
                   Ôn lại bài học
                 </Button>
@@ -554,7 +554,7 @@ export default function QuizPage() {
                   fullWidth
                   size="lg"
                   variant="secondary"
-                  className="text-lg !bg-slate-100 !text-slate-700 !border-2 !border-slate-200/50 hover:!bg-white shadow-md hover:shadow-lg hover:-translate-y-1 active:translate-y-0"
+                  className="text-lg bg-slate-100! text-slate-700! border-2! border-slate-200/50! hover:bg-white! shadow-md hover:shadow-lg hover:-translate-y-1 active:translate-y-0"
                 >
                   <RotateCcw className="w-6 h-6 border-2 border-slate-300/50 rounded-lg p-0.5" /> Làm lại bài
                 </Button>

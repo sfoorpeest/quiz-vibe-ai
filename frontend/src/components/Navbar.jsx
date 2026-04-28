@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import UserAvatar from './UserAvatar';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -61,17 +62,15 @@ export default function Navbar() {
                        'border-blue-500/50 shadow-blue-500/30')
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-95 transition-transform overflow-hidden ${
-                    user.role_id === 3 ? 'bg-linear-to-tr from-amber-500 to-orange-500 shadow-amber-500/20' : 
-                    user.role_id === 2 ? 'bg-linear-to-tr from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
-                    'bg-linear-to-tr from-blue-500 to-violet-500 shadow-blue-500/20'
-                  }`}>
-                    {user.avatar ? (
-                      <img src={user.avatar.startsWith('/uploads') ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}` : user.avatar} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      user.role_id === 3 ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />
-                    )}
-                  </div>
+                  <UserAvatar 
+                    user={user} 
+                    size="sm" 
+                    className={`w-8 h-8 rounded-full border-none shadow-amber-500/20 ${
+                      user.role_id === 3 ? 'bg-linear-to-tr from-amber-500 to-orange-500 shadow-amber-500/20' : 
+                      user.role_id === 2 ? 'bg-linear-to-tr from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
+                      'bg-linear-to-tr from-blue-500 to-violet-500 shadow-blue-500/20'
+                    }`}
+                  />
                   
                   <div className="hidden sm:flex flex-col items-start leading-tight pr-1">
                     <span className="text-[13px] font-bold text-slate-100 max-w-[100px] truncate">
@@ -94,17 +93,15 @@ export default function Navbar() {
                     
                     <div className="p-4 border-b border-slate-700 bg-slate-800/50">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden ${
-                          user.role_id === 3 ? 'bg-linear-to-br from-amber-500 to-orange-500 shadow-amber-500/20' : 
-                          user.role_id === 2 ? 'bg-linear-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
-                          'bg-linear-to-br from-blue-500 to-violet-600 shadow-blue-500/20'
-                        }`}>
-                          {user.avatar ? (
-                            <img src={user.avatar.startsWith('/uploads') ? `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}` : user.avatar} alt="avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            user.role_id === 3 ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />
-                          )}
-                        </div>
+                        <UserAvatar 
+                          user={user} 
+                          size="md" 
+                          className={`w-10 h-10 rounded-full border-none ${
+                            user.role_id === 3 ? 'bg-linear-to-br from-amber-500 to-orange-500 shadow-amber-500/20' : 
+                            user.role_id === 2 ? 'bg-linear-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' : 
+                            'bg-linear-to-br from-blue-500 to-violet-600 shadow-blue-500/20'
+                          }`}
+                        />
                         <div className="overflow-hidden">
                           <p className="text-base font-extrabold text-white truncate">
                             {user.name || user.fullName || 'Người dùng'}

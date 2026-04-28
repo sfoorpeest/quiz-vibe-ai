@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
+import UserAvatar from '../components/UserAvatar';
 
 // ═══════════════════════════════════════════════════════════════
 // TEACHER GROUP MANAGEMENT — Giai đoạn 1
@@ -24,6 +25,7 @@ const GROUP_COLORS = [
 export default function TeacherGroupManagement() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // ─── State ───
   const [groups, setGroups] = useState([]);
@@ -165,11 +167,15 @@ export default function TeacherGroupManagement() {
     }
   };
 
-  const updateGroup = (formData) => {
-    setGroups(prev => prev.map(g =>
-      g.id === editingGroup.id ? { ...g, ...formData } : g
-    ));
-    setEditingGroup(null);
+  const updateGroup = async (formData) => {
+    try {
+      await eduService.updateGroup(editingGroup.id, formData);
+      toast.success('Đã cập nhật thông tin nhóm');
+      setEditingGroup(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật nhóm');
+    }
   };
 
   // ═══════════════════════════════════
@@ -258,8 +264,8 @@ export default function TeacherGroupManagement() {
                   return (
                     <div
                       key={group.id}
-                      className="bg-slate-900/50 backdrop-blur-xl border border-slate-700/30 rounded-2xl overflow-hidden transition-all duration-300 hover:border-slate-600/50 shadow-lg"
-                      style={{ borderLeftColor: group.color, borderLeftWidth: '4px' }}
+                      className="bg-slate-900/50 backdrop-blur-xl border border-slate-700/30 rounded-2xl overflow-hidden transition-all duration-300 hover:border-slate-600/50 shadow-lg group"
+                      style={{ borderLeft: `6px solid ${group.color}` }}
                     >
                       {/* Group Header */}
                       <div
@@ -271,9 +277,14 @@ export default function TeacherGroupManagement() {
                         }}
                       >
                         <div className="flex items-center gap-4 min-w-0">
-                          <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shrink-0 shadow-lg"
-                            style={{ background: `${group.color}20`, color: group.color }}
+                          <div 
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black shrink-0 shadow-lg transition-all border-2 group-hover:scale-105"
+                            style={{ 
+                              background: `linear-gradient(135deg, ${group.color}30, ${group.color}10)`,
+                              color: group.color,
+                              borderColor: `${group.color}40`,
+                              boxShadow: `0 8px 20px -5px ${group.color}30`
+                            }}
                           >
                             {index + 1}
                           </div>
@@ -340,10 +351,10 @@ export default function TeacherGroupManagement() {
                               {groupDetails[group.id].students.map(student => (
                                 <div key={student.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40 transition-colors group">
                                   <div className="flex items-center gap-3 min-w-0">
-                                    <img
-                                      src={student.avatar}
-                                      alt={student.name}
-                                      className="w-9 h-9 rounded-full border-2 border-slate-700 group-hover:border-cyan-500/40 transition-colors shadow-md"
+                                    <UserAvatar 
+                                      user={{ ...student, avatar: student.avatar }} 
+                                      size="sm" 
+                                      className="w-9 h-9 border-slate-700 group-hover:border-cyan-500/40" 
                                     />
                                     <div className="min-w-0">
                                       <p className="text-sm font-bold text-slate-200 truncate">{student.name}</p>
@@ -467,10 +478,10 @@ export default function TeacherGroupManagement() {
                           }`}>
                             {isSelected && <Check className="w-3 h-3 text-white" />}
                           </div>
-                          <img
-                            src={student.avatar}
-                            alt={student.name}
-                            className="w-9 h-9 rounded-full border-2 border-slate-700 shadow-md"
+                          <UserAvatar 
+                            user={{ ...student, avatar: student.avatar }} 
+                            size="sm" 
+                            className="w-9 h-9 border-slate-700" 
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-slate-200 truncate">{student.name}</p>

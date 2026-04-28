@@ -337,9 +337,9 @@ exports.getQuizHistory = async (req, res) => {
             `SELECT
                 r.material_id AS materialId,
                 m.title AS materialTitle,
-                COALESCE(r.correct_count, ROUND(r.score), 0) AS score,
-                COALESCE(r.correct_count, ROUND(r.score), 0) AS correctCount,
-                COALESCE(r.wrong_count, GREATEST(0, 5 - COALESCE(r.correct_count, ROUND(r.score), 0))) AS wrongCount,
+                CAST(COALESCE(r.correct_count, r.score, 0) AS SIGNED) AS score,
+                CAST(COALESCE(r.correct_count, r.score, 0) AS SIGNED) AS correctCount,
+                CAST(COALESCE(r.wrong_count, GREATEST(0, 5 - COALESCE(r.correct_count, r.score, 0))) AS SIGNED) AS wrongCount,
                 r.wrong_questions AS wrongQuestions,
                 COALESCE(r.created_at, r.submitted_at) AS date,
                 COALESCE(r.created_at, r.submitted_at) AS createdAt

@@ -10,6 +10,10 @@ export const eduService = {
     const response = await api.post('/api/edu/groups', data);
     return response.data;
   },
+  updateGroup: async (id, data) => {
+    const response = await api.put(`/api/edu/groups/${id}`, data);
+    return response.data;
+  },
   getGroupDetails: async (id) => {
     const response = await api.get(`/api/edu/groups/${id}`);
     return response.data;

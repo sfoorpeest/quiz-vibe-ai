@@ -9,52 +9,48 @@ const { getMaterialLearningSnapshot } = require('../services/materialService');
 exports.getProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const [user] = await sequelize.query(
-            "SELECT * FROM users WHERE id = :userId",
-            { replacements: { userId }, type: QueryTypes.SELECT }
-        );
+        
+        // Join users với user_profiles
+        const [profile] = await sequelize.query(`
+            SELECT 
+                u.id, u.name, u.email, u.role_id, u.created_at,
+                up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = :userId
+            LIMIT 1
+        `, { replacements: { userId }, type: QueryTypes.SELECT });
 
-        if (!user) {
+        if (!profile) {
             return res.status(404).json({ message: "Không tìm thấy người dùng." });
         }
 
-        // --- SMART FALLBACK: Nếu DB chưa có avatar_url, tìm trong folder ---
-        let currentAvatar = user.avatar_url;
-        if (!currentAvatar) {
-            try {
-                const avatarDir = path.join(__dirname, '../../uploads/avatars');
-                if (fs.existsSync(avatarDir)) {
-                    const files = fs.readdirSync(avatarDir);
-                    // Tìm file mới nhất có dạng avatar_{userId}_
-                    const userFiles = files
-                        .filter(f => f.startsWith(`avatar_${userId}_`))
-                        .sort((a, b) => b.localeCompare(a)); // Sắp xếp giảm dần để lấy cái mới nhất (theo timestamp)
-                    
-                    if (userFiles.length > 0) {
-                        currentAvatar = `/uploads/avatars/${userFiles[0]}`;
-                    }
-                }
-            } catch (e) {
-                console.error("Smart Fallback Error:", e);
+        // Nếu chưa có profile trong user_profiles, tạo mặc định (để các lần sau join có data)
+        if (profile.phone === undefined) { 
+            // Điều này xảy ra nếu LEFT JOIN ko tìm thấy row và các field của up là null/undefined
+            // Nhưng thực tế query SELECT * FROM user_profiles where user_id = userId có thể chưa có row.
+            // Nếu up.user_id IS NULL (do left join), ta nên tạo mới.
+            const checkProfile = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
+                replacements: { userId },
+                type: QueryTypes.SELECT
+            });
+
+            if (checkProfile.length === 0) {
+                await sequelize.query("INSERT INTO user_profiles (user_id) VALUES (:userId)", {
+                    replacements: { userId },
+                    type: QueryTypes.INSERT
+                });
             }
         }
 
         res.json({
-            id: user.id,
-            name: user.name,
-            username: user.username || user.name, 
-            email: user.email,
-            role_id: user.role_id,
-            phone: user.phone || '',
-            birthDate: user.birth_date || '',
-            gender: user.gender || '',
-            address: user.address || '',
-            bio: user.bio || '',
-            avatar: currentAvatar || null,
-            notificationEmail: user.notification_email ? true : false,
-            notificationLearning: user.notification_learning ? true : false,
-            isProfilePrivate: user.is_profile_private ? true : false,
-            created_at: user.created_at,
+            ...profile,
+            username: profile.name,
+            avatar: profile.avatar || null,
+            notificationEmail: Boolean(profile.notification_email),
+            notificationLearning: Boolean(profile.notification_learning),
+            isProfilePrivate: Boolean(profile.is_profile_private)
         });
     } catch (error) {
         console.error('Profile getProfile Error:', error);
@@ -64,53 +60,86 @@ exports.getProfile = async (req, res) => {
 
 // --- CẬP NHẬT PROFILE ---
 exports.updateProfile = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const userId = req.user.id;
-        const user = await User.findByPk(userId);
+        const { name, phone, birthDate, gender, address, bio, notificationEmail, notificationLearning, isProfilePrivate } = req.body;
 
-        if (!user) {
-            return res.status(404).json({ message: "Không tìm thấy người dùng." });
+        // 1. Cập nhật bảng users (chỉ name)
+        if (name) {
+            await sequelize.query("UPDATE users SET name = :name WHERE id = :userId", {
+                replacements: { name, userId },
+                type: QueryTypes.UPDATE,
+                transaction: t
+            });
         }
 
-        // Map FE fields to DB fields
-        const fieldMap = {
-            'name': 'name',
-            'phone': 'phone',
-            'birthDate': 'birth_date',
-            'gender': 'gender',
-            'address': 'address',
-            'bio': 'bio',
-            'notificationEmail': 'notification_email',
-            'notificationLearning': 'notification_learning',
-            'isProfilePrivate': 'is_profile_private'
-        };
-
-        Object.keys(fieldMap).forEach(feField => {
-            if (req.body[feField] !== undefined && user[fieldMap[feField]] !== undefined) {
-                user[fieldMap[feField]] = req.body[feField];
-            }
+        // 2. Cập nhật bảng user_profiles
+        // Đảm bảo row tồn tại
+        const [existing] = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
+            replacements: { userId },
+            type: QueryTypes.SELECT,
+            transaction: t
         });
 
-        await user.save();
+        if (!existing) {
+            await sequelize.query("INSERT INTO user_profiles (user_id) VALUES (:userId)", {
+                replacements: { userId },
+                type: QueryTypes.INSERT,
+                transaction: t
+            });
+        }
+
+        await sequelize.query(`
+            UPDATE user_profiles SET 
+                phone = :phone, 
+                birth_date = :birthDate, 
+                gender = :gender, 
+                address = :address, 
+                bio = :bio,
+                notification_email = :notificationEmail,
+                notification_learning = :notificationLearning,
+                is_profile_private = :isProfilePrivate
+            WHERE user_id = :userId
+        `, {
+            replacements: { 
+                phone: phone || null, 
+                birthDate: birthDate || null, 
+                gender: gender || null, 
+                address: address || null, 
+                bio: bio || null,
+                notificationEmail: notificationEmail !== undefined ? (notificationEmail ? 1 : 0) : 1,
+                notificationLearning: notificationLearning !== undefined ? (notificationLearning ? 1 : 0) : 1,
+                isProfilePrivate: isProfilePrivate !== undefined ? (isProfilePrivate ? 1 : 0) : 0,
+                userId 
+            },
+            type: QueryTypes.UPDATE,
+            transaction: t
+        });
+
+        await t.commit();
+
+        // Trả về data mới bằng cách gọi getProfile logic (hoặc tương đương)
+        const [updated] = await sequelize.query(`
+            SELECT 
+                u.id, u.name, u.email, u.role_id, u.created_at,
+                up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = :userId
+        `, { replacements: { userId }, type: QueryTypes.SELECT });
 
         res.json({
-            id: user.id,
-            name: user.name,
-            username: user.username || user.name,
-            email: user.email,
-            role_id: user.role_id,
-            phone: user.phone || '',
-            birthDate: user.birth_date || '',
-            gender: user.gender || '',
-            address: user.address || '',
-            bio: user.bio || '',
-            avatar: user.avatar_url || null,
-            notificationEmail: Boolean(user.notification_email),
-            notificationLearning: Boolean(user.notification_learning),
-            isProfilePrivate: Boolean(user.is_profile_private),
-            created_at: user.created_at,
+            ...updated,
+            username: updated.name,
+            avatar: updated.avatar || null,
+            notificationEmail: Boolean(updated.notification_email),
+            notificationLearning: Boolean(updated.notification_learning),
+            isProfilePrivate: Boolean(updated.is_profile_private)
         });
     } catch (error) {
+        await t.rollback();
         console.error('Profile updateProfile Error:', error);
         res.status(500).json({ message: "Lỗi máy chủ.", error: error.message });
     }
@@ -120,47 +149,52 @@ exports.updateProfile = async (req, res) => {
 exports.uploadAvatar = async (req, res) => {
     try {
         const userId = req.user.id;
-        const user = await User.findByPk(userId);
-
-        if (!user) {
-            return res.status(404).json({ message: "Không tìm thấy người dùng." });
-        }
 
         if (!req.file) {
             return res.status(400).json({ message: "Chưa chọn ảnh đại diện." });
         }
 
-        // Chỉ lưu nếu cột tồn tại trong Model (hiện tại tôi đã tạm gỡ để tránh crash, nên tôi sẽ dùng raw query ở đây để cứu vãn)
-        await sequelize.query(
-            "UPDATE users SET avatar_url = :avatarPath WHERE id = :userId",
-            {
-                replacements: { avatarPath: `/uploads/avatars/${req.file.filename}`, userId },
-                type: QueryTypes.UPDATE
-            }
-        );
+        const avatarPath = `/uploads/avatars/${req.file.filename}`;
+
+        // Đảm bảo row tồn tại trong user_profiles
+        const [existing] = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
+            replacements: { userId },
+            type: QueryTypes.SELECT
+        });
+
+        if (!existing) {
+            await sequelize.query("INSERT INTO user_profiles (user_id, avatar_url) VALUES (:userId, :avatarPath)", {
+                replacements: { userId, avatarPath },
+                type: QueryTypes.INSERT
+            });
+        } else {
+            await sequelize.query(
+                "UPDATE user_profiles SET avatar_url = :avatarPath WHERE user_id = :userId",
+                {
+                    replacements: { avatarPath, userId },
+                    type: QueryTypes.UPDATE
+                }
+            );
+        }
 
         // Fetch lại data sạch
-        const [updatedUser] = await sequelize.query(
-            "SELECT * FROM users WHERE id = :userId",
-            { replacements: { userId }, type: QueryTypes.SELECT }
-        );
+        const [updated] = await sequelize.query(`
+            SELECT 
+                u.id, u.name, u.email, u.role_id, u.created_at,
+                up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+            FROM users u
+            JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = :userId
+        `, { replacements: { userId }, type: QueryTypes.SELECT });
 
         res.json({
-            id: updatedUser.id,
-            name: updatedUser.name,
-            username: updatedUser.username || updatedUser.name,
-            email: updatedUser.email,
-            role_id: updatedUser.role_id,
-            phone: updatedUser.phone || '',
-            birthDate: updatedUser.birth_date || '',
-            gender: updatedUser.gender || '',
-            address: updatedUser.address || '',
-            bio: updatedUser.bio || '',
-            avatar: updatedUser.avatar_url || null,
-            notificationEmail: updatedUser.notification_email ? true : false,
-            notificationLearning: updatedUser.notification_learning ? true : false,
-            isProfilePrivate: updatedUser.is_profile_private ? true : false,
-            created_at: updatedUser.created_at,
+            ...updated,
+            username: updated.name,
+            avatar: updated.avatar || null,
+            notificationEmail: Boolean(updated.notification_email),
+            notificationLearning: Boolean(updated.notification_learning),
+            isProfilePrivate: Boolean(updated.is_profile_private)
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);

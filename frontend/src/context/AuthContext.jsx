@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import api from '../api/axiosClient';
 
 const AuthContext = createContext();
 
@@ -7,22 +8,63 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load token from localStorage on mount
+  // Load token and fetch latest user data from server on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    if (savedToken) {
-      setToken(savedToken);
-      setUser(savedUser ? JSON.parse(savedUser) : null);
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      const savedToken = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      if (savedToken) {
+        setToken(savedToken);
+        // Set initial user from local storage to show something immediately
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+
+        try {
+          // Fetch latest profile from server
+          const response = await api.get('/api/profile');
+          
+          if (response.data) {
+            const freshUserData = response.data;
+            setUser(prev => {
+              const updated = { ...prev, ...freshUserData };
+              localStorage.setItem('user', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        } catch (error) {
+          console.error("AuthContext: Failed to sync user profile:", error);
+          if (error.response?.status === 401) {
+            logout();
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  const login = (userData, authToken) => {
-    setUser(userData);
+  const login = async (userData, authToken) => {
     setToken(authToken);
     localStorage.setItem('token', authToken);
+    
+    // Set initial user data from login response
+    setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+
+    try {
+      // Immediately fetch full profile to get avatar, etc.
+      const response = await api.get('/api/profile');
+      if (response.data) {
+        const fullUser = { ...userData, ...response.data };
+        setUser(fullUser);
+        localStorage.setItem('user', JSON.stringify(fullUser));
+      }
+    } catch (error) {
+      console.error("Failed to fetch full profile after login:", error);
+    }
   };
 
   const logout = () => {

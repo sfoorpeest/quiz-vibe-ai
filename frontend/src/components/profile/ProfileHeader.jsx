@@ -1,6 +1,7 @@
 import React from 'react';
-import { Camera, PencilLine, RefreshCcw, ShieldCheck, UserCircle2 } from 'lucide-react';
+import { Camera, PencilLine, RefreshCcw, ShieldCheck } from 'lucide-react';
 import Button from '../Button';
+import UserAvatar from '../UserAvatar';
 
 const roleLabelMap = {
   1: 'Học viên',
@@ -17,12 +18,6 @@ export default function ProfileHeader({
   onToggleEdit,
   onRefresh,
 }) {
-  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  let avatarSource = profile?.avatar || '';
-  if (avatarSource && avatarSource.startsWith('/uploads')) {
-    avatarSource = `${baseURL}${avatarSource}`;
-  }
-  
   const roleLabel = roleLabelMap[profile?.role_id] || 'Thành viên';
   const username = profile?.username || 'chua-cap-nhat';
 
@@ -32,13 +27,11 @@ export default function ProfileHeader({
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div className="relative mx-auto sm:mx-0">
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-4xl border border-slate-700 bg-slate-800 shadow-lg shadow-blue-950/30 sm:h-32 sm:w-32">
-              {avatarSource ? (
-                <img src={avatarSource} alt={profile?.name || 'Ảnh đại diện'} className="h-full w-full object-cover" />
-              ) : (
-                <UserCircle2 className="h-16 w-16 text-slate-500" />
-              )}
-            </div>
+            <UserAvatar 
+              user={profile} 
+              size="2xl" 
+              className="h-28 w-28 rounded-4xl border-slate-700 bg-slate-800 shadow-lg shadow-blue-950/30 sm:h-32 sm:w-32" 
+            />
             <label className="absolute -bottom-2 right-0 flex cursor-pointer items-center gap-2 rounded-full border border-slate-700 bg-slate-950/95 px-3 py-2 text-xs font-bold text-slate-200 shadow-lg transition hover:border-blue-500/50 hover:text-white">
               <Camera className="h-4 w-4 text-blue-400" />
               {isUploadingAvatar ? 'Đang tải...' : 'Đổi ảnh'}
