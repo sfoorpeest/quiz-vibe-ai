@@ -24,12 +24,16 @@ const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
-        const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        
         const ext = path.extname(file.originalname).toLowerCase();
-        if (allowed.includes(ext)) {
+        const mime = file.mimetype;
+
+        if (allowedExtensions.includes(ext) || allowedMimeTypes.includes(mime)) {
             cb(null, true);
         } else {
-            cb(new Error('Chỉ hỗ trợ ảnh JPG, PNG, GIF, WebP.'));
+            cb(new Error('Chỉ hỗ trợ định dạng ảnh JPG, PNG, GIF, WebP.'));
         }
     }
 });
@@ -38,7 +42,22 @@ const upload = multer({
 // Tất cả đều cần đăng nhập (authMiddleware)
 router.get('/', authMiddleware, profileController.getProfile);
 router.put('/', authMiddleware, profileController.updateProfile);
-router.post('/avatar', authMiddleware, upload.single('avatar'), profileController.uploadAvatar);
+
+// Route upload avatar với xử lý lỗi Multer
+router.post('/avatar', authMiddleware, (req, res, next) => {
+    upload.single('avatar')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ message: "Ảnh quá lớn (Tối đa 5MB). Vui lòng nén ảnh hoặc chọn ảnh khác." });
+            }
+            return res.status(400).json({ message: `Lỗi tải ảnh: ${err.message}` });
+        } else if (err) {
+            // Lỗi từ fileFilter hoặc lỗi khác
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, profileController.uploadAvatar);
 router.get('/activity', authMiddleware, profileController.getActivity);
 router.get('/summary', authMiddleware, profileController.getDashboardSummary);
 

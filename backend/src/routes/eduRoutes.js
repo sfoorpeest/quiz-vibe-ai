@@ -14,6 +14,11 @@ const upload = multer({
 
 // 1. Quản lý học liệu (Chỉ Teacher/Admin được đăng)
 router.post('/materials', auth, checkRole([2, 3]), materialValidator, eduController.createMaterial);
+router.put('/materials/:id/visibility', auth, checkRole([2, 3]), eduController.updateMaterialVisibility);
+
+// 1.2 Lấy danh sách giáo viên và chia sẻ tài liệu
+router.get('/teachers', auth, checkRole([2, 3]), eduController.getTeachers);
+router.post('/materials/:id/share', auth, checkRole([2, 3]), eduController.shareMaterialToTeachers);
 
 // 1.5 Tìm kiếm học liệu theo tiêu đề hoặc tag (@tag / #tag)
 router.get('/materials/search', auth, eduController.searchMaterials);
@@ -52,6 +57,9 @@ router.get('/students', auth, checkRole([2, 3]), eduController.getStudentsForTea
 router.post('/groups/members', auth, checkRole([2, 3]), eduController.addGroupMembers);
 router.delete('/groups/:id/members/:studentId', auth, checkRole([2, 3]), eduController.removeGroupMember);
 router.post('/groups/assign', auth, checkRole([2, 3]), eduController.assignMaterialToGroup);
+
+// 5.1 Quản lý lớp học (Dành cho Học sinh)
+router.get('/student/groups', auth, checkRole([1]), eduController.getStudentGroups);
 
 // 6. Phiếu học tập (Worksheets)
 router.get('/worksheets/all', auth, checkRole([2, 3]), eduController.getAllWorksheetsForTeacher);

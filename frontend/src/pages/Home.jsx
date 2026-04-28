@@ -6,6 +6,8 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
+import { eduService } from '../services/eduService';
+import { toast } from 'react-hot-toast';
 
 // Biến toàn cục (Module-level) để khóa vĩnh viễn vòng lặp bất kể React có remount bao nhiêu lần
 let isMaterialsFetched = false;
@@ -527,7 +529,7 @@ export default function Home() {
                       <img src="https://i.pravatar.cc/150?u=1" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
                       <img src="https://i.pravatar.cc/150?u=2" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
                       <div className="w-10 h-10 rounded-full border-2 border-[#0f172a] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-cyan-400 shadow-lg">
-                        +12
+                        +{dashboardData.stats.totalLearned}
                       </div>
                     </div>
                     
@@ -549,9 +551,12 @@ export default function Home() {
                       <BrainCircuit className="w-5 h-5 text-purple-400" />
                     </div>
                  </div>
-                 <p className="text-slate-400 text-sm mb-8 relative z-10 italic">"Generate a quiz on Neural Networks focusing on backpropagation..."</p>
+                 <p className="text-slate-400 text-sm mb-8 relative z-10 font-medium">
+                   Bạn đã thực hiện <span className="text-purple-400 font-bold">{dashboardData.stats.totalQuizzes || 0}</span> lượt tự luyện tập. 
+                   Tiếp tục rèn luyện để nâng cao kỹ năng nhé!
+                 </p>
                  <div className="relative z-10 flex items-center gap-2 text-purple-400 font-bold text-sm group-hover:text-purple-300 mt-auto">
-                    AI Generation <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                   Bắt đầu luyện ngay <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                  </div>
                  <div className="absolute left-[-10%] bottom-[-10%] opacity-10 group-hover:opacity-20 group-hover:scale-105 transition-all duration-700 pointer-events-none">
                     <BrainCircuit className="w-48 h-48 text-purple-400" />
@@ -581,32 +586,27 @@ export default function Home() {
                     </button>
                  </div>
 
-                 <div className="space-y-4 relative z-10">
-                    <div className="flex items-center gap-4 group/item cursor-pointer">
-                      <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
-                        <FileText className="w-5 h-5 text-red-500 fill-red-500/10" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">Công thức Vật Lí 12 - Chương 1</h4>
-                        <p className="text-[10px] text-slate-500 mt-1 font-medium">PDF • 2.4 MB • 15/05/2024</p>
-                      </div>
-                      <button className="text-slate-500 hover:text-white transition-colors">
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-4 group/item cursor-pointer">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
-                        <FileText className="w-5 h-5 text-blue-500 fill-blue-500/10" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">Sổ tay Giải bài tập SGK Toán 12</h4>
-                        <p className="text-[10px] text-slate-500 mt-1 font-medium">DOCX • 1.1 MB • 12/05/2024</p>
-                      </div>
-                      <button className="text-slate-500 hover:text-white transition-colors">
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
+                 <div className="space-y-4 relative z-10 overflow-hidden">
+                    {materials.length > 0 ? (
+                      materials.slice(0, 2).map((item) => (
+                        <Link key={item.id} to={`/learn/${item.id}`} className="flex items-center gap-4 group/item cursor-pointer">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.content_url?.endsWith('.pdf') ? 'bg-red-500/10 border-red-500/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
+                            <FileText className={`w-5 h-5 ${item.content_url?.endsWith('.pdf') ? 'text-red-500 fill-red-500/10' : 'text-blue-500 fill-blue-500/10'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">{item.title}</h4>
+                            <p className="text-[10px] text-slate-500 mt-1 font-medium">
+                              {item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
+                            </p>
+                          </div>
+                          <div className="text-slate-500 hover:text-white transition-colors">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <p className="text-slate-500 text-xs italic py-4">Chưa có tài liệu nào được cập nhật.</p>
+                    )}
                  </div>
 
                  {/* Subtle Glow */}
