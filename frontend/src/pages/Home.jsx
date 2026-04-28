@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
+import UserAvatar from '../components/UserAvatar';
 
 // Biến toàn cục (Module-level) để khóa vĩnh viễn vòng lặp bất kể React có remount bao nhiêu lần
 let isMaterialsFetched = false;
@@ -526,8 +527,22 @@ export default function Home() {
                  
                  <div className="flex items-center justify-between mt-12 relative z-10">
                     <div className="flex items-center -space-x-3">
-                      <img src="https://i.pravatar.cc/150?u=1" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
-                      <img src="https://i.pravatar.cc/150?u=2" className="w-10 h-10 rounded-full border-2 border-[#0f172a] shadow-lg" alt="student" />
+                      <UserAvatar 
+                        user={user} 
+                        size="sm" 
+                        className="w-10 h-10 border-2 border-[#0f172a] shadow-lg" 
+                      />
+                      {dashboardData.lastMaterial?.teacher_name && (
+                        <UserAvatar 
+                          user={{
+                            name: dashboardData.lastMaterial.teacher_name,
+                            avatar: dashboardData.lastMaterial.teacher_avatar,
+                            role_id: 2
+                          }} 
+                          size="sm" 
+                          className="w-10 h-10 border-2 border-[#0f172a] shadow-lg" 
+                        />
+                      )}
                       <div className="w-10 h-10 rounded-full border-2 border-[#0f172a] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-cyan-400 shadow-lg">
                         +{dashboardData.stats.totalLearned}
                       </div>

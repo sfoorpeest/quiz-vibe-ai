@@ -12,5 +12,9 @@ export const materialService = {
   getMyLessons: async () => {
     const response = await api.get('/my-lessons');
     return response.data;
+  },
+  getTags: async () => {
+    const response = await api.get('/materials/tags');
+    return response.data;
   }
 };

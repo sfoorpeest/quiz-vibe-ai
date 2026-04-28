@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User } from 'lucide-react';
+import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User, Tag, Hash, GraduationCap, LayoutGrid, Layers } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -14,9 +14,55 @@ const FILE_TYPE_ICONS = {
   audio: { icon: Video, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
 };
 
-const SUBJECTS = ['Tất cả', 'Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tiếng Anh', 'Tin học'];
-const GRADES = ['Tất cả', 'Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
+const SCHOOL_SUBJECTS = [
+  'Tất cả', 
+  'Toán học', 'Vật lý', 'Hóa học', 'Sinh học', 'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tiếng Anh', 'Tin học', 'Giáo dục công dân'
+];
+
+const SPECIALIZATIONS = [
+  'Công nghệ thông tin', 'Khoa học máy tính', 'Kỹ thuật phần mềm', 'An toàn thông tin',
+  'Kinh tế & Tài chính', 'Quản trị kinh doanh', 'Marketing & Truyền thông', 'Kế toán & Kiểm toán',
+  'Logistics & Chuỗi cung ứng', 'Ngân hàng & Bảo hiểm', 'Du lịch & Khách sạn',
+  'Kỹ thuật & Công nghệ', 'Kiến trúc & Xây dựng', 'Điện - Điện tử', 'Cơ khí & Tự động hóa',
+  'Y Dược & Sức khỏe', 'Điều dưỡng', 'Tâm lý học', 'Luật & Pháp lý', 'Sư phạm & Giáo dục',
+  'Ngôn ngữ học', 'Công nghệ sinh học', 'Khoa học môi trường', 'Thiết kế đồ họa', 'Nhiếp ảnh & Điện ảnh'
+];
+
+const SOCIAL_TOPICS = [
+  'Lập trình', 'Tài chính cá nhân', 'Kỹ năng mềm', 'Khởi nghiệp', 'Kinh doanh online', 'Đầu tư chứng khoán'
+];
+
+const GRADES = ['Tất cả', 'Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học', 'Sau đại học', 'Tự học/Khác'];
+
 const FILE_TYPES = ['Tất cả', 'Video', 'Audio', 'Document'];
+
+// Reusable collapsible filter section with smooth auto-height
+function FilterSection({ title, icon, defaultOpen = true, children }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-slate-800/50 last:border-0 pb-2 mb-2">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between py-2 group text-left"
+      >
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800/50 text-slate-500'} group-hover:text-emerald-300`}>
+            {icon}
+          </div>
+          <span className={`text-sm font-bold uppercase tracking-wider transition-colors ${isOpen ? 'text-slate-200' : 'text-slate-300/80'} group-hover:text-slate-200`}>
+            {title}
+          </span>
+        </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-emerald-400' : ''}`} />
+      </button>
+      <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-2 pb-2' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className="overflow-hidden">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Materials() {
   const { user } = useAuth();
@@ -24,12 +70,27 @@ export default function Materials() {
   const [materials, setMaterials] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(false);
+  const [popularTags, setPopularTags] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const searchQuery = searchParams.get('keyword') || '';
   const selectedSubject = searchParams.get('subject') || 'Tất cả';
   const selectedGrade = searchParams.get('grade') || 'Tất cả';
   const selectedType = searchParams.get('type') || 'Tất cả';
+  const selectedTag = searchParams.get('tag') || '';
+
+  // Fetch popular tags on mount
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const res = await materialService.getTags();
+        setPopularTags(res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      }
+    };
+    fetchTags();
+  }, []);
 
   const updateParam = (key, value, emptyValue = '') => {
     setSearchParams(prev => {
@@ -43,7 +104,7 @@ export default function Materials() {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchMaterials = async () => {
       setLoading(true);
       try {
@@ -52,6 +113,7 @@ export default function Materials() {
         if (selectedType !== 'Tất cả') params.type = selectedType.toLowerCase();
         if (selectedSubject !== 'Tất cả') params.subject = selectedSubject;
         if (selectedGrade !== 'Tất cả') params.grade = selectedGrade;
+        if (selectedTag) params.tag = selectedTag;
         
         const res = await materialService.getMaterials(params);
         setMaterials(res.data || []);
@@ -63,7 +125,7 @@ export default function Materials() {
       }
     };
     fetchMaterials();
-  }, [searchQuery, selectedType, selectedSubject, selectedGrade]);
+  }, [searchQuery, selectedType, selectedSubject, selectedGrade, selectedTag]);
 
   const getFileIcon = (type) => {
     const config = FILE_TYPE_ICONS[type] || FILE_TYPE_ICONS.document;
@@ -75,7 +137,7 @@ export default function Materials() {
     );
   };
 
-  const hasActiveFilter = selectedSubject !== 'Tất cả' || selectedGrade !== 'Tất cả' || selectedType !== 'Tất cả';
+  const hasActiveFilter = selectedSubject !== 'Tất cả' || selectedGrade !== 'Tất cả' || selectedType !== 'Tất cả' || selectedTag !== '';
 
   const clearFilters = () => {
     setSearchParams(prev => {
@@ -83,6 +145,7 @@ export default function Materials() {
       next.delete('subject');
       next.delete('grade');
       next.delete('type');
+      next.delete('tag');
       return next;
     });
   };
@@ -117,77 +180,137 @@ export default function Materials() {
 
           {/* LEFT SIDEBAR — Filter Panel */}
           <div className={`w-72 shrink-0 ${isSidebarOpen ? 'block' : 'hidden'} lg:block`}>
-            <div className="sticky top-24 bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-emerald-400" /> Bộ lọc
-                </h3>
+            <div className="sticky top-24 bg-slate-900/40 backdrop-blur-3xl border border-slate-700/30 rounded-[2.5rem] p-5 shadow-2xl shadow-black/40 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar border-t-white/5">
+              <div className="flex items-center justify-between mb-6 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/20">
+                    <Filter className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-100 uppercase tracking-tighter">Bộ lọc</h3>
+                </div>
                 {hasActiveFilter && (
-                  <button onClick={clearFilters} className="text-[10px] font-bold text-red-400 hover:text-red-300 flex items-center gap-1">
-                    <X className="w-3 h-3" /> Xóa lọc
+                  <button onClick={clearFilters} className="text-[13px] font-bold text-red-400 hover:text-red-300 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 transition-all hover:bg-red-500/20">
+                    Xóa hết
                   </button>
                 )}
               </div>
 
-              {/* Subject Filter */}
-              <div className="mb-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Môn học</p>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                  {SUBJECTS.map(subject => (
+              {/* ─── Môn học phổ thông ─── */}
+              <FilterSection title="Phổ thông" icon={<GraduationCap className="w-3.5 h-3.5" />} defaultOpen={true}>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {SCHOOL_SUBJECTS.map(subject => (
                     <button
                       key={subject}
                       onClick={() => updateParam('subject', subject, 'Tất cả')}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-2 py-1.5 rounded-xl text-[13px] font-bold transition-all text-center border ${
                         selectedSubject === subject
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                          : 'bg-slate-800/30 text-slate-400 border-transparent hover:bg-slate-800/60 hover:text-slate-200'
                       }`}
                     >
                       {subject}
                     </button>
                   ))}
                 </div>
-              </div>
+              </FilterSection>
 
-              {/* Grade Filter */}
-              <div className="mb-6">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Cấp / Lớp</p>
-                <div className="space-y-1.5">
+              {/* ─── Chuyên ngành đại học ─── */}
+              <FilterSection title="Chuyên ngành" icon={<BookOpen className="w-3.5 h-3.5" />} defaultOpen={true}>
+                <div className="flex flex-col gap-1">
+                  {SPECIALIZATIONS.map(spec => (
+                    <button
+                      key={spec}
+                      onClick={() => updateParam('subject', spec, 'Tất cả')}
+                      className={`w-full text-left px-3 py-1.5 rounded-xl text-[13px] font-bold transition-all border ${
+                        selectedSubject === spec
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                          : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-800/40 hover:text-slate-200'
+                      }`}
+                    >
+                      {spec}
+                    </button>
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* ─── Chủ đề xã hội / Kỹ năng ─── */}
+              <FilterSection title="Xã hội & Kỹ năng" icon={<LayoutGrid className="w-3.5 h-3.5" />} defaultOpen={false}>
+                <div className="flex flex-col gap-1">
+                  {SOCIAL_TOPICS.map(topic => (
+                    <button
+                      key={topic}
+                      onClick={() => updateParam('subject', topic, 'Tất cả')}
+                      className={`w-full text-left px-3 py-1.5 rounded-xl text-[13px] font-bold transition-all border ${
+                        selectedSubject === topic
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                          : 'bg-transparent text-slate-400 border-transparent hover:bg-slate-800/40 hover:text-slate-200'
+                      }`}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+              </FilterSection>
+
+              {/* ─── Cấp độ học ─── */}
+              <FilterSection title="Cấp học" icon={<Layers className="w-3.5 h-3.5" />} defaultOpen={false}>
+                <div className="grid grid-cols-2 gap-1.5">
                   {GRADES.map(grade => (
                     <button
                       key={grade}
                       onClick={() => updateParam('grade', grade, 'Tất cả')}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-2 py-1.5 rounded-xl text-[13px] font-bold transition-all text-center border ${
                         selectedGrade === grade
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                          : 'bg-slate-800/30 text-slate-400 border-transparent hover:bg-slate-800/60 hover:text-slate-200'
                       }`}
                     >
                       {grade}
                     </button>
                   ))}
                 </div>
-              </div>
+              </FilterSection>
 
-              {/* File Type Filter */}
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Loại file</p>
-                <div className="space-y-1.5">
+              {/* ─── Tag phổ biến ─── */}
+              {popularTags.length > 0 && (
+                <FilterSection title="Tags" icon={<Hash className="w-3.5 h-3.5" />} defaultOpen={false}>
+                  <div className="flex flex-wrap gap-1">
+                    {popularTags.slice(0, 10).map(({ tag, count }) => (
+                      <button
+                        key={tag}
+                        onClick={() => updateParam('tag', selectedTag === tag ? '' : tag)}
+                        title={`${count} tài liệu`}
+                        className={`px-2 py-1 rounded-lg text-[13px] font-bold transition-all ${
+                          selectedTag === tag
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                            : 'bg-slate-800/40 text-slate-400 border border-transparent hover:text-slate-200'
+                        }`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                </FilterSection>
+              )}
+
+              {/* ─── Loại file ─── */}
+              <FilterSection title="Loại file" icon={<FileText className="w-3.5 h-3.5" />} defaultOpen={false}>
+                <div className="grid grid-cols-2 gap-1.5">
                   {FILE_TYPES.map(type => (
                     <button
                       key={type}
                       onClick={() => updateParam('type', type, 'Tất cả')}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-2 py-1.5 rounded-xl text-[13px] font-bold transition-all text-center border ${
                         selectedType === type
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                          : 'bg-slate-800/30 text-slate-400 border-transparent hover:bg-slate-800/60 hover:text-slate-200'
                       }`}
                     >
                       {type}
                     </button>
                   ))}
                 </div>
-              </div>
+              </FilterSection>
             </div>
           </div>
 
@@ -217,7 +340,7 @@ export default function Materials() {
               <div className="flex flex-wrap items-center gap-2 mb-4 animate-in fade-in duration-200">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Đang lọc:</span>
                 {selectedSubject !== 'Tất cả' && (
-                  <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 text-indigo-300 text-xs font-bold rounded-lg border border-indigo-500/20">
                     {selectedSubject}
                     <button onClick={() => updateParam('subject', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
                   </span>
@@ -232,6 +355,12 @@ export default function Materials() {
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/20">
                     {selectedType}
                     <button onClick={() => updateParam('type', 'Tất cả', 'Tất cả')}><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {selectedTag && (
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 text-cyan-300 text-xs font-bold rounded-lg border border-cyan-500/20">
+                    #{selectedTag}
+                    <button onClick={() => updateParam('tag', '')}><X className="w-3 h-3" /></button>
                   </span>
                 )}
               </div>

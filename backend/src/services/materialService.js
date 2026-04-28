@@ -125,7 +125,7 @@ function normalizePagination(page, limit) {
     return { page: normalizedPage, limit: normalizedLimit, offset: (normalizedPage - 1) * normalizedLimit };
 }
 
-async function listMaterials({ search, type, subject, grade, page, limit, userId, roleId }) {
+async function listMaterials({ search, type, subject, grade, tag, page, limit, userId, roleId }) {
     const { page: normalizedPage, limit: normalizedLimit, offset } = normalizePagination(page, limit);
 
     /**
@@ -172,6 +172,7 @@ async function listMaterials({ search, type, subject, grade, page, limit, userId
     // Filter by subject with intelligent mapping (Refined to prevent false positives)
     if (subject && subject !== 'Tất cả') {
         const subjectMap = {
+            // === Phổ thông (THPT) ===
             'Toán học': ['Toán học', 'Toán', '#Toán'],
             'Vật lý': ['Vật lý', 'Vật lí', '#Vật lý', '#Vật lí'],
             'Hóa học': ['Hóa học', '#Hóa học', '#Hóa'],
@@ -180,7 +181,41 @@ async function listMaterials({ search, type, subject, grade, page, limit, userId
             'Lịch sử': ['Lịch sử', '#Lịch sử', '#Sử'],
             'Địa lý': ['Địa lý', 'Địa lí', '#Địa lý', '#Địa lí', '#Địa'],
             'Tiếng Anh': ['Tiếng Anh', 'English', '#Tiếng Anh', '#Anh'],
-            'Tin học': ['Tin học', 'IT', '#Tin học', '#Tin']
+            'Tin học': ['Tin học', 'IT', '#Tin học', '#Tin'],
+            'Giáo dục công dân': ['Giáo dục công dân', 'GDCD', 'Đạo đức', 'Pháp luật'],
+            // === Đại học / Chuyên ngành ===
+            'Công nghệ thông tin': ['Công nghệ thông tin', 'CNTT', 'IT', 'Computing', 'Hệ thống thông tin'],
+            'Khoa học máy tính': ['Khoa học máy tính', 'Computer Science', 'Thuật toán', 'Cơ sở dữ liệu', 'AI', 'Machine Learning'],
+            'Kỹ thuật phần mềm': ['Kỹ thuật phần mềm', 'Software Engineering', 'Phát triển phần mềm', 'Kiểm thử', 'Maintenance'],
+            'An toàn thông tin': ['An toàn thông tin', 'Cyber Security', 'Bảo mật', 'Mã hóa', 'Hacking', 'Network Security'],
+            'Kinh tế & Tài chính': ['Kinh tế', 'Tài chính', 'Finance', 'Kinh tế học', 'Tiền tệ', 'Thị trường'],
+            'Quản trị kinh doanh': ['Quản trị kinh doanh', 'Business Administration', 'Quản trị', 'CEO', 'Lãnh đạo', 'Doanh nghiệp'],
+            'Marketing & Truyền thông': ['Marketing', 'Truyền thông', 'Communication', 'PR', 'Quảng cáo', 'Branding', 'Digital Marketing'],
+            'Kế toán & Kiểm toán': ['Kế toán', 'Kiểm toán', 'Accounting', 'Auditing', 'Thuế', 'Báo cáo tài chính'],
+            'Logistics & Chuỗi cung ứng': ['Logistics', 'Chuỗi cung ứng', 'Supply Chain', 'Vận chuyển', 'Kho bãi', 'Xuất nhập khẩu'],
+            'Ngân hàng & Bảo hiểm': ['Ngân hàng', 'Bảo hiểm', 'Banking', 'Insurance', 'Tín dụng', 'Lãi suất'],
+            'Du lịch & Khách sạn': ['Du lịch', 'Khách sạn', 'Tourism', 'Hospitality', 'Lữ hành', 'Nhà hàng'],
+            'Kỹ thuật & Công nghệ': ['Kỹ thuật', 'Technology', 'Công nghệ', 'Kỹ sư'],
+            'Kiến trúc & Xây dựng': ['Kiến trúc', 'Xây dựng', 'Architecture', 'Construction', 'Công trình', 'Thiết kế nhà'],
+            'Điện - Điện tử': ['Điện', 'Điện tử', 'Electronics', 'Mạch điện', 'Vi điều khiển'],
+            'Cơ khí & Tự động hóa': ['Cơ khí', 'Tự động hóa', 'Mechanical', 'Automation', 'Robot', 'Máy móc'],
+            'Y Dược & Sức khỏe': ['Y học', 'Y khoa', 'Dược', 'Sức khỏe', 'Y tế', 'Bác sĩ', 'Bệnh lý'],
+            'Điều dưỡng': ['Điều dưỡng', 'Nursing', 'Chăm sóc bệnh nhân', 'Y tá'],
+            'Tâm lý học': ['Tâm lý học', 'Psychology', 'Tâm lý', 'Hành vi', 'Trị liệu'],
+            'Luật & Pháp lý': ['Luật', 'Pháp luật', 'Legal', 'Tố tụng', 'Quyền lợi', 'Hiến pháp'],
+            'Sư phạm & Giáo dục': ['Sư phạm', 'Giáo dục', 'Education', 'Giảng dạy', 'Phương pháp dạy học'],
+            'Ngôn ngữ học': ['Ngôn ngữ học', 'Linguistics', 'Ngữ pháp', 'Ngữ âm', 'Từ vựng'],
+            'Công nghệ sinh học': ['Công nghệ sinh học', 'Biotechnology', 'Gen', 'Tế bào', 'Vi sinh'],
+            'Khoa học môi trường': ['Môi trường', 'Environmental Science', 'Biến đổi khí hậu', 'Sinh thái'],
+            'Thiết kế đồ họa': ['Thiết kế đồ họa', 'Graphic Design', 'Photoshop', 'Illustrator', 'UI/UX', 'Mỹ thuật'],
+            'Nhiếp ảnh & Điện ảnh': ['Nhiếp ảnh', 'Điện ảnh', 'Photography', 'Film', 'Quay phim', 'Dựng phim'],
+            // === Xã hội & Kỹ năng ===
+            'Lập trình': ['Lập trình', 'Programming', 'Code', 'JavaScript', 'Python', 'Java', 'React', 'NodeJS', 'Web'],
+            'Tài chính cá nhân': ['Tài chính cá nhân', 'Tiết kiệm', 'Đầu tư', 'Quản lý tiền', 'Chứng khoán'],
+            'Kỹ năng mềm': ['Kỹ năng mềm', 'Giao tiếp', 'Thuyết trình', 'Làm việc nhóm', 'Critical Thinking'],
+            'Khởi nghiệp': ['Khởi nghiệp', 'Startup', 'Ý tưởng kinh doanh', 'Gọi vốn'],
+            'Kinh doanh online': ['Kinh doanh online', 'E-commerce', 'Bán hàng online', 'Shopee', 'TikTok Shop'],
+            'Đầu tư chứng khoán': ['Chứng khoán', 'Stock', 'Đầu tư', 'Thị trường tài chính', 'Cổ phiếu']
         };
 
         const subjectVariations = subjectMap[subject] || [subject];
@@ -192,14 +227,35 @@ async function listMaterials({ search, type, subject, grade, page, limit, userId
         });
     }
 
-    // Filter by grade (e.g., "Lớp 12")
+    // Filter by grade/level with intelligent mapping
     if (grade && grade !== 'Tất cả') {
-        // Extract number if it's like "Lớp 10", "Lớp 11"
-        const gradeNumber = grade.match(/\d+/);
-        const gradeSearch = gradeNumber ? gradeNumber[0] : grade;
-        
-        whereClauses.push('(title LIKE ? OR description LIKE ?)');
-        replacements.push(`%${gradeSearch}%`, `%${gradeSearch}%`);
+        const gradeMap = {
+            'Lớp 10': ['Lớp 10', 'lớp 10', 'khối 10', 'K10', ' 10', '#10'],
+            'Lớp 11': ['Lớp 11', 'lớp 11', 'khối 11', 'K11', ' 11', '#11'],
+            'Lớp 12': ['Lớp 12', 'lớp 12', 'khối 12', 'K12', ' 12', '#12', 'thi THPT'],
+            'Đại học': ['Đại học', 'Sinh viên', 'Đại cương', 'Chuyên ngành', 'Năm 1', 'Năm 2', 'Năm 3', 'Năm 4'],
+            'Sau đại học': ['Sau đại học', 'Thạc sĩ', 'Tiến sĩ', 'Cao học', 'Nghiên cứu'],
+            'Tự học/Khác': ['Tự học', 'Kỹ năng', 'Chứng chỉ', 'Ngoài lề', 'Xã hội']
+        };
+
+        const gradeVariations = gradeMap[grade];
+        if (gradeVariations) {
+            const gradeSQL = gradeVariations.map(() => '(title LIKE ? OR description LIKE ?)').join(' OR ');
+            whereClauses.push(`(${gradeSQL})`);
+            gradeVariations.forEach(v => {
+                replacements.push(`%${v}%`, `%${v}%`);
+            });
+        } else {
+            // Fallback: tìm trực tiếp
+            whereClauses.push('(title LIKE ? OR description LIKE ?)');
+            replacements.push(`%${grade}%`, `%${grade}%`);
+        }
+    }
+
+    // Filter by tag (search in description's [TAGS:...] section)
+    if (tag && tag.trim()) {
+        whereClauses.push('(description LIKE ?)');
+        replacements.push(`%${tag.trim()}%`);
     }
 
     const whereSQL = whereClauses.join(' AND ');
@@ -470,11 +526,42 @@ async function attachLatestQuizResult(lessons, userId) {
     });
 }
 
+/**
+ * Trích xuất danh sách tag phổ biến từ description của tất cả materials.
+ * Tags được lưu dưới dạng [TAGS:tag1,tag2,tag3] trong description.
+ */
+async function getPopularTags(limitCount = 30) {
+    const rows = await sequelize.query(
+        `SELECT description FROM materials WHERE description LIKE '%[TAGS:%' AND visibility = 'public'`,
+        { type: QueryTypes.SELECT }
+    );
+
+    const tagFrequency = new Map();
+    rows.forEach(row => {
+        const match = row.description?.match(/^\[TAGS:(.*?)\]/);
+        if (match) {
+            match[1].split(',').forEach(tag => {
+                const cleaned = tag.trim();
+                if (cleaned) {
+                    tagFrequency.set(cleaned, (tagFrequency.get(cleaned) || 0) + 1);
+                }
+            });
+        }
+    });
+
+    // Sort by frequency (most popular first), return top N
+    return [...tagFrequency.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limitCount)
+        .map(([tag, count]) => ({ tag, count }));
+}
+
 module.exports = {
     listMaterials,
     getMaterialDetailById,
     getMyLessons,
     getMaterialLearningSnapshot,
     computeEffectiveProgress,
+    getPopularTags,
     ALLOWED_TYPES
 };

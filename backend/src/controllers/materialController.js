@@ -2,7 +2,7 @@ const materialService = require('../services/materialService');
 
 exports.getMaterials = async (req, res) => {
     try {
-        const { search = '', type = '', subject = '', grade = '', page = '1', limit = '10' } = req.query;
+        const { search = '', type = '', subject = '', grade = '', tag = '', page = '1', limit = '10' } = req.query;
         const normalizedType = String(type || '').toLowerCase().trim();
 
         if (normalizedType && !materialService.ALLOWED_TYPES.has(normalizedType)) {
@@ -14,6 +14,7 @@ exports.getMaterials = async (req, res) => {
             type: normalizedType,
             subject,
             grade,
+            tag,
             page,
             limit,
             userId: req.user?.id,
@@ -24,6 +25,16 @@ exports.getMaterials = async (req, res) => {
     } catch (error) {
         console.error('Get materials error:', error);
         return res.status(500).json({ message: 'Failed to get materials' });
+    }
+};
+
+exports.getTags = async (req, res) => {
+    try {
+        const tags = await materialService.getPopularTags(30);
+        return res.status(200).json({ data: tags });
+    } catch (error) {
+        console.error('Get tags error:', error);
+        return res.status(500).json({ message: 'Failed to get tags' });
     }
 };
 

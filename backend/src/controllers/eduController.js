@@ -465,13 +465,18 @@ exports.extractFileContent = async (req, res) => {
         // Bước 1: Sinh bản nháp (Summary & Tags) dựa trên nội dung thực tế
         const contentSnippet = extractedText.substring(0, 4000);
         const draftPrompt = `Bạn là trợ lý giáo dục chuyên nghiệp. Dựa vào nội dung tài liệu sau, hãy:
-        1. Viết tóm tắt ngắn gọn (3 câu) bao quát ý chính.
-        2. Tự động xác định và trích xuất đúng 4 từ khóa (tags) quan trọng nhất liên quan đến chủ đề của tài liệu.
-        QUY TẮC BẮT BUỘC cho tags:
+        1. Đề xuất một "Tiêu đề chuyên nghiệp" (suggestedTitle) cho tài liệu này (Ví dụ: "Bài giảng Vật lý 11: Điện trường" thay vì "bai_giang_vat_ly_11").
+        2. Viết tóm tắt ngắn gọn (3 câu) bao quát ý chính.
+        3. Tự động xác định và trích xuất đúng 4 từ khóa (tags) quan trọng nhất liên quan đến chủ đề của tài liệu.
+        
+        QUY TẮC BẮT BUỘC:
+        - Tiêu đề (suggestedTitle) phải là tiếng Việt có dấu, viết hoa chữ cái đầu, KHÔNG dùng dấu gạch dưới (_), KHÔNG dùng từ lóng.
         - Mỗi tag là cụm từ tiếng Việt tự nhiên, có dấu cách, KHÔNG dùng dấu gạch dưới (_), KHÔNG có ký tự # hay ##.
-        - Ví dụ đúng: ["Vật lí 12", "Cảm ứng điện từ", "Dòng điện xoay chiều", "Lớp 12"]
-        - Ví dụ SAI: ["##Vật_lí_12", "#Cảm_ứng", "vat_ly"]
-        Trả về kết quả duy nhất dưới định dạng JSON: {"summary": "...", "tags": ["...", "...", "...", "..."]} và tuyệt đối không kèm theo bất kỳ văn bản nào khác hoặc markdown.
+        - Ví dụ đúng: 
+          suggestedTitle: "Định luật Bảo toàn Năng lượng"
+          tags: ["Vật lí 12", "Cảm ứng điện từ", "Dòng điện xoay chiều", "Lớp 12"]
+          
+        Trả về kết quả duy nhất dưới định dạng JSON: {"suggestedTitle": "...", "summary": "...", "tags": ["...", "...", "...", "..."]} và tuyệt đối không kèm theo bất kỳ văn bản nào khác hoặc markdown.
         
         Nội dung tài liệu:
         ${contentSnippet}`;
@@ -482,7 +487,15 @@ exports.extractFileContent = async (req, res) => {
         let parsedDraft;
         try { 
             parsedDraft = JSON.parse(aiDraftText);
-            // Làm sạch tags: loại bỏ ##, # ở đầu và thay _ bằng dấu cách
+            
+            // 1. Ưu tiên tiêu đề từ AI, nếu không có thì làm sạch tên file cũ
+            if (parsedDraft.suggestedTitle && parsedDraft.suggestedTitle.trim().length > 5) {
+                sourceTitle = parsedDraft.suggestedTitle.replace(/_/g, ' ').trim();
+            } else {
+                sourceTitle = sourceTitle.replace(/_/g, ' ').trim();
+            }
+
+            // 2. Làm sạch tags: loại bỏ ##, # ở đầu và thay _ bằng dấu cách
             if (Array.isArray(parsedDraft.tags)) {
                 parsedDraft.tags = parsedDraft.tags.map(tag => 
                     tag.replace(/^#+\s*/, '').replace(/_/g, ' ').trim()
@@ -490,6 +503,7 @@ exports.extractFileContent = async (req, res) => {
             }
         } catch (e) {
             console.error("JSON Parse Error for Draft:", aiDraftText);
+            sourceTitle = sourceTitle.replace(/_/g, ' ').trim();
             parsedDraft = { 
                 summary: "Tài liệu học thuật quan trọng. (AI đang xử lý nội dung chi tiết bên dưới)", 
                 tags: ["Học liệu", "Cơ bản"] 
@@ -608,9 +622,12 @@ exports.getUserDashboard = async (req, res) => {
         let lastMaterial = null;
         if (latestMaterialActivity?.material_id) {
             const [materialRow] = await sequelize.query(
-                `SELECT id, title, description
-                 FROM materials
-                 WHERE id = ?
+                `SELECT m.id, m.title, m.description, 
+                        u.name as teacher_name, up.avatar_url as teacher_avatar
+                 FROM materials m
+                 LEFT JOIN users u ON m.created_by = u.id
+                 LEFT JOIN user_profiles up ON u.id = up.user_id
+                 WHERE m.id = ?
                  LIMIT 1`,
                 { replacements: [latestMaterialActivity.material_id], type: QueryTypes.SELECT }
             );
