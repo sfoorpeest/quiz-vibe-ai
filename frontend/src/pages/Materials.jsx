@@ -183,7 +183,7 @@ export default function Materials() {
             <div className="sticky top-24 bg-slate-900/40 backdrop-blur-3xl border border-slate-700/30 rounded-[2.5rem] p-5 shadow-2xl shadow-black/40 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar border-t-white/5">
               <div className="flex items-center justify-between mb-6 px-1">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/20">
+                  <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/20">
                     <Filter className="w-4 h-4 text-emerald-400" />
                   </div>
                   <h3 className="text-sm font-black text-slate-100 uppercase tracking-tighter">Bộ lọc</h3>

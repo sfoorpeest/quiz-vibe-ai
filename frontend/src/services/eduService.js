@@ -79,5 +79,9 @@ export const eduService = {
   getWorksheetsByMaterial: async (materialId) => {
     const response = await api.get(`/api/edu/worksheets/material/${materialId}`);
     return response.data;
+  },
+  getTags: async () => {
+    const response = await api.get('/api/edu/tags');
+    return response.data;
   }
 };

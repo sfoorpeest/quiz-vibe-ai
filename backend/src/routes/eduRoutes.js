@@ -22,6 +22,7 @@ router.post('/materials/:id/share', auth, checkRole([2, 3]), eduController.share
 
 // 1.5 Tìm kiếm học liệu theo tiêu đề hoặc tag (@tag / #tag)
 router.get('/materials/search', auth, eduController.searchMaterials);
+router.get('/tags', auth, eduController.getAllTags);
 
 // 2. Lấy danh sách học liệu qua POST (tránh Cache 304)
 router.post('/materials/list', auth, eduController.getAllMaterials);
