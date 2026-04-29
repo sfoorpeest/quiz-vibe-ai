@@ -96,11 +96,12 @@ exports.saveQuizResult = async (req, res) => {
             : [];
 
         // Lưu vào bảng results
-        // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions
+        // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions, time_taken
+        const timeTaken = Number(req.body.time_taken) || 0;
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
@@ -109,7 +110,8 @@ exports.saveQuizResult = async (req, res) => {
                     resolvedCorrectCount,
                     resolvedCorrectCount,
                     resolvedWrongCount,
-                    JSON.stringify(resolvedWrongQuestions)
+                    JSON.stringify(resolvedWrongQuestions),
+                    timeTaken
                 ],
                 type: QueryTypes.INSERT
             }
@@ -179,10 +181,11 @@ exports.checkAnswers = async (req, res) => {
         });
 
         // Lưu mọi lần làm quiz để đánh giá tiến độ nhất quán (đúng hoặc sai)
+        const timeTaken = Number(req.body.time_taken) || 0;
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
@@ -191,7 +194,8 @@ exports.checkAnswers = async (req, res) => {
                     correctCount,
                     correctCount,
                     wrongAnswers.length,
-                    JSON.stringify(wrongAnswers)
+                    JSON.stringify(wrongAnswers),
+                    timeTaken
                 ],
                 type: QueryTypes.INSERT
             }

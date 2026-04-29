@@ -103,10 +103,15 @@ exports.createMaterial = async (req, res) => {
         const teacherId = req.user.id; 
 
         // 1. Lưu bản ghi mới vào Database (MySQL) kèm trạng thái hiển thị
+        let tagsToSave = null;
+        if (req.body.tags) {
+            tagsToSave = Array.isArray(req.body.tags) ? req.body.tags.join(',') : req.body.tags;
+        }
+
         const [resultId] = await sequelize.query(
             'INSERT INTO materials (title, description, content_url, content, created_by, visibility, tags) VALUES (?, ?, ?, ?, ?, ?, ?)',
             {
-                replacements: [title, description, content_url, content, teacherId, visibility, req.body.tags || null],
+                replacements: [title, description, content_url, content, teacherId, visibility, tagsToSave],
                 type: QueryTypes.INSERT
             }
         );
@@ -254,7 +259,7 @@ exports.shareMaterialToTeachers = async (req, res) => {
  */
 exports.trackProgress = async (req, res) => {
     try {
-        const { material_id, quiz_id, action, progress } = req.body;
+        const { material_id, quiz_id, action, progress, time_spent } = req.body;
         const userId = req.user.id;
 
         // Rule: đọc hết bài chỉ đạt 90%; 100% chỉ được nâng khi quiz đạt (xử lý ở tầng tổng hợp dữ liệu)
@@ -266,9 +271,9 @@ exports.trackProgress = async (req, res) => {
         }
 
         await sequelize.query(
-            'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO learning_history (user_id, material_id, quiz_id, action, progress, time_spent) VALUES (?, ?, ?, ?, ?, ?)',
             {
-                replacements: [userId, material_id || null, quiz_id || null, action, normalizedProgress],
+                replacements: [userId, material_id || null, quiz_id || null, action, normalizedProgress, time_spent || 0],
                 type: QueryTypes.INSERT
             }
         );
@@ -277,6 +282,54 @@ exports.trackProgress = async (req, res) => {
     } catch (error) {
         console.error("Tracking Error:", error);
         res.status(500).json({ message: "Không thể lưu lịch sử học tập" });
+    }
+};
+
+/**
+ * 3.1. Lấy thống kê thời gian học của học sinh (Cho Teacher/Admin)
+ */
+exports.getStudentTimeStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role_id; // 2: Teacher, 3: Admin
+
+        // Nếu là Admin -> lấy toàn bộ. Nếu là Teacher -> chỉ lấy học sinh của Teacher đó
+        let query = `
+            SELECT 
+                u.id as user_id, 
+                u.name, 
+                u.email,
+                COALESCE(SUM(lh.time_spent), 0) as total_learning_time,
+                (
+                    SELECT COALESCE(SUM(r.time_taken), 0)
+                    FROM results r WHERE r.user_id = u.id
+                ) as total_quiz_time
+            FROM users u
+            LEFT JOIN learning_history lh ON lh.user_id = u.id
+            WHERE u.role_id = 1
+        `;
+        let queryParams = [];
+
+        if (userRole === 2) {
+            query += ` AND u.id IN (
+                SELECT gm.user_id FROM group_members gm
+                JOIN \`groups\` g ON g.id = gm.group_id
+                WHERE g.teacher_id = ?
+            )`;
+            queryParams.push(userId);
+        }
+
+        query += ` GROUP BY u.id`;
+
+        const stats = await sequelize.query(query, {
+            replacements: queryParams,
+            type: QueryTypes.SELECT
+        });
+
+        res.status(200).json({ status: 'success', data: stats });
+    } catch (error) {
+        console.error("Get Student Time Stats Error:", error);
+        res.status(500).json({ message: "Không thể lấy thống kê thời gian học" });
     }
 };
 
@@ -838,6 +891,24 @@ exports.addGroupMembers = async (req, res) => {
             return res.status(400).json({ message: 'Danh sách học sinh không hợp lệ' });
         }
 
+        const [groupRows] = await sequelize.query(
+            'SELECT capacity FROM `groups` WHERE id = ?',
+            { replacements: [group_id], type: QueryTypes.SELECT }
+        );
+
+        if (!groupRows) {
+            return res.status(404).json({ message: 'Lớp học không tồn tại' });
+        }
+
+        const [{ currentCount }] = await sequelize.query(
+            'SELECT COUNT(*) as currentCount FROM group_members WHERE group_id = ?',
+            { replacements: [group_id], type: QueryTypes.SELECT }
+        );
+
+        if (currentCount + user_ids.length > groupRows.capacity) {
+            return res.status(400).json({ message: `Không thể thêm. Lớp học đã đạt tối đa ${groupRows.capacity} học sinh` });
+        }
+
         const values = user_ids.map(uid => `(${group_id}, ${uid})`).join(',');
         await sequelize.query(
             `INSERT IGNORE INTO group_members (group_id, user_id) VALUES ${values}`,
@@ -846,6 +917,7 @@ exports.addGroupMembers = async (req, res) => {
 
         res.status(200).json({ status: 'success', message: 'Đã thêm học sinh vào lớp' });
     } catch (error) {
+        console.error("Add Group Members Error:", error);
         res.status(500).json({ message: 'Không thể thêm học sinh' });
     }
 };

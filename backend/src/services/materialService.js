@@ -181,12 +181,27 @@ async function listMaterials({ search, type, subject, grade, page, limit }) {
 
     // Filter by grade (e.g., "Lớp 12")
     if (grade && grade !== 'Tất cả') {
-        // Extract number if it's like "Lớp 10", "Lớp 11"
-        const gradeNumber = grade.match(/\d+/);
-        const gradeSearch = gradeNumber ? gradeNumber[0] : grade;
-        
-        whereClauses.push('(title LIKE ? OR description LIKE ?)');
-        replacements.push(`%${gradeSearch}%`, `%${gradeSearch}%`);
+        const gradeMap = {
+            'Lớp 10': ['Lớp 10', 'lớp 10', 'khối 10', 'K10', ' 10', '#10'],
+            'Lớp 11': ['Lớp 11', 'lớp 11', 'khối 11', 'K11', ' 11', '#11'],
+            'Lớp 12': ['Lớp 12', 'lớp 12', 'khối 12', 'K12', ' 12', '#12', 'thi THPT'],
+            'Đại học': ['Đại học', 'Sinh viên', 'Đại cương', 'Chuyên ngành', 'Năm 1', 'Năm 2', 'Năm 3', 'Năm 4'],
+            'Sau đại học': ['Sau đại học', 'Thạc sĩ', 'Tiến sĩ', 'Cao học', 'Nghiên cứu'],
+            'Tự học/Khác': ['Tự học', 'Kỹ năng', 'Chứng chỉ', 'Ngoài lề', 'Xã hội']
+        };
+
+        const gradeVariations = gradeMap[grade];
+        if (gradeVariations) {
+            const gradeSQL = gradeVariations.map(() => '(title LIKE ? OR description LIKE ?)').join(' OR ');
+            whereClauses.push(`(${gradeSQL})`);
+            gradeVariations.forEach(v => {
+                replacements.push(`%${v}%`, `%${v}%`);
+            });
+        } else {
+            // Fallback: tìm trực tiếp
+            whereClauses.push('(title LIKE ? OR description LIKE ?)');
+            replacements.push(`%${grade}%`, `%${grade}%`);
+        }
     }
 
     const whereSQL = whereClauses.join(' AND ');
@@ -241,6 +256,7 @@ async function getMaterialDetailById(id) {
             title,
             content,
             content_url,
+            tags,
             created_at,
             ${TYPE_CASE_SQL} AS type
         FROM materials

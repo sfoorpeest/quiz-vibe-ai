@@ -61,6 +61,8 @@ export default function LearningView() {
   const volumeRef = useRef(1);
   const lessonScrollRef = useRef(null);
   const contentRef = useRef(null);
+  const learningStartRef = useRef(Date.now()); // Timer: thời điểm bắt đầu học (ms)
+  const accumulatedTimeRef = useRef(0); // Timer: số giây đã học tích luỹ giữa các lần gửi
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -147,15 +149,27 @@ export default function LearningView() {
 
     loadMaterial();
 
+    // Flush thời gian học khi rời trang
     return () => {
       isMounted = false;
       window.speechSynthesis.cancel();
-      // Dọn dẹp Google TTS audio nếu đang phát
       if (googleAudioRef.current) {
         googleAudioRef.current.pause();
         googleAudioRef.current = null;
       }
       googleAudioQueueRef.current = [];
+
+      // Tính thời gian phịu trong phiên cuối rồi gửi
+      const elapsed = Math.floor((Date.now() - learningStartRef.current) / 1000);
+      const totalSeconds = accumulatedTimeRef.current + elapsed;
+      if (totalSeconds > 0 && id) {
+        api.post('/api/edu/learning/track', {
+          material_id: id,
+          action: 'VIEWED_MATERIAL',
+          progress: 0,
+          time_spent: totalSeconds
+        }).catch(() => {});
+      }
     };
   }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
 
@@ -530,12 +544,18 @@ export default function LearningView() {
 
   // Hàm gọi API lưu tiến độ
   const saveProgress = async (val) => {
+    // Tính thời gian học tích luỹ từ lần gửi trước
+    const elapsed = Math.floor((Date.now() - learningStartRef.current) / 1000);
+    accumulatedTimeRef.current += elapsed;
+    learningStartRef.current = Date.now(); // Reset mốc thời gian
     try {
       await api.post('/api/edu/learning/track', {
         material_id: id,
         action: 'VIEWED_MATERIAL',
-        progress: val
+        progress: val,
+        time_spent: accumulatedTimeRef.current
       });
+      accumulatedTimeRef.current = 0; // Reset sau khi gửi thành công
     } catch (err) {
       console.warn("Lỗi lưu tiến độ:", err);
     }

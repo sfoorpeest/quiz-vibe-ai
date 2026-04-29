@@ -45,6 +45,9 @@ router.get('/learning/progress/:material_id', auth, eduController.getMaterialPro
 // 4.2 Lấy dữ liệu Dashboard cho trang Home
 router.get('/dashboard/stats', auth, eduController.getUserDashboard);
 
+// 4.3 Lấy thống kê thời gian học của học sinh (Cho Teacher/Admin)
+router.get('/students/time-stats', auth, checkRole([2, 3]), eduController.getStudentTimeStats);
+
 // 4.5. Trợ lý AI giải đáp thắc mắc
 router.post('/chat', auth, checkRole([1, 2, 3]), eduController.chatWithAI);
 

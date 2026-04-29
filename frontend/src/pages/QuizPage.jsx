@@ -121,6 +121,7 @@ export default function QuizPage() {
 
   // Theo dõi đáp án người dùng chọn (dùng ref để tránh vấn đề closure)
   const answersRef = useRef([]);
+  const quizStartTimeRef = useRef(null); // Timer: lưu thời điểm bắt đầu làm bài (ms)
   const [retryResult, setRetryResult] = useState(null);
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false);
   const [showRetryPrompt, setShowRetryPrompt] = useState(false);
@@ -167,9 +168,11 @@ export default function QuizPage() {
       if (res.data && res.data.data && res.data.data.length > 0) {
         setQuestions(res.data.data);
         setQuizId(res.data.quizId); // Lưu quizId từ backend
+        quizStartTimeRef.current = Date.now(); // Bắt đầu đếm giờ
       } else if (res.data && res.data.questions && res.data.questions.length > 0) {
         setQuestions(res.data.questions);
         setQuizId(res.data.quizId);
+        quizStartTimeRef.current = Date.now();
       } else {
         alert("Không nhận được dữ liệu hợp lệ từ AI. Hãy thử lại chủ đề khác.");
       }
@@ -227,10 +230,15 @@ export default function QuizPage() {
       setIsCheckingAnswers(true);
       try {
         setResultNotice('');
+        // Tính thời gian làm bài (giây)
+        const timeTaken = quizStartTimeRef.current
+          ? Math.floor((Date.now() - quizStartTimeRef.current) / 1000)
+          : 0;
         const res = await api.post('/api/quiz/check-answers', {
           quizId,
           materialId,
-          selectedAnswers: answersRef.current
+          selectedAnswers: answersRef.current,
+          time_taken: timeTaken
         });
 
         // Xây dựng danh sách đầy đủ tất cả câu (đúng + sai) để lưu và hiển thị

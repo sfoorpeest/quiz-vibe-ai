@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import UserAvatar from './UserAvatar';
@@ -7,8 +7,11 @@ import UserAvatar from './UserAvatar';
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  const isLight = location.pathname === '/chat';
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -23,7 +26,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-900/70 backdrop-blur-xl border-b border-blue-900/30">
+    <header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${isLight ? 'bg-white/80 border-slate-200' : 'bg-slate-900/70 border-blue-900/30'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -39,20 +42,26 @@ export default function Navbar() {
               {/* Nút Chat */}
               <button 
                 onClick={() => navigate('/chat')}
-                className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 hover:border-blue-500/50 transition-all text-slate-300 hover:text-blue-400 group shadow-lg"
+                className={`relative p-2 rounded-xl border transition-all group shadow-lg ${
+                  isLight 
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600 hover:text-blue-600' 
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700/50 hover:border-blue-500/50 text-slate-300 hover:text-blue-400'
+                }`}
                 title="Tin nhắn"
               >
                 <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border border-slate-900"></span>
+                  <span className={`relative inline-flex rounded-full h-3 w-3 bg-blue-500 border ${isLight ? 'border-white' : 'border-slate-900'}`}></span>
                 </span>
               </button>
 
               <div className="relative" ref={profileRef}>
                 <button 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 border transition-all focus:outline-none shadow-lg group ${
+                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-2xl border transition-all focus:outline-none shadow-lg group ${
+                    isLight ? 'bg-slate-100 hover:bg-slate-200' : 'bg-slate-800/80 hover:bg-slate-700/80'
+                  } ${
                     isProfileOpen ? 
                       (user.role_id === 3 ? 'border-amber-400 shadow-amber-500/40 scale-[1.02]' : 
                        user.role_id === 2 ? 'border-emerald-400 shadow-emerald-500/40 scale-[1.02]' : 
@@ -73,7 +82,7 @@ export default function Navbar() {
                   />
                   
                   <div className="hidden sm:flex flex-col items-start leading-tight pr-1">
-                    <span className="text-[13px] font-bold text-slate-100 max-w-[100px] truncate">
+                    <span className={`text-[13px] font-bold max-w-[100px] truncate ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
                       {user.name || user.fullName || 'Người dùng'}
                     </span>
                     <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.25 rounded-md mt-0.5 ${

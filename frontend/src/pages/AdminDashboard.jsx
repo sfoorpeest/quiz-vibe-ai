@@ -156,6 +156,7 @@ const NAV_ITEMS = [
   { icon: Users,         label: 'Người dùng',        id: 'users' },
   { icon: BookOpen,      label: 'Quản lý Quiz',      id: 'quiz' },
   { icon: Database,      label: 'Học liệu',          id: 'materials' },
+  { icon: Layers,        label: 'Lớp học',           id: 'groups' },
   { icon: Settings,      label: 'Cài đặt hệ thống', id: 'settings' },
 ];
 
@@ -191,6 +192,9 @@ export default function AdminDashboard() {
   const [activity, setActivity]   = useState([]);
   const [adminQuizzes, setAdminQuizzes] = useState([]);
   const [adminMaterials, setAdminMaterials] = useState([]);
+  const [adminGroups, setAdminGroups] = useState([]);
+  const [editCapacityId, setEditCapacityId] = useState(null);
+  const [editCapacityVal, setEditCapacityVal] = useState('');  
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
@@ -206,7 +210,7 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [s, u, q, sub, act, aq, am] = await Promise.all([
+      const [s, u, q, sub, act, aq, am, ag] = await Promise.all([
         adminService.getStats(),
         adminService.getUsers(),
         adminService.getTopQuizzes(),
@@ -214,6 +218,7 @@ export default function AdminDashboard() {
         adminService.getActivity(),
         adminService.getQuizzes(),
         adminService.getMaterials(),
+        adminService.getAllGroups(),
       ]);
       setStats(s);
       setUsers(u);
@@ -222,6 +227,7 @@ export default function AdminDashboard() {
       setActivity(act);
       setAdminQuizzes(aq);
       setAdminMaterials(am);
+      setAdminGroups(ag || []);
       setTimeout(() => setStatsAnimated(true), 100);
     } catch (err) {
       console.error(err);
@@ -271,6 +277,21 @@ export default function AdminDashboard() {
       showToast('Xoá thất bại!', 'error');
     } finally {
       setDeleteTarget(null);
+    }
+  };
+
+  // ── Update group capacity ──
+  const handleUpdateCapacity = async (groupId) => {
+    const val = parseInt(editCapacityVal, 10);
+    if (!val || val <= 0) { showToast('Sĩ số không hợp lệ!', 'error'); return; }
+    try {
+      await adminService.updateGroupCapacity(groupId, val);
+      setAdminGroups(prev => prev.map(g => g.id === groupId ? { ...g, capacity: val } : g));
+      showToast('Đã cập nhật sĩ số lớp học');
+      setEditCapacityId(null);
+      setEditCapacityVal('');
+    } catch {
+      showToast('Cập nhật thất bại!', 'error');
     }
   };
 
@@ -768,6 +789,92 @@ export default function AdminDashboard() {
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Quản lý Lớp học Tab */}
+            {activeNav === 'groups' && (
+              <div className="ad-card" style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(99,102,241,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Quản lý Lớp học</h2>
+                    <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>Tổng cộng {adminGroups.length} lớp học trong hệ thống</p>
+                  </div>
+                  <button className="ad-icon-btn" onClick={fetchAll}><RefreshCw size={16} /></button>
+                </div>
+                <div className="ad-scroll" style={{ overflowX:'auto' }}>
+                  <table className="ad-table">
+                    <thead>
+                      <tr>
+                        <th>Tên lớp</th>
+                        <th>Giáo viên</th>
+                        <th>Số học sinh</th>
+                        <th>Sĩ số tối đa</th>
+                        <th>Ngày tạo</th>
+                        <th>Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr><td colSpan={6} style={{ textAlign:'center', padding:40 }}><Skeleton h={20} w="60%" /></td></tr>
+                      ) : adminGroups.length === 0 ? (
+                        <tr><td colSpan={6} style={{ textAlign:'center', padding:40, color:'#6b7280' }}>Chưa có lớp học nào.</td></tr>
+                      ) : adminGroups.map(g => (
+                        <tr key={g.id}>
+                          <td>
+                            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                              <div style={{ width:10, height:10, borderRadius:'50%', background: g.color || '#6366f1', flexShrink:0 }} />
+                              <span style={{ fontWeight:600 }}>{g.name}</span>
+                            </div>
+                          </td>
+                          <td style={{ color:'#a5b4fc' }}>{g.teacher_name}</td>
+                          <td>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ flex:1, maxWidth:80, height:4, borderRadius:999, background:'rgba(99,102,241,.15)', overflow:'hidden' }}>
+                                <div style={{ height:'100%', borderRadius:999, background:'#6366f1', width: `${Math.min(100, (g.student_count / (g.capacity || 50)) * 100)}%` }} />
+                              </div>
+                              <span style={{ fontWeight:700, fontSize:13 }}>{g.student_count}/{g.capacity || 50}</span>
+                            </div>
+                          </td>
+                          <td>
+                            {editCapacityId === g.id ? (
+                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                <input
+                                  type="number" min={1} max={500}
+                                  value={editCapacityVal}
+                                  onChange={e => setEditCapacityVal(e.target.value)}
+                                  style={{ width:70, padding:'4px 8px', borderRadius:8, border:'1px solid rgba(99,102,241,.4)', background:'rgba(99,102,241,.08)', color:'#e2e8f0', fontSize:13, outline:'none' }}
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleUpdateCapacity(g.id)}
+                                  style={{ padding:'4px 10px', borderRadius:8, background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', color:'white', fontWeight:700, fontSize:12, cursor:'pointer' }}
+                                >Lưu</button>
+                                <button
+                                  onClick={() => { setEditCapacityId(null); setEditCapacityVal(''); }}
+                                  style={{ padding:'4px 10px', borderRadius:8, background:'rgba(239,68,68,.12)', border:'none', color:'#f87171', fontWeight:700, fontSize:12, cursor:'pointer' }}
+                                >Huỷ</button>
+                              </div>
+                            ) : (
+                              <span style={{ fontWeight:700, color:'#f1f5f9' }}>{g.capacity || 50}</span>
+                            )}
+                          </td>
+                          <td style={{ color:'#6b7280', fontSize:12 }}>{new Date(g.created_at).toLocaleDateString('vi-VN')}</td>
+                          <td>
+                            <button
+                              className="ad-icon-btn"
+                              style={{ width:30, height:30 }}
+                              title="Chỉnh sửa sĩ số"
+                              onClick={() => { setEditCapacityId(g.id); setEditCapacityVal(String(g.capacity || 50)); }}
+                            >
+                              <Settings size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

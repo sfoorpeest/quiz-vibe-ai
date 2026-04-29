@@ -42,6 +42,10 @@ export const eduService = {
     const response = await api.get('/api/edu/students');
     return response.data;
   },
+  getStudentTimeStats: async () => {
+    const response = await api.get('/api/edu/students/time-stats');
+    return response.data;
+  },
   getTeachers: async () => {
     const response = await api.get('/api/edu/teachers');
     return response.data;

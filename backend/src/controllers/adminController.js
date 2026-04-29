@@ -296,3 +296,50 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ message: 'Lỗi xoá người dùng', error: error.message });
     }
 };
+
+/**
+ * GET /api/admin/groups
+ * Danh sách toàn bộ lớp học kèm sĩ số
+ */
+exports.getAllGroupsAdmin = async (req, res) => {
+    try {
+        const groups = await sequelize.query(`
+            SELECT 
+                g.id, g.name, g.description, g.color, g.capacity, g.created_at,
+                u.name AS teacher_name,
+                (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) AS student_count
+            FROM \`groups\` g
+            JOIN users u ON g.teacher_id = u.id
+            ORDER BY g.created_at DESC
+        `, { type: QueryTypes.SELECT });
+        res.json({ status: 'success', data: groups });
+    } catch (error) {
+        console.error('getAllGroupsAdmin error:', error);
+        res.status(500).json({ message: 'Lỗi lấy danh sách lớp học', error: error.message });
+    }
+};
+
+/**
+ * PUT /api/admin/groups/:id/capacity
+ * Cập nhật sĩ số tối đa của lớp học
+ */
+exports.updateGroupCapacity = async (req, res) => {
+    try {
+        const groupId = req.params.id;
+        const { capacity } = req.body;
+
+        if (!capacity || isNaN(capacity) || capacity <= 0) {
+            return res.status(400).json({ message: 'Sĩ số không hợp lệ' });
+        }
+
+        await sequelize.query('UPDATE \`groups\` SET capacity = ? WHERE id = ?', {
+            replacements: [capacity, groupId],
+            type: QueryTypes.UPDATE
+        });
+
+        res.json({ status: 'success', message: 'Đã cập nhật sĩ số lớp học' });
+    } catch (error) {
+        console.error('updateGroupCapacity error:', error);
+        res.status(500).json({ message: 'Lỗi cập nhật sĩ số', error: error.message });
+    }
+};
