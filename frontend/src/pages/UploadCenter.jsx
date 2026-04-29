@@ -161,7 +161,7 @@ export default function UploadCenter() {
         content_url: file ? `https://file-server.local/uploads/temp_${file.name.replace(/\s+/g, '_')}` : (linkInput || "https://file-server.local/demo.pdf"),
         content: previewData.lessonContent || previewData.summary || "Nội dung học tập trống.",
         visibility: visibility,
-        tags: previewData.tags.join(',')
+        tags: previewData.tags
       });
       showToast("Đã phân tích xong và lưu học liệu thành công!", "success");
       // Delay navigation a bit to let the user admire the toast animation

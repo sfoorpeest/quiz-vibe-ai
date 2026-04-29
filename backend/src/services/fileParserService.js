@@ -40,7 +40,9 @@ const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
     if (ext === 'pdf' || mimetype === 'application/pdf') {
         try {
             const nodeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-            const data = await pdf(nodeBuffer);
+            // Hỗ trợ cả 2 phiên bản pdf-parse (v1.1.1 và v2.4.5)
+            const pdfFunc = typeof pdf === 'function' ? pdf : (pdf.PDFParse || pdf.default);
+            const data = await pdfFunc(nodeBuffer);
             const text = data.text.trim();
             if (!text || text.length < 10) {
                 console.warn('pdf-parse returned no content. Will rely on Gemini Native OCR.');
