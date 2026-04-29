@@ -4,7 +4,7 @@ import {
   ArrowLeft, BrainCircuit, MessageSquare, FileText,
   Send, Maximize2, Sparkles, BookOpen, Clock, Lightbulb, Loader2,
   ChevronLeft, ChevronRight, List, CheckCircle2, Volume2, Square,
-  Video, Download, RotateCcw, Users, X
+  Video, Download, RotateCcw, Users, X, Bookmark, Heart
 } from 'lucide-react';
 import api from '../api/axiosClient';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -13,6 +13,7 @@ import ReactMarkdown from 'react-markdown';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 
 export default function LearningView() {
   const { id } = useParams();
@@ -45,6 +46,7 @@ export default function LearningView() {
   const [selectedReviewKeys, setSelectedReviewKeys] = useState([]);
   const [highlightNotice, setHighlightNotice] = useState('');
   const [isReviewVisible, setIsReviewVisible] = useState(true);
+  const { ensureStates, getState, toggleSaved: toggleSavedGlobal, toggleFavorite: toggleFavoriteGlobal, isPending } = useItemPreference();
 
   // Thêm state cho Modal Giao bài
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -135,6 +137,7 @@ export default function LearningView() {
             } catch (pErr) {
               console.error("Lỗi khi tải tiến độ cũ:", pErr);
             }
+
           }
         }
       } catch (err) {
@@ -155,6 +158,13 @@ export default function LearningView() {
       googleAudioQueueRef.current = [];
     };
   }, [id]); // Luôn sử dụng ID nguyên bản, không dùng Object phức tạp làm Dependency
+
+  useEffect(() => {
+    if (!id) return;
+    ensureStates('material', [String(id)]).catch((error) => {
+      console.error('Lỗi khi tải trạng thái lưu/yêu thích:', error);
+    });
+  }, [id, ensureStates]);
 
   if (!material) {
     return (
@@ -268,6 +278,27 @@ export default function LearningView() {
     setIsReviewVisible(false);
     clearHighlights();
   };
+
+  const toggleSaved = async () => {
+    try {
+      await toggleSavedGlobal('material', String(id));
+    } catch (error) {
+      console.error('Toggle save material failed:', error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    try {
+      await toggleFavoriteGlobal('material', String(id));
+    } catch (error) {
+      console.error('Toggle favorite material failed:', error);
+    }
+  };
+
+  const materialPreference = getState('material', String(id));
+  const isSaved = materialPreference.isSaved;
+  const isFavorite = materialPreference.isFavorite;
+  const isPreferenceLoading = isPending('material', String(id), 'save') || isPending('material', String(id), 'favorite');
 
   // --- Chia văn bản thành các đoạn ngắn cho Google TTS (tối đa ~190 ký tự) ---
   const splitTextForAggressiveTTS = (text) => {
@@ -763,6 +794,24 @@ export default function LearningView() {
                         ? '✓ Đã đọc hết bài (90%)'
                         : `Tiến độ học: ${maxProgress}%`}
                 </span>
+                <button
+                  type="button"
+                  disabled={isPreferenceLoading}
+                  onClick={toggleSaved}
+                  className={`ml-2 flex items-center justify-center h-6 w-6 rounded-md border transition ${isSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-600 bg-slate-800 text-slate-300 hover:text-amber-300'}`}
+                  title={isSaved ? 'Bỏ lưu' : 'Lưu'}
+                >
+                  <Bookmark className={`w-3 h-3 ${isSaved ? 'fill-amber-300' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  disabled={isPreferenceLoading}
+                  onClick={toggleFavorite}
+                  className={`flex items-center justify-center h-6 w-6 rounded-md border transition ${isFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-600 bg-slate-800 text-slate-300 hover:text-rose-300'}`}
+                  title={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                >
+                  <Heart className={`w-3 h-3 ${isFavorite ? 'fill-rose-300' : ''}`} />
+                </button>
               </h2>
             </div>
 

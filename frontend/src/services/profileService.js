@@ -39,4 +39,14 @@ export const profileService = {
     const response = await api.get('/api/quiz/recommendation');
     return response.data || { message: '', suggestedLessons: [] };
   },
+
+  getSavedMaterials: async () => {
+    const response = await api.get('/my-lessons/saved');
+    return response.data?.data || [];
+  },
+
+  getFavoriteMaterials: async () => {
+    const response = await api.get('/my-lessons/favorite');
+    return response.data?.data || [];
+  },
 };

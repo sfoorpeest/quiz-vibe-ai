@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Printer, Download, BookOpen } from 'lucide-react';
+import { Printer, Download, BookOpen, Save, Sparkles, Bookmark, Heart } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
 import { eduService } from '../services/eduService';
@@ -13,9 +13,15 @@ import {
   FillInBlankBlock,
 } from '../components/worksheet/WorksheetBlocks';
 import '../components/worksheet/worksheet.css';
+import { useAuth } from '../context/AuthContext';
+import { itemActionService } from '../services/itemActionService';
 
 export default function WorksheetPublic() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoadingAction, setIsLoadingAction] = useState(false);
 
   const [worksheet, setWorksheet] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -58,6 +64,26 @@ export default function WorksheetPublic() {
     fetchWorksheet();
   }, [id]);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadState = async () => {
+      if (!user || !id) return;
+      try {
+        const rows = await itemActionService.getStates({ itemIds: [String(id)], type: 'assignment' });
+        const state = rows.find((row) => String(row.itemId) === String(id));
+        if (!mounted) return;
+        setIsSaved(Boolean(state?.isSaved));
+        setIsFavorite(Boolean(state?.isFavorite));
+      } catch (error) {
+        console.error('Không thể tải trạng thái phiếu chia sẻ:', error);
+      }
+    };
+    loadState();
+    return () => {
+      mounted = false;
+    };
+  }, [user, id]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
@@ -86,6 +112,42 @@ export default function WorksheetPublic() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const toggleSaved = async () => {
+    const previous = isSaved;
+    setIsLoadingAction(true);
+    setIsSaved(!previous);
+    try {
+      if (previous) {
+        await itemActionService.unsave({ itemId: String(id), type: 'assignment', userId: user?.id });
+      } else {
+        await itemActionService.save({ itemId: String(id), type: 'assignment', userId: user?.id });
+      }
+    } catch (error) {
+      console.error('Toggle save worksheet public failed:', error);
+      setIsSaved(previous);
+    } finally {
+      setIsLoadingAction(false);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    const previous = isFavorite;
+    setIsLoadingAction(true);
+    setIsFavorite(!previous);
+    try {
+      if (previous) {
+        await itemActionService.unfavorite({ itemId: String(id), type: 'assignment', userId: user?.id });
+      } else {
+        await itemActionService.favorite({ itemId: String(id), type: 'assignment', userId: user?.id });
+      }
+    } catch (error) {
+      console.error('Toggle favorite worksheet public failed:', error);
+      setIsFavorite(previous);
+    } finally {
+      setIsLoadingAction(false);
+    }
   };
 
   const renderBlock = (block) => {
@@ -139,6 +201,28 @@ export default function WorksheetPublic() {
             </h1>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            {user && (
+              <>
+                <button
+                  type="button"
+                  disabled={isLoadingAction}
+                  onClick={toggleSaved}
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 border px-3.5 py-2 rounded-xl font-bold transition-colors text-sm ${isSaved ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'}`}
+                >
+                  <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-amber-300' : ''}`} />
+                  {isSaved ? 'Đã lưu' : 'Lưu'}
+                </button>
+                <button
+                  type="button"
+                  disabled={isLoadingAction}
+                  onClick={toggleFavorite}
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 border px-3.5 py-2 rounded-xl font-bold transition-colors text-sm ${isFavorite ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'}`}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-rose-300' : ''}`} />
+                  {isFavorite ? 'Đã thích' : 'Yêu thích'}
+                </button>
+              </>
+            )}
             <button
               onClick={handlePrint}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-5 py-2.5 rounded-xl font-bold transition-colors text-sm"

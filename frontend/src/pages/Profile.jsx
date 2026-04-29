@@ -10,13 +10,14 @@ import ProfileInfo from '../components/profile/ProfileInfo';
 import ProfileSettings from '../components/profile/ProfileSettings';
 import ProfileTabs from '../components/profile/ProfileTabs';
 import { useAuth } from '../context/AuthContext';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 import { profileService } from '../services/profileService';
 import { materialService } from '../services/materialService';
 
 const tabs = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'courses', label: 'Tiến trình học tập', icon: BookCopy },
-  { id: 'saved', label: 'Đã lưu', icon: Bookmark },
+  { id: 'saved', label: 'Bộ sưu tập', icon: Bookmark },
   { id: 'settings', label: 'Cài đặt', icon: Settings2 },
 ];
 
@@ -79,6 +80,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { updateUser } = useAuth();
+  const { getState, seedMaterialStates, revision } = useItemPreference();
 
   const requestedTab = searchParams.get('tab');
   const activeTab = tabs.some((tab) => tab.id === requestedTab) ? requestedTab : 'overview';
@@ -88,6 +90,10 @@ export default function Profile() {
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [courseFilter, setCourseFilter] = useState('all');
   const [myLessons, setMyLessons] = useState([]);
+  const [collectionFilter, setCollectionFilter] = useState('saved');
+  const [savedMaterials, setSavedMaterials] = useState([]);
+  const [favoriteMaterials, setFavoriteMaterials] = useState([]);
+  const [isCollectionLoading, setIsCollectionLoading] = useState(true);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [bioDraft, setBioDraft] = useState('');
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
@@ -139,6 +145,7 @@ export default function Profile() {
     setIsActivityLoading(true);
     setIsQuizHistoryLoading(true);
     setIsLessonsLoading(true);
+    setIsCollectionLoading(true);
     setPageError('');
 
     try {
@@ -169,9 +176,33 @@ export default function Profile() {
             ? lessonsResponse
             : [];
         setMyLessons(lessonsData);
+        seedMaterialStates(
+          lessonsData.map((lesson) => ({
+            id: lesson.id,
+            isSaved: Boolean(Number(lesson.is_saved || 0)),
+            isFavorite: Boolean(Number(lesson.is_favorite || 0)),
+          }))
+        );
       } catch (lessonsError) {
         console.error('Không thể tải tiến trình bài học:', lessonsError);
         setMyLessons([]);
+      }
+
+      try {
+        const [savedResponse, favoriteResponse] = await Promise.all([
+          profileService.getSavedMaterials(),
+          profileService.getFavoriteMaterials(),
+        ]);
+        setSavedMaterials(Array.isArray(savedResponse) ? savedResponse : []);
+        setFavoriteMaterials(Array.isArray(favoriteResponse) ? favoriteResponse : []);
+        seedMaterialStates([
+          ...(Array.isArray(savedResponse) ? savedResponse.map((item) => ({ id: item.id, isSaved: true })) : []),
+          ...(Array.isArray(favoriteResponse) ? favoriteResponse.map((item) => ({ id: item.id, isFavorite: true })) : []),
+        ]);
+      } catch (collectionError) {
+        console.error('Không thể tải bộ sưu tập:', collectionError);
+        setSavedMaterials([]);
+        setFavoriteMaterials([]);
       }
 
     } catch (error) {
@@ -182,13 +213,34 @@ export default function Profile() {
       setIsActivityLoading(false);
       setIsQuizHistoryLoading(false);
       setIsLessonsLoading(false);
+      setIsCollectionLoading(false);
       setIsRefreshing(false);
     }
-  }, [hydrateProfileState, updateUser]);
+  }, [hydrateProfileState, seedMaterialStates, updateUser]);
 
   useEffect(() => {
     loadProfileData();
   }, [loadProfileData]);
+
+  useEffect(() => {
+    if (!profile || isPageLoading) return;
+    const refreshCollection = async () => {
+      try {
+        setIsCollectionLoading(true);
+        const [savedResponse, favoriteResponse] = await Promise.all([
+          profileService.getSavedMaterials(),
+          profileService.getFavoriteMaterials(),
+        ]);
+        setSavedMaterials(Array.isArray(savedResponse) ? savedResponse : []);
+        setFavoriteMaterials(Array.isArray(favoriteResponse) ? favoriteResponse : []);
+      } catch (error) {
+        console.error('Không thể đồng bộ bộ sưu tập:', error);
+      } finally {
+        setIsCollectionLoading(false);
+      }
+    };
+    refreshCollection();
+  }, [isPageLoading, profile, revision]);
 
   const handleTabChange = (tabId) => {
     setSearchParams(tabId === 'overview' ? {} : { tab: tabId });
@@ -589,17 +641,84 @@ export default function Profile() {
     );
   };
 
-  const renderSaved = () => (
-    <section className="rounded-4xl border border-dashed border-slate-700 bg-slate-900/75 px-6 py-16 text-center shadow-xl shadow-blue-950/10 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-800 text-slate-400">
-        <Bookmark className="h-7 w-7" />
-      </div>
-      <h2 className="mt-6 text-2xl font-extrabold text-white">Chưa có mục đã lưu</h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">
-        Phần này đã được chuẩn bị sẵn trong hồ sơ để mở rộng sau. Khi hệ thống hỗ trợ lưu khóa học, bài viết hoặc tài nguyên, chúng sẽ xuất hiện ở đây.
-      </p>
-    </section>
-  );
+  const renderSaved = () => {
+    const collectionTabs = [
+      { id: 'saved', label: 'Đã lưu' },
+      { id: 'favorite', label: 'Yêu thích' },
+    ];
+    const sourceItems = collectionFilter === 'saved' ? savedMaterials : favoriteMaterials;
+    const items = sourceItems.filter((item) => {
+      const state = getState('material', item?.id);
+      return collectionFilter === 'saved' ? state.isSaved : state.isFavorite;
+    });
+
+    return (
+      <section className="rounded-4xl border border-slate-700/50 bg-slate-900/75 p-6 shadow-xl shadow-blue-950/10 backdrop-blur-xl">
+        <div className="mb-5">
+          <h2 className="text-xl font-extrabold text-white">Bộ sưu tập của tôi</h2>
+          <p className="mt-1 text-sm text-slate-400">Quản lý tài liệu đã lưu và tài liệu yêu thích của bạn.</p>
+        </div>
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          {collectionTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setCollectionFilter(tab.id)}
+              className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${
+                collectionFilter === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-700 bg-slate-900/60 text-slate-300 hover:border-blue-500/40 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {isCollectionLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-20 animate-pulse rounded-3xl border border-slate-700/60 bg-slate-950/40" />
+            ))}
+          </div>
+        ) : items.length > 0 ? (
+          <div className="space-y-3">
+            {items.map((item, idx) => {
+              const materialId = Number(item?.id);
+              return (
+                <article
+                  key={`${materialId || 'na'}-${idx}`}
+                  className="rounded-3xl border border-slate-700/60 bg-slate-950/40 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">{item?.title || `Học liệu #${materialId}`}</p>
+                      <p className="mt-1 text-xs text-slate-400">Tiến độ học: {Math.max(0, Math.min(100, Math.round(Number(item?.progress || 0))))}%</p>
+                    </div>
+                    {Number.isInteger(materialId) && materialId > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/learn/${materialId}`)}
+                        className="shrink-0 rounded-2xl border border-blue-500/40 bg-blue-600/10 px-4 py-2 text-xs font-bold text-blue-300 transition hover:bg-blue-600/20 hover:text-white"
+                      >
+                        Mở bài học
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-950/30 px-6 py-12 text-center">
+            <p className="text-base font-semibold text-white">Chưa có dữ liệu</p>
+            <p className="mt-2 text-sm text-slate-400">{collectionFilter === 'saved' ? 'Bạn chưa lưu học liệu nào.' : 'Bạn chưa đánh dấu yêu thích học liệu nào.'}</p>
+          </div>
+        )}
+      </section>
+    );
+  };
 
 
   const renderSettings = () => (

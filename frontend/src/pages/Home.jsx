@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download, Bookmark, Heart } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 import api from '../api/axiosClient';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
@@ -16,6 +17,7 @@ let isMaterialsFetched = false;
 export default function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { ensureStates, getState, toggleSaved, toggleFavorite, isPending } = useItemPreference();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -47,7 +49,9 @@ export default function Home() {
         
         const materialsRes = await api.post('/api/edu/materials/list');
         if (isMounted && materialsRes.data && materialsRes.data.data) {
-          setMaterials(materialsRes.data.data);
+          const nextMaterials = materialsRes.data.data;
+          setMaterials(nextMaterials);
+          await ensureStates('material', nextMaterials.map((item) => String(item.id)));
         }
 
         const tagsRes = await api.get('/api/edu/tags');
@@ -94,7 +98,9 @@ export default function Home() {
         const res = await api.get(`/api/edu/materials/search?${queryParams.toString()}`);
 
         if (res.data && res.data.data) {
-          setMaterials(res.data.data);
+          const nextMaterials = res.data.data;
+          setMaterials(nextMaterials);
+          await ensureStates('material', nextMaterials.map((item) => String(item.id)));
         }
       } catch (err) {
         console.error("Lỗi tìm kiếm:", err);
@@ -846,9 +852,41 @@ export default function Home() {
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-1.5 rounded-md">
                       <User className="w-3.5 h-3.5" /> {item.creator_name || "Hệ thống"}
                     </span>
-                    <Link to={`/learn/${item.id}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
-                      Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await toggleSaved('material', item.id);
+                          } catch (error) {
+                            console.error('Toggle save on home failed:', error);
+                          }
+                        }}
+                        disabled={isPending('material', item.id, 'save')}
+                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition ${getState('material', item.id).isSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-amber-300'}`}
+                        title={getState('material', item.id).isSaved ? 'Bỏ lưu' : 'Lưu'}
+                      >
+                        <Bookmark className={`w-3.5 h-3.5 ${getState('material', item.id).isSaved ? 'fill-amber-300' : ''}`} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await toggleFavorite('material', item.id);
+                          } catch (error) {
+                            console.error('Toggle favorite on home failed:', error);
+                          }
+                        }}
+                        disabled={isPending('material', item.id, 'favorite')}
+                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition ${getState('material', item.id).isFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-rose-300'}`}
+                        title={getState('material', item.id).isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${getState('material', item.id).isFavorite ? 'fill-rose-300' : ''}`} />
+                      </button>
+                      <Link to={`/learn/${item.id}`} className="text-blue-400 text-sm font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
+                        Vào học <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))

@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { eduService } from '../services/eduService';
 import { ClipboardList } from 'lucide-react';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 
 // ═══════════════════════════════════════════════════════════
 import { materialService } from '../services/materialService';
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'learning', label: 'Đang học', icon: Play },
   { key: 'worksheet', label: 'Phiếu học tập', icon: ClipboardList },
   { key: 'done', label: 'Đã xong', icon: CheckCircle2 },
+  { key: 'saved', label: 'Đã lưu', icon: Bookmark },
   { key: 'favorite', label: 'Yêu thích', icon: Heart },
 ];
 
@@ -30,6 +32,7 @@ export default function MyLessons() {
   const [worksheets, setWorksheets] = useState([]);
   const [myGroups, setMyGroups] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { getState, toggleSaved, toggleFavorite, isPending, seedMaterialStates } = useItemPreference();
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -49,6 +52,8 @@ export default function MyLessons() {
           authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent('GV')}&background=0D8ABC&color=fff`,
           progress: Number.isFinite(Number(m.progress)) ? Number(m.progress) : 0,
           status: Number(m.progress) >= 100 ? 'done' : Number(m.progress) > 0 ? 'learning' : 'new',
+          isSaved: Boolean(Number(m.is_saved || 0)),
+          isFavorite: Boolean(Number(m.is_favorite || 0)),
           updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
         }));
 
@@ -64,6 +69,7 @@ export default function MyLessons() {
 
         setLessons(apiLessons);
         setWorksheets(apiWorksheets);
+        seedMaterialStates(apiLessons);
         if (groupsRes.data) {
           setMyGroups(groupsRes.data);
         }
@@ -79,18 +85,20 @@ export default function MyLessons() {
   }, [user]);
 
   // Filter logic
-  const combinedList = activeTab === 'worksheet' ? worksheets : lessons;
-
-  const filteredItems = combinedList.filter(item => {
-    const matchTab =
-      activeTab === 'all' ||
-      activeTab === 'worksheet' || // worksheet tab already uses worksheet list
-      (activeTab === 'learning' && item.status === 'learning') ||
-      (activeTab === 'done' && item.status === 'done') ||
-      (activeTab === 'favorite' && item.isFavorite);
-    const matchSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchTab && matchSearch;
-  });
+  const filteredItems = activeTab === 'worksheet'
+    ? worksheets.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : lessons.filter(lesson => {
+        const pref = getState('material', lesson.id);
+        const matchTab =
+          activeTab === 'all' ||
+          (activeTab === 'learning' && lesson.status === 'learning') ||
+          (activeTab === 'done' && lesson.status === 'done') ||
+          (activeTab === 'saved' && pref.isSaved) ||
+          (activeTab === 'favorite' && pref.isFavorite);
+        const matchSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lesson.author.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchTab && matchSearch;
+      });
 
   // Progress bar color
   const getProgressColor = (progress) => {
@@ -171,7 +179,8 @@ export default function MyLessons() {
               const isActive = activeTab === tab.key;
               const count = tab.key === 'all' ? lessons.length
                 : tab.key === 'worksheet' ? worksheets.length
-                : tab.key === 'favorite' ? lessons.filter(l => l.isFavorite).length
+                : tab.key === 'saved' ? lessons.filter(l => getState('material', l.id).isSaved).length
+                : tab.key === 'favorite' ? lessons.filter(l => getState('material', l.id).isFavorite).length
                 : lessons.filter(l => l.status === tab.key).length;
               return (
                 <button
@@ -246,7 +255,7 @@ export default function MyLessons() {
                     <h4 className="text-sm font-bold text-slate-100 group-hover:text-cyan-300 transition-colors truncate">
                       {item.title}
                     </h4>
-                    {item.isFavorite && <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 shrink-0" />}
+                    {item.type === 'lesson' && getState('material', item.id).isFavorite && <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 shrink-0" />}
                     {item.progress >= 100 && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   </div>
                   <p className="text-xs text-slate-500 font-medium">
@@ -285,32 +294,65 @@ export default function MyLessons() {
 
                 {/* Action Button */}
                 <div className="flex justify-end">
-                  <button
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      if (item.type === 'lesson') navigate(`/learn/${item.id}`);
-                      else navigate(`/shared/worksheet/${item.id}`);
-                    }}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                      item.type === 'worksheet' 
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
-                        : item.progress >= 100
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-                        : item.progress > 0
-                        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20'
-                        : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
-                    }`}
-                  >
-                    {item.type === 'worksheet' ? (
-                      <><Edit3 className="w-3.5 h-3.5" /> Làm bài</>
-                    ) : item.progress >= 100 ? (
-                      <><CheckCircle2 className="w-3.5 h-3.5" /> Xem lại</>
-                    ) : item.progress > 0 ? (
-                      <><Play className="w-3.5 h-3.5" /> Học tiếp</>
-                    ) : (
-                      <><Bookmark className="w-3.5 h-3.5" /> Bắt đầu</>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {item.type === 'lesson' && (() => {
+                      const pref = getState('material', item.id);
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try { await toggleSaved('material', item.id); } catch (error) { console.error('Toggle saved failed:', error); }
+                            }}
+                            disabled={isPending('material', item.id, 'save')}
+                            className={`flex items-center justify-center h-7 w-7 rounded-md border transition ${pref.isSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-amber-300'}`}
+                            title={pref.isSaved ? 'Bỏ lưu' : 'Lưu'}
+                          >
+                            <Bookmark className={`w-3.5 h-3.5 ${pref.isSaved ? 'fill-amber-300' : ''}`} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try { await toggleFavorite('material', item.id); } catch (error) { console.error('Toggle favorite failed:', error); }
+                            }}
+                            disabled={isPending('material', item.id, 'favorite')}
+                            className={`flex items-center justify-center h-7 w-7 rounded-md border transition ${pref.isFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-700 bg-slate-800 text-slate-300 hover:text-rose-300'}`}
+                            title={pref.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${pref.isFavorite ? 'fill-rose-300' : ''}`} />
+                          </button>
+                        </>
+                      );
+                    })()}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.type === 'lesson') navigate(`/learn/${item.id}`);
+                        else navigate(`/shared/worksheet/${item.id}`);
+                      }}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                        item.type === 'worksheet'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                          : item.progress >= 100
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                          : item.progress > 0
+                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      {item.type === 'worksheet' ? (
+                        <><Edit3 className="w-3.5 h-3.5" /> Làm bài</>
+                      ) : item.progress >= 100 ? (
+                        <><CheckCircle2 className="w-3.5 h-3.5" /> Xem lại</>
+                      ) : item.progress > 0 ? (
+                        <><Play className="w-3.5 h-3.5" /> Học tiếp</>
+                      ) : (
+                        <><Bookmark className="w-3.5 h-3.5" /> Bắt đầu</>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

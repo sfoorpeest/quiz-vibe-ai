@@ -60,5 +60,12 @@ router.post('/avatar', authMiddleware, (req, res, next) => {
 }, profileController.uploadAvatar);
 router.get('/activity', authMiddleware, profileController.getActivity);
 router.get('/summary', authMiddleware, profileController.getDashboardSummary);
+router.post('/items/save', authMiddleware, profileController.saveItem);
+router.delete('/items/save', authMiddleware, profileController.unsaveItem);
+router.post('/items/favorite', authMiddleware, profileController.favoriteItem);
+router.delete('/items/favorite', authMiddleware, profileController.unfavoriteItem);
+router.get('/items/saved', authMiddleware, profileController.getSavedItems);
+router.get('/items/favorites', authMiddleware, profileController.getFavoriteItems);
+router.post('/items/states', authMiddleware, profileController.getItemStates);
 
 module.exports = router;
