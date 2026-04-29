@@ -103,10 +103,15 @@ exports.createMaterial = async (req, res) => {
         const teacherId = req.user.id; 
 
         // 1. Lưu bản ghi mới vào Database (MySQL) kèm trạng thái hiển thị
+        let tagsToSave = null;
+        if (req.body.tags) {
+            tagsToSave = Array.isArray(req.body.tags) ? req.body.tags.join(',') : req.body.tags;
+        }
+
         const [resultId] = await sequelize.query(
             'INSERT INTO materials (title, description, content_url, content, created_by, visibility, tags) VALUES (?, ?, ?, ?, ?, ?, ?)',
             {
-                replacements: [title, description, content_url, content, teacherId, visibility, req.body.tags || null],
+                replacements: [title, description, content_url, content, teacherId, visibility, tagsToSave],
                 type: QueryTypes.INSERT
             }
         );

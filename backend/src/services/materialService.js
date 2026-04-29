@@ -252,10 +252,10 @@ async function listMaterials({ search, type, subject, grade, tag, page, limit, u
         }
     }
 
-    // Filter by tag (search in description's [TAGS:...] section)
+    // Filter by tag
     if (tag && tag.trim()) {
-        whereClauses.push('(description LIKE ?)');
-        replacements.push(`%${tag.trim()}%`);
+        whereClauses.push('(tags LIKE ? OR description LIKE ?)');
+        replacements.push(`%${tag.trim()}%`, `%${tag.trim()}%`);
     }
 
     const whereSQL = whereClauses.join(' AND ');
@@ -310,6 +310,7 @@ async function getMaterialDetailById(id) {
             title,
             content,
             content_url,
+            tags,
             created_at,
             ${TYPE_CASE_SQL} AS type
         FROM materials
