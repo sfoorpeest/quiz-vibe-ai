@@ -54,4 +54,16 @@ export const adminService = {
     const res = await api.delete(`/api/admin/materials/${id}`);
     return res.data;
   },
+
+  /** Danh sách toàn bộ lớp học kèm sĩ số (admin only) */
+  getAllGroups: async () => {
+    const res = await api.get('/api/admin/groups');
+    return res.data.data;
+  },
+
+  /** Cập nhật sĩ số tối đa của lớp (admin only) */
+  updateGroupCapacity: async (id, capacity) => {
+    const res = await api.put(`/api/admin/groups/${id}/capacity`, { capacity });
+    return res.data;
+  },
 };

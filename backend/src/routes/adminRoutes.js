@@ -25,4 +25,8 @@ router.delete('/materials/:id', auth, checkRole([3]), adminController.deleteMate
 // Hoạt động gần đây
 router.get('/activity', auth, checkRole([3]), adminController.getRecentActivity);
 
+// 6. Quản lý lớp học (Groups)
+router.get('/groups', auth, checkRole([3]), adminController.getAllGroupsAdmin);
+router.put('/groups/:id/capacity', auth, checkRole([3]), adminController.updateGroupCapacity);
+
 module.exports = router;

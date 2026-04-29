@@ -12,6 +12,7 @@ import Footer from '../components/Footer';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
 import UserAvatar from '../components/UserAvatar';
+import { Timer } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // TEACHER GROUP MANAGEMENT — Giai đoạn 1
@@ -40,17 +41,23 @@ export default function TeacherGroupManagement() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState(null); // groupId to assign to
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [timeStats, setTimeStats] = useState({}); // { userId: { total_learning_time, total_quiz_time } }
 
   // ─── Fetch Data ───
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [groupsRes, studentsRes] = await Promise.all([
+      const [groupsRes, studentsRes, timeStatsRes] = await Promise.all([
         eduService.getGroups(),
-        eduService.getStudents()
+        eduService.getStudents(),
+        eduService.getStudentTimeStats()
       ]);
       setGroups(groupsRes.data || []);
       setStudents(studentsRes.data || []);
+      // Build a map: userId -> { total_learning_time, total_quiz_time }
+      const statsMap = {};
+      (timeStatsRes.data || []).forEach(s => { statsMap[s.user_id] = s; });
+      setTimeStats(statsMap);
     } catch (error) {
       toast.error('Không thể tải dữ liệu lớp học');
     } finally {
@@ -293,18 +300,18 @@ export default function TeacherGroupManagement() {
                             <div className="flex items-center gap-3 mt-1">
                               <p className="text-xs text-slate-500 font-medium truncate max-w-[150px]">{group.description}</p>
                               
-                              {/* Sĩ số lớp (Tạm định mức 50) */}
+                              {/* Sĩ số lớp (lấy từ group.capacity động) */}
                               <div className="flex-1 max-w-[100px] h-1.5 bg-slate-800 rounded-full overflow-hidden hidden sm:block shadow-inner">
                                 <div 
                                   className="h-full rounded-full transition-all duration-1000" 
                                   style={{ 
-                                    width: `${Math.min(100, (groupStudents.length / 50) * 100)}%`,
+                                    width: `${Math.min(100, (groupStudents.length / (group.capacity || 50)) * 100)}%`,
                                     background: group.color 
                                   }}
                                 ></div>
                               </div>
                               <span className="text-[10px] font-bold hidden sm:block" style={{ color: group.color }}>
-                                Sĩ số: {groupStudents.length} / 50
+                                Sĩ số: {groupStudents.length} / {group.capacity || 50}
                               </span>
                             </div>
                           </div>
@@ -361,6 +368,19 @@ export default function TeacherGroupManagement() {
                                       <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1">
                                         <Mail className="w-3 h-3" /> {student.email}
                                       </p>
+                                      {/* Thời gian học và thi */}
+                                      {timeStats[student.id] && (
+                                        <div className="flex items-center gap-3 mt-0.5">
+                                          <span className="text-[10px] text-violet-400 font-bold flex items-center gap-1">
+                                            <Timer className="w-3 h-3" />
+                                            Học: {Math.floor((timeStats[student.id].total_learning_time || 0) / 60)} phút
+                                          </span>
+                                          <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                                            <Timer className="w-3 h-3" />
+                                            Thi: {Math.floor((timeStats[student.id].total_quiz_time || 0) / 60)} phút
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   <button
