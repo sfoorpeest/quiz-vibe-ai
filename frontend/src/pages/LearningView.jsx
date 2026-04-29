@@ -1070,7 +1070,7 @@ export default function LearningView() {
 
       {/* MODAL GIAO BÀI CHO LỚP */}
       {showAssignModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
             <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
@@ -1131,7 +1131,7 @@ export default function LearningView() {
 
       {/* MODAL CHIA SẺ GIÁO VIÊN */}
       {showShareModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
             <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">

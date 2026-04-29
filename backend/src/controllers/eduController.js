@@ -104,9 +104,9 @@ exports.createMaterial = async (req, res) => {
 
         // 1. Lưu bản ghi mới vào Database (MySQL) kèm trạng thái hiển thị
         const [resultId] = await sequelize.query(
-            'INSERT INTO materials (title, description, content_url, content, created_by, visibility) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO materials (title, description, content_url, content, created_by, visibility, tags) VALUES (?, ?, ?, ?, ?, ?, ?)',
             {
-                replacements: [title, description, content_url, content, teacherId, visibility],
+                replacements: [title, description, content_url, content, teacherId, visibility, req.body.tags || null],
                 type: QueryTypes.INSERT
             }
         );
@@ -131,6 +131,7 @@ exports.createMaterial = async (req, res) => {
             content: item.content,
             visibility: item.visibility,
             created_at: item.created_at,
+            tags: item.tags,
             _status: "Synced from Database"
         }));
 
@@ -180,6 +181,7 @@ exports.updateMaterialVisibility = async (req, res) => {
             content: item.content,
             visibility: item.visibility,
             created_at: item.created_at,
+            tags: item.tags,
             _status: "Synced from Database"
         }));
         fs.writeFileSync(jsonPath, JSON.stringify(formattedData, null, 4), 'utf8');
@@ -345,8 +347,8 @@ exports.searchMaterials = async (req, res) => {
             const keyword = trimmed.replace(/^[@#]/, '').trim();
             
             if (isTagSearch) {
-                queryStr += ' AND materials.description LIKE ?'; // Thường tag lưu trong description hoặc field riêng
-                replacements.push(`%${keyword}%`);
+                queryStr += ' AND (materials.tags LIKE ? OR materials.description LIKE ?)'; 
+                replacements.push(`%${keyword}%`, `%${keyword}%`);
             } else {
                 queryStr += ' AND materials.title LIKE ?';
                 replacements.push(`%${keyword}%`);
@@ -359,8 +361,8 @@ exports.searchMaterials = async (req, res) => {
         }
 
         if (tag) {
-            queryStr += ' AND materials.description LIKE ?';
-            replacements.push(`%${tag}%`);
+            queryStr += ' AND (materials.tags LIKE ? OR materials.description LIKE ?)';
+            replacements.push(`%${tag}%`, `%${tag}%`);
         }
 
         // Sorting logic
@@ -401,6 +403,55 @@ exports.getSystemStats = async (req, res) => {
         res.status(200).json({ status: 'success', data: stats[0] });
     } catch (error) {
         res.status(500).json({ message: "Lỗi khi lấy thống kê hệ thống" });
+    }
+};
+
+/**
+ * 6.5 Lấy danh sách toàn bộ Tags duy nhất trong hệ thống (Hoặc theo creator)
+ */
+exports.getAllTags = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const roleId = req.user.role_id;
+
+        let query = '';
+        let replacements = [];
+
+        if (roleId === 2 || roleId === 3) {
+            // Giáo viên/Admin: Lấy tags từ tài liệu họ tạo hoặc public
+            query = `
+                SELECT tags FROM materials 
+                WHERE (created_by = ? OR visibility = 'public') AND tags IS NOT NULL
+            `;
+            replacements = [userId];
+        } else {
+            // Học sinh: Lấy tags từ tài liệu public hoặc tài liệu được giao
+            query = `
+                SELECT tags FROM materials 
+                WHERE (visibility = 'public' 
+                   OR id IN (SELECT material_id FROM group_materials gm JOIN group_members gmb ON gm.group_id = gmb.group_id WHERE gmb.user_id = ?))
+                AND tags IS NOT NULL
+            `;
+            replacements = [userId];
+        }
+
+        const rows = await sequelize.query(query, { replacements, type: QueryTypes.SELECT });
+        
+        // Xử lý chuỗi tags (VD: "Toán, Lý, Hóa") thành mảng unique
+        const allTags = new Set();
+        rows.forEach(row => {
+            if (row.tags) {
+                row.tags.split(',').forEach(t => {
+                    const cleanTag = t.trim();
+                    if (cleanTag) allTags.add(cleanTag);
+                });
+            }
+        });
+
+        res.status(200).json({ status: 'success', data: Array.from(allTags) });
+    } catch (error) {
+        console.error("Get Tags Error:", error);
+        res.status(500).json({ message: "Lỗi khi lấy danh sách tags" });
     }
 };
 

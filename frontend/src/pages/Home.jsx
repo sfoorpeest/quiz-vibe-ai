@@ -26,13 +26,12 @@ export default function Home() {
     stats: { totalLearned: 0, avgScore: 0 } 
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [sortBy, setSortBy] = useState('latest'); // 'latest', 'oldest', 'title'
   const [creatorFilter, setCreatorFilter] = useState(''); // ID người tạo
-  const [selectedTag, setSelectedTag] = useState(''); // Tag đang chọn
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-
+  const [systemTags, setSystemTags] = useState([]); // Tags từ hệ thống
 
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
@@ -49,6 +48,11 @@ export default function Home() {
         const materialsRes = await api.post('/api/edu/materials/list');
         if (isMounted && materialsRes.data && materialsRes.data.data) {
           setMaterials(materialsRes.data.data);
+        }
+
+        const tagsRes = await api.get('/api/edu/tags');
+        if (isMounted && tagsRes.data && tagsRes.data.status === 'success') {
+          setSystemTags(tagsRes.data.data);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu Home:", err);
@@ -137,6 +141,15 @@ export default function Home() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleTagClick = (tag) => {
+    setSelectedTag(prev => prev === tag ? '' : tag);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedTag('');
   };
 
   // Close dropdown when clicking outside
@@ -336,22 +349,64 @@ export default function Home() {
           </div>
 
           {/* Quick Filter Tags - Teacher Dashboard */}
+          {(searchQuery || selectedTag) && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                  {searchQuery && (
+                      <span className="px-3 py-1 bg-blue-900/50 text-blue-300 rounded-full text-xs font-medium flex items-center gap-1 border border-blue-500/20 animate-in fade-in zoom-in duration-300">
+                          Tìm kiếm: {searchQuery}
+                          <button onClick={() => setSearchQuery('')} className="hover:text-blue-100 transition-colors">
+                              <X size={12} />
+                          </button>
+                      </span>
+                  )}
+                  {selectedTag && (
+                      <span className="px-3 py-1 bg-purple-900/50 text-purple-300 rounded-full text-xs font-medium flex items-center gap-1 border border-purple-500/20 animate-in fade-in zoom-in duration-300">
+                          Tag: {selectedTag}
+                          <button onClick={() => setSelectedTag('')} className="hover:text-purple-100 transition-colors">
+                              <X size={12} />
+                          </button>
+                      </span>
+                  )}
+                  <button 
+                      onClick={clearFilters}
+                      className="text-xs text-slate-500 hover:text-slate-300 underline"
+                  >
+                      Xóa tất cả
+                  </button>
+              </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Bộ lọc nhanh:</span>
-            {['Toán học', 'Lịch sử', 'Khoa học', 'Công nghệ', 'Ngoại ngữ'].map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
-                className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
-                  selectedTag === tag 
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
-                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                }`}
-              >
-                #{tag}
-              </button>
-            ))}
+            {systemTags && systemTags.length > 0 ? (
+              systemTags.slice(0, 8).map((tag) => (
+                <button
+                  key={tag.tag || tag}
+                  onClick={() => handleTagClick(tag.tag || tag)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    selectedTag === (tag.tag || tag) 
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
+                      : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  #{tag.tag || tag}
+                </button>
+              ))
+            ) : (
+              ['Toán học', 'Lịch sử', 'Khoa học', 'Công nghệ', 'Ngoại ngữ'].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => handleTagClick(tag)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    selectedTag === tag 
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
+                      : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              ))
+            )}
             {selectedTag && (
               <button 
                 onClick={() => setSelectedTag('')}
@@ -714,26 +769,42 @@ export default function Home() {
           {/* Quick Filter Tags - Student Dashboard */}
 
           <div className="flex flex-wrap items-center gap-2 mb-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-100 px-4 sm:px-0">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Chủ đề gợi ý:</span>
-            {['Cơ bản', 'Nâng cao', 'Luyện thi', 'Thực hành', 'Tóm tắt'].map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
-                className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                  selectedTag === tag 
-                    ? 'bg-amber-500 border-amber-400 text-slate-900 shadow-lg shadow-amber-500/30' 
-                    : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-blue-500/50 hover:text-blue-300'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mr-2">Bộ lọc nhanh:</span>
+            {systemTags.length > 0 ? (
+              systemTags.slice(0, 8).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    selectedTag === tag 
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
+                      : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              ))
+            ) : (
+              ['Toán học', 'Lịch sử', 'Khoa học', 'Công nghệ', 'Ngoại ngữ'].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                    selectedTag === tag 
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95' 
+                      : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              ))
+            )}
             {selectedTag && (
               <button 
                 onClick={() => setSelectedTag('')}
-                className="text-[10px] font-bold text-slate-400 hover:text-slate-200 ml-2 flex items-center gap-1 bg-slate-800/60 px-2 py-1 rounded-lg border border-slate-700"
+                className="text-[10px] font-bold text-red-400 hover:text-red-300 ml-2 flex items-center gap-1"
               >
-                <X className="w-3 h-3" /> Đặt lại
+                <X className="w-3 h-3" /> Xóa lọc
               </button>
             )}
           </div>
