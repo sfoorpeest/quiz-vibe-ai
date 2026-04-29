@@ -1,9 +1,14 @@
 const User = require('../models/User');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
+const { supabase } = require('../config/supabase');
 const { getMaterialLearningSnapshot } = require('../services/materialService');
+
+const sendProfileError = (res, statusCode, message, error) => res.status(statusCode).json({
+    success: false,
+    message,
+    error: error ? String(error.message || error) : null,
+});
 
 const ALLOWED_ITEM_TYPES = new Set(['material', 'assignment']);
 
@@ -227,16 +232,72 @@ exports.uploadAvatar = async (req, res) => {
         const userId = req.user.id;
 
         if (!req.file) {
-            return res.status(400).json({ message: "Chưa chọn ảnh đại diện." });
+            return sendProfileError(res, 400, 'Chưa chọn ảnh đại diện.', 'NO_FILE');
         }
 
-        const avatarPath = `/uploads/avatars/${req.file.filename}`;
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY || !supabase) {
+            return sendProfileError(res, 503, 'Thiếu cấu hình Supabase cho upload avatar.', 'SUPABASE_CONFIG_MISSING');
+        }
+
+        const mimeToExt = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+        };
+
+        const ext = mimeToExt[req.file.mimetype];
+        if (!ext) {
+            return sendProfileError(res, 400, 'Định dạng ảnh không hợp lệ.', 'INVALID_IMAGE_TYPE');
+        }
+
+        const avatarObjectPath = `${userId}.${ext}`;
 
         // Đảm bảo row tồn tại trong user_profiles
-        const [existing] = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
+        const [existing] = await sequelize.query("SELECT user_id, avatar_url FROM user_profiles WHERE user_id = :userId", {
             replacements: { userId },
             type: QueryTypes.SELECT
         });
+
+        // Xóa avatar cũ trên Supabase nếu có
+        if (existing?.avatar_url) {
+            let oldObjectPath = null;
+
+            try {
+                const oldUrl = String(existing.avatar_url);
+                if (oldUrl.includes('/storage/v1/object/public/avatars/')) {
+                    oldObjectPath = decodeURIComponent(oldUrl.split('/storage/v1/object/public/avatars/')[1] || '').split('?')[0];
+                } else if (!oldUrl.startsWith('/uploads/')) {
+                    oldObjectPath = oldUrl;
+                }
+            } catch (e) {
+                oldObjectPath = null;
+            }
+
+            if (oldObjectPath) {
+                await supabase.storage.from('avatars').remove([oldObjectPath]);
+            }
+        }
+
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(avatarObjectPath, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true,
+            });
+
+        if (uploadError) {
+            return sendProfileError(res, 502, 'Upload avatar thất bại.', uploadError);
+        }
+
+        const { data: publicData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(avatarObjectPath);
+
+        const avatarPath = publicData?.publicUrl || null;
+        if (!avatarPath) {
+            return sendProfileError(res, 502, 'Không thể tạo URL avatar.', 'PUBLIC_URL_FAILED');
+        }
 
         if (!existing) {
             await sequelize.query("INSERT INTO user_profiles (user_id, avatar_url) VALUES (:userId, :avatarPath)", {
@@ -274,7 +335,7 @@ exports.uploadAvatar = async (req, res) => {
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);
-        res.status(500).json({ message: "Lỗi máy chủ.", error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ.', error: error.message });
     }
 };
 

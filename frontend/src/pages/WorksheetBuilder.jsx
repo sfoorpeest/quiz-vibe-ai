@@ -37,6 +37,7 @@ export default function WorksheetBuilder() {
   const [worksheets, setWorksheets] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedId, setSelectedId] = useState(searchParams.get('id') || id || null);
   const [editMode, setEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,6 +51,7 @@ export default function WorksheetBuilder() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const [wsRes, groupsRes] = await Promise.all([
         eduService.getAllWorksheets(),
         eduService.getGroups()
@@ -82,12 +84,32 @@ export default function WorksheetBuilder() {
 
       setWorksheets(transformedWs);
       setGroups(groupsRes.data || []);
+
+      if (user && transformedWs.length > 0) {
+        try {
+          const ids = transformedWs.map((ws) => String(ws.id));
+          const rows = await itemActionService.getStates({ itemIds: ids, type: 'assignment' });
+          const stateById = new Map(rows.map((row) => [String(row.itemId), row]));
+          setWorksheets((prev) => prev.map((ws) => {
+            const state = stateById.get(String(ws.id));
+            return {
+              ...ws,
+              isSaved: Boolean(state?.isSaved),
+              isFavorite: Boolean(state?.isFavorite),
+            };
+          }));
+        } catch (error) {
+          console.error('Không thể tải trạng thái phiếu học tập:', error);
+        }
+      }
       
       // If we came from a redirect with an ID, select it
       const queryId = searchParams.get('id');
       if (queryId) setSelectedId(Number(queryId));
       
     } catch (error) {
+      console.error('WorksheetBuilder fetchData error:', error);
+      setLoadError('Không thể tải danh sách phiếu học tập.');
       toast.error('Không thể tải danh sách phiếu học tập');
     } finally {
       setLoading(false);
@@ -143,36 +165,6 @@ export default function WorksheetBuilder() {
 
     return list;
   }, [worksheets, searchQuery, filterGroupId, worksheetFilter]);
-
-  useEffect(() => {
-    let mounted = true;
-    const syncStates = async () => {
-      try {
-        const ids = MOCK_WORKSHEETS.map((ws) => ws.id);
-        const rows = await itemActionService.getStates({ itemIds: ids, type: 'assignment' });
-        const stateById = new Map(rows.map((row) => [String(row.itemId), row]));
-        if (!mounted) return;
-        setWorksheets((prev) => prev.map((ws) => {
-          const state = stateById.get(String(ws.id));
-          return {
-            ...ws,
-            isSaved: Boolean(state?.isSaved),
-            isFavorite: Boolean(state?.isFavorite),
-          };
-        }));
-      } catch (error) {
-        console.error('Không thể tải trạng thái phiếu học tập:', error);
-      }
-    };
-
-    if (user) {
-      syncStates();
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
 
   const toggleWorksheetSaved = async (worksheetId, currentState) => {
     setPendingWorksheetActionId(worksheetId);
@@ -438,10 +430,19 @@ export default function WorksheetBuilder() {
                   ))}
                 </div>
                 {filteredWorksheets.map(ws => (
-                  <button
+                  <div
                     key={ws.id}
                     onClick={() => { setSelectedId(ws.id); setEditMode(false); }}
-                    className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedId(ws.id);
+                        setEditMode(false);
+                      }
+                    }}
+                    className={`w-full text-left p-4 rounded-xl transition-all duration-200 cursor-pointer ${
                       selectedId === ws.id
                         ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg'
                         : 'bg-slate-900/40 border border-slate-700/30 hover:bg-slate-800/60 hover:border-slate-600/50'
@@ -488,7 +489,7 @@ export default function WorksheetBuilder() {
                         </span>
                       ))}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -524,6 +525,16 @@ export default function WorksheetBuilder() {
 
           {/* ─── RIGHT: Worksheet Editor / Preview (3 cols) ─── */}
           <div className="lg:col-span-3">
+            {loadError && !loading ? (
+              <div className="bg-slate-900/40 backdrop-blur-xl border border-red-500/20 rounded-3xl p-8 text-center mb-6">
+                <p className="text-red-300 font-bold mb-2">Không thể tải phiếu học tập</p>
+                <p className="text-slate-400 text-sm mb-4">{loadError}</p>
+                <button onClick={fetchData} className="ws-toolbar-btn ws-toolbar-btn-secondary mx-auto">
+                  Thử lại
+                </button>
+              </div>
+            ) : null}
+
             {!currentWorksheet ? (
               <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/30 rounded-3xl p-20 text-center">
                 <ClipboardList className="w-16 h-16 text-slate-700 mx-auto mb-4" />

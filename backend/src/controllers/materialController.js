@@ -1,5 +1,11 @@
 const materialService = require('../services/materialService');
 
+const sendError = (res, statusCode, message, error) => res.status(statusCode).json({
+    success: false,
+    message,
+    error: error ? String(error.message || error) : null,
+});
+
 exports.getMaterials = async (req, res) => {
     try {
         const { search = '', type = '', subject = '', grade = '', tag = '', page = '1', limit = '10' } = req.query;
@@ -34,7 +40,7 @@ exports.getTags = async (req, res) => {
         return res.status(200).json({ data: tags });
     } catch (error) {
         console.error('Get tags error:', error);
-        return res.status(500).json({ message: 'Failed to get tags' });
+        return sendError(res, 500, 'Failed to get tags', error);
     }
 };
 
@@ -85,7 +91,7 @@ exports.getMyLessons = async (req, res) => {
         });
     } catch (error) {
         console.error('Get my lessons error:', error);
-        return res.status(500).json({ message: 'Failed to get my lessons' });
+        return sendError(res, 500, 'Failed to get my lessons', error);
     }
 };
 
@@ -96,7 +102,7 @@ exports.getSavedMaterials = async (req, res) => {
         return res.status(200).json({ data: materials });
     } catch (error) {
         console.error('Get saved materials error:', error);
-        return res.status(500).json({ message: 'Failed to get saved materials' });
+        return sendError(res, 500, 'Failed to get saved materials', error);
     }
 };
 
@@ -107,7 +113,7 @@ exports.getFavoriteMaterials = async (req, res) => {
         return res.status(200).json({ data: materials });
     } catch (error) {
         console.error('Get favorite materials error:', error);
-        return res.status(500).json({ message: 'Failed to get favorite materials' });
+        return sendError(res, 500, 'Failed to get favorite materials', error);
     }
 };
 
@@ -125,7 +131,7 @@ exports.saveMaterial = async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
         console.error('Save material error:', error);
-        return res.status(500).json({ message: 'Failed to save material' });
+        return sendError(res, 500, 'Failed to save material', error);
     }
 };
 
@@ -143,7 +149,7 @@ exports.unsaveMaterial = async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
         console.error('Unsave material error:', error);
-        return res.status(500).json({ message: 'Failed to unsave material' });
+        return sendError(res, 500, 'Failed to unsave material', error);
     }
 };
 
@@ -161,7 +167,7 @@ exports.favoriteMaterial = async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
         console.error('Favorite material error:', error);
-        return res.status(500).json({ message: 'Failed to favorite material' });
+        return sendError(res, 500, 'Failed to favorite material', error);
     }
 };
 
@@ -179,6 +185,6 @@ exports.unfavoriteMaterial = async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
         console.error('Unfavorite material error:', error);
-        return res.status(500).json({ message: 'Failed to unfavorite material' });
+        return sendError(res, 500, 'Failed to unfavorite material', error);
     }
 };

@@ -324,8 +324,9 @@ export default function Profile() {
 
     try {
       const updatedProfile = await profileService.uploadAvatar(selectedFile);
-      hydrateProfileState(updatedProfile);
-      updateUser(updatedProfile);
+      const refreshedProfile = { ...updatedProfile, avatarVersion: Date.now() };
+      hydrateProfileState(refreshedProfile);
+      updateUser(refreshedProfile);
       showNotice('Ảnh đại diện đã được cập nhật.');
     } catch (error) {
       console.error('Tải ảnh đại diện thất bại:', error);

@@ -20,6 +20,21 @@ const TYPE_CASE_SQL = `
 
 const ALLOWED_TYPES = new Set(['video', 'audio', 'document']);
 
+async function tableExists(tableName) {
+    const [row] = await sequelize.query(
+        `SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?`,
+        {
+            replacements: [tableName],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    return Number(row?.total || 0) > 0;
+}
+
 function normalizeReadProgress(progress) {
     const parsed = Number(progress);
     if (!Number.isFinite(parsed)) {
@@ -242,6 +257,9 @@ async function getMaterialDetailById(id) {
 }
 
 async function getMyLessons(userId) {
+    const hasUserMaterials = await tableExists('user_materials');
+    const hasPreferences = await tableExists('user_material_preferences');
+
     const assignmentQuery = `
         SELECT
             q.id,
@@ -260,22 +278,22 @@ async function getMyLessons(userId) {
                 m.content,
                 m.created_at,
                 um.assigned_at,
-                COALESCE(pref.is_saved, 0) AS is_saved,
-                COALESCE(pref.is_favorite, 0) AS is_favorite,
-                                COALESCE((
-                                        SELECT lh2.progress
-                                        FROM learning_history lh2
-                                        WHERE lh2.user_id = um.user_id
-                                            AND lh2.material_id = m.id
-                                            AND lh2.action = 'VIEWED_MATERIAL'
-                                        ORDER BY lh2.created_at DESC, lh2.id DESC
-                                        LIMIT 1
-                                ), 0) as progress
+                ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+                ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
+                COALESCE((
+                    SELECT lh2.progress
+                    FROM learning_history lh2
+                    WHERE lh2.user_id = um.user_id
+                        AND lh2.material_id = m.id
+                        AND lh2.action = 'VIEWED_MATERIAL'
+                    ORDER BY lh2.created_at DESC, lh2.id DESC
+                    LIMIT 1
+                ), 0) AS progress
             FROM user_materials um
             INNER JOIN materials m ON m.id = um.material_id
-            LEFT JOIN user_material_preferences pref
+            ${hasPreferences ? `LEFT JOIN user_material_preferences pref
                 ON pref.user_id = um.user_id
-               AND pref.material_id = m.id
+               AND pref.material_id = m.id` : ''}
             WHERE um.user_id = ?
         ) q
         ORDER BY COALESCE(q.assigned_at, q.created_at) DESC
@@ -290,44 +308,45 @@ async function getMyLessons(userId) {
             m.content,
             m.created_at,
             lh.created_at as activity_at,
-            COALESCE(pref.is_saved, 0) AS is_saved,
-            COALESCE(pref.is_favorite, 0) AS is_favorite,
-            COALESCE(lh.progress, 0) as progress
+            ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+            ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
+            COALESCE(lh.progress, 0) AS progress
         FROM learning_history lh
         INNER JOIN materials m ON m.id = lh.material_id
-        LEFT JOIN user_material_preferences pref
+        ${hasPreferences ? `LEFT JOIN user_material_preferences pref
             ON pref.user_id = lh.user_id
-           AND pref.material_id = m.id
+           AND pref.material_id = m.id` : ''}
         WHERE lh.user_id = ?
           AND lh.material_id IS NOT NULL
-                    AND lh.action = 'VIEWED_MATERIAL'
-                    AND lh.id = (
-                            SELECT MAX(id)
-                            FROM learning_history
-                            WHERE user_id = lh.user_id
-                                AND material_id = m.id
-                                AND action = 'VIEWED_MATERIAL'
-                    )
+          AND lh.action = 'VIEWED_MATERIAL'
+          AND lh.id = (
+                SELECT MAX(id)
+                FROM learning_history
+                WHERE user_id = lh.user_id
+                    AND material_id = m.id
+                    AND action = 'VIEWED_MATERIAL'
+          )
         ORDER BY activity_at DESC
     `;
 
     // Preferred source remains assignments, but read-history rows must be merged in so
     // progress does not drop when a material is learned outside assignment mapping.
     let assignedRows = [];
-    try {
+    if (hasUserMaterials) {
+        try {
         assignedRows = await sequelize.query(assignmentQuery, {
             replacements: [userId],
             type: QueryTypes.SELECT
         });
-    } catch (error) {
-        console.error('MY LESSONS ERROR:', error);
-        // If user_materials does not exist yet, continue with fallback query.
-        const isMissingRelation =
-            String(error?.original?.code || '') === 'ER_NO_SUCH_TABLE' ||
-            /user_materials/i.test(String(error?.message || ''));
+        } catch (error) {
+            console.error('MY LESSONS ERROR:', error);
+            const isMissingRelation =
+                String(error?.original?.code || '') === 'ER_NO_SUCH_TABLE' ||
+                /user_materials|user_material_preferences/i.test(String(error?.message || ''));
 
-        if (!isMissingRelation) {
-            throw error;
+            if (!isMissingRelation) {
+                throw error;
+            }
         }
     }
 
@@ -436,7 +455,48 @@ async function attachLatestQuizResult(lessons, userId) {
     });
 }
 
+async function getPopularTags(limitCount = 30) {
+    const hasTagsColumn = await sequelize.query(
+        `SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'materials'
+           AND COLUMN_NAME = 'tags'`,
+        { type: QueryTypes.SELECT }
+    );
+
+    if (Number(hasTagsColumn?.[0]?.total || 0) === 0) {
+        return [];
+    }
+
+    const rows = await sequelize.query(
+        `SELECT tags FROM materials WHERE tags IS NOT NULL AND TRIM(tags) <> ''`,
+        { type: QueryTypes.SELECT }
+    );
+
+    const tagFrequency = new Map();
+    rows.forEach((row) => {
+        String(row?.tags || '')
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .forEach((tag) => {
+                tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
+            });
+    });
+
+    return [...tagFrequency.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limitCount)
+        .map(([tag, count]) => ({ tag, count }));
+}
+
 async function getPreferredMaterials(userId, preferenceField) {
+    const hasPreferences = await tableExists('user_material_preferences');
+    if (!hasPreferences) {
+        return [];
+    }
+
     const field = preferenceField === 'is_favorite' ? 'is_favorite' : 'is_saved';
     const rows = await sequelize.query(
         `SELECT
@@ -493,6 +553,15 @@ async function materialExists(materialId) {
 }
 
 async function setMaterialPreference(userId, materialId, updates) {
+    const hasPreferences = await tableExists('user_material_preferences');
+    if (!hasPreferences) {
+        return {
+            materialId: Number(materialId),
+            isSaved: Boolean(updates.isSaved),
+            isFavorite: Boolean(updates.isFavorite),
+        };
+    }
+
     const normalizedMaterialId = Number(materialId);
     if (!Number.isInteger(normalizedMaterialId) || normalizedMaterialId <= 0) {
         throw new Error('INVALID_MATERIAL_ID');
@@ -570,5 +639,6 @@ module.exports = {
     setMaterialPreference,
     getMaterialLearningSnapshot,
     computeEffectiveProgress,
+    getPopularTags,
     ALLOWED_TYPES
 };
