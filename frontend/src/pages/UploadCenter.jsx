@@ -230,7 +230,7 @@ export default function UploadCenter() {
             <div className="space-y-6">
               <div className="text-center mb-10">
                 <h1 className="text-3xl font-extrabold text-white mb-3 drop-shadow-sm">Cung cấp Học liệu cho AI</h1>
-                <p className="text-slate-400">Tải lên định dạng PDF, Word, hoặc dán liên kết. AI sẽ tự động phân tích và trích xuất lượng tri thức tinh túy nhất cho học sinh.</p>
+                <p className="text-slate-400">Tải lên tài liệu (PDF, Word), Multimedia (Video, Audio) hoặc dán liên kết. AI sẽ tự động phân tích và trích xuất lượng tri thức tinh túy nhất cho học sinh.</p>
               </div>
 
               {/* View Switcher */}
@@ -263,7 +263,7 @@ export default function UploadCenter() {
                     type="file" 
                     id="file-upload" 
                     className="hidden" 
-                    accept=".pdf,.doc,.docx,.txt"
+                    accept=".pdf,.doc,.docx,.txt,.mp4,.mp3,.webm,.wav,.ogg"
                     onChange={handleFileSelect}
                   />
                   
@@ -289,9 +289,9 @@ export default function UploadCenter() {
                       <h3 className="text-xl font-bold text-slate-200 mb-2">Kéo thả file vào đây</h3>
                       <p className="text-sm text-slate-400 mb-6">hoặc click để chọn từ thiết bị (Tối đa 20MB)</p>
                       <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 bg-slate-800/80 px-4 py-2 rounded-lg">
-                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded">PDF</span>
-                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded">DOCX</span>
-                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded">TXT</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded">PDF/DOCX</span>
+                        <span className="bg-slate-700 text-blue-400/80 px-2 py-0.5 rounded border border-blue-500/20">VIDEO/MP4</span>
+                        <span className="bg-slate-700 text-pink-400/80 px-2 py-0.5 rounded border border-pink-500/20">AUDIO/MP3</span>
                       </div>
                     </label>
                   )}
@@ -316,6 +316,9 @@ export default function UploadCenter() {
                       placeholder="https://vicky.com/bai-giang-ai" 
                       className="block w-full pl-11 pr-4 py-4 bg-slate-800 border-2 border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-0 focus:border-blue-500 transition-colors shadow-inner font-medium"
                     />
+                    <p className="text-[10px] text-slate-500 mt-2 text-center font-bold tracking-wider uppercase">
+                      Hỗ trợ: Website, Youtube, Link MP4/MP3 trực tiếp
+                    </p>
                   </div>
                 </div>
               )}

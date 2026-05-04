@@ -557,20 +557,39 @@ exports.extractFileContent = async (req, res) => {
             const decodedName = Buffer.from(originalname, 'latin1').toString('utf8');
             sourceTitle = decodedName.split('.')[0];
 
-            // Trích xuất text thô (Server-side)
+            // 1. Trích xuất text thô (Server-side)
             extractedText = await extractTextFromBuffer(buffer, mimetype, decodedName);
 
-            // Nếu file là ảnh hoặc không có text, thử gửi trực tiếp buffer lên Gemini (Native OCR)
+            // 2. Hỗ trợ Multimedia (Video/Audio) trực tiếp
+            if (mimetype.startsWith('video/') || mimetype.startsWith('audio/')) {
+                extractedText = `[NỘI DUNG ĐA PHƯƠNG TIỆN]\nTên file: ${decodedName}\nĐịnh dạng: ${mimetype}\nĐây là một tệp video/âm thanh. Hãy phân tích dựa trên tiêu đề và ngữ cảnh chuyên môn của bạn.`;
+            }
+
+            // 3. Nếu file là ảnh hoặc không có text, thử gửi trực tiếp buffer lên Gemini (Native OCR)
             if ((!extractedText || extractedText.trim().length < 50) && mimetype === 'application/pdf' && buffer.length < 15 * 1024 * 1024) {
                 fileDataForGemini = { buffer, mimeType: mimetype };
                 extractedText = "Tài liệu này là một dạng PDF hình ảnh. Vui lòng phân tích dựa trên tệp đính kèm.";
             } else if (!extractedText || extractedText.trim().length < 50) {
-                return res.status(415).json({ message: `Không thể trích xuất nội dung từ file "${originalname}". File có thể bị lỗi hoặc là ảnh không được hỗ trợ.` });
+                return res.status(415).json({ message: `Không thể trích xuất nội dung từ file "${originalname}". File có thể bị lỗi hoặc định dạng không được hỗ trợ.` });
             }
         } else if (req.body.url) {
             const { url } = req.body;
+            const isMediaUrl = /youtube\.com|youtu\.be|\.mp4|\.webm|\.mov|\.mp3|\.wav|\.ogg/i.test(url);
+            
             sourceTitle = url.replace(/https?:\/\/(www\.)?/, '').split('/')[0];
+            
+            // Luôn thử trích xuất text từ URL (đặc biệt hữu ích cho YouTube Transcript)
             extractedText = await extractTextFromUrl(url);
+
+            // Nếu là Media (VD: MP4 trực tiếp) hoặc không lấy được phụ đề YouTube, dùng placeholder
+            if ((!extractedText || extractedText.length < 100) && isMediaUrl) {
+                extractedText = `[LIÊN KẾT ĐA PHƯƠNG TIỆN]\nURL: ${url}\nĐây là một liên kết YouTube hoặc Multimedia. Hãy dựa vào tiêu đề URL và kiến thức chuyên môn của bạn để tóm tắt chủ đề giáo dục tương ứng.`;
+            }
+
+            // Cố gắng lấy phần cuối của URL để làm tiêu đề sơ bộ nếu không phải youtube
+            const urlParts = url.split('/').filter(p => p.length > 0);
+            sourceTitle = urlParts[urlParts.length - 1] || url;
+            if (sourceTitle.length > 50) sourceTitle = sourceTitle.substring(0, 50);
 
             if (!extractedText || extractedText.length < 50) {
                 return res.status(422).json({ message: 'Không thể trích xuất nội dung từ URL này.' });
@@ -582,16 +601,16 @@ exports.extractFileContent = async (req, res) => {
         // Bước 1: Sinh bản nháp (Summary & Tags) dựa trên nội dung thực tế
         const contentSnippet = extractedText.substring(0, 4000);
         const draftPrompt = `Bạn là trợ lý giáo dục chuyên nghiệp. Dựa vào nội dung tài liệu sau, hãy:
-        1. Đề xuất một "Tiêu đề chuyên nghiệp" (suggestedTitle) cho tài liệu này (Ví dụ: "Bài giảng Vật lý 11: Điện trường" thay vì "bai_giang_vat_ly_11").
-        2. Viết tóm tắt ngắn gọn (3 câu) bao quát ý chính.
-        3. Tự động xác định và trích xuất đúng 4 từ khóa (tags) quan trọng nhất liên quan đến chủ đề của tài liệu.
+        1. Đề xuất một "Tiêu đề chuyên nghiệp" (suggestedTitle) cho tài liệu này (Ví dụ: "Kỹ năng Giao tiếp Hiệu quả" hoặc "Kiến thức Lịch sử Thế giới").
+        2. Viết tóm tắt ngắn gọn (3 câu) bao quát ý chính. (Nếu là Multimedia, hãy tóm tắt kiến thức giáo dục liên quan đến tiêu đề/URL).
+        3. Tự động xác định và trích xuất đúng 4 từ khóa (tags) quan trọng nhất liên quan đến chủ đề.
         
         QUY TẮC BẮT BUỘC:
-        - Tiêu đề (suggestedTitle) phải là tiếng Việt có dấu, viết hoa chữ cái đầu, KHÔNG dùng dấu gạch dưới (_), KHÔNG dùng từ lóng.
-        - Mỗi tag là cụm từ tiếng Việt tự nhiên, có dấu cách, KHÔNG dùng dấu gạch dưới (_), KHÔNG có ký tự # hay ##.
-        - Ví dụ đúng: 
-          suggestedTitle: "Định luật Bảo toàn Năng lượng"
-          tags: ["Vật lí 12", "Cảm ứng điện từ", "Dòng điện xoay chiều", "Lớp 12"]
+        - TUYỆT ĐỐI KHÔNG tự tiện đưa các chủ đề Vật lý hay Toán học vào nếu tài liệu không nhắc tới.
+        - Tiêu đề (suggestedTitle) phải là tiếng Việt có dấu, viết hoa chữ cái đầu.
+        - Ví dụ định dạng: 
+          suggestedTitle: "Chủ đề học thuật tương ứng"
+          tags: ["Từ khóa 1", "Từ khóa 2", "Từ khóa 3", "Từ khóa 4"]
           
         Trả về kết quả duy nhất dưới định dạng JSON: {"suggestedTitle": "...", "summary": "...", "tags": ["...", "...", "...", "..."]} và tuyệt đối không kèm theo bất kỳ văn bản nào khác hoặc markdown.
         
@@ -631,9 +650,10 @@ exports.extractFileContent = async (req, res) => {
         // Nếu fileDataForGemini được dùng (do trích xuất text thất bại), gửi file. Nếu không, chỉ gửi text (cực nhanh).
         const lessonPrompt = fileDataForGemini
             ? `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên tài liệu đính kèm. Hãy tập trung vào các kiến thức cốt lõi.`
-            : `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên nội dung tài liệu sau. Hãy tập trung vào các kiến thức cốt lõi.
+            : `Bạn là giáo viên. Hãy biên soạn một bài giảng Markdown chi tiết (gồm 3 chương lớn ##) dựa trên nội dung hoặc tiêu đề tài liệu sau. 
+               Lưu ý: Nếu đây là tệp Đa phương tiện hoặc Link Video, hãy dùng kiến thức chuyên môn của bạn để viết một bài giảng học thuật hoàn chỉnh và sâu sắc xoay quanh chủ đề đó.
             
-            Nội dung tài liệu:
+            Nội dung/Tiêu đề tài liệu:
             ${extractedText.substring(0, 10000)}`;
         const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 

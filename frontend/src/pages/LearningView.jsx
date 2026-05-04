@@ -14,6 +14,7 @@ import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useItemPreference } from '../context/ItemPreferenceContext';
+import MediaPlayerModal from '../components/MediaPlayerModal';
 
 export default function LearningView() {
   const { id } = useParams();
@@ -39,6 +40,7 @@ export default function LearningView() {
   const [quizProgressStatus, setQuizProgressStatus] = useState(null);
   const [showToc, setShowToc] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
   const [fontSize, setFontSize] = useState(18);
   const [volume, setVolume] = useState(1);
@@ -126,6 +128,7 @@ export default function LearningView() {
               toc: toc,
               visibility: found.visibility,
               created_by: found.created_by,
+              content_url: found.content_url || null,
               prevLesson: null,
               nextLesson: null
             });
@@ -184,6 +187,7 @@ export default function LearningView() {
       console.error('Lỗi khi tải trạng thái lưu/yêu thích:', error);
     });
   }, [id, ensureStates]);
+
 
   if (!material) {
     return (
@@ -659,9 +663,14 @@ export default function LearningView() {
           {/* MEDIA CONTROLS */}
           <div className="flex items-center gap-2">
             <div className="flex items-center px-4 py-2 bg-slate-800/80 rounded-2xl border border-slate-700/50 text-sm font-semibold text-slate-300 gap-4">
-              <button className="flex items-center gap-2 hover:text-white transition-colors">
-                <Video className="w-4 h-4" /> VIDEO
-              </button>
+              {material.content_url && /youtube\.com|youtu\.be|\.mp4|\.webm|\.mov|\.mp3|\.wav|\.ogg/i.test(material.content_url) && (
+                <button 
+                  onClick={() => setIsMediaModalOpen(true)} 
+                  className="flex items-center gap-2 hover:text-amber-400 transition-colors text-amber-300 animate-pulse hover:animate-none"
+                >
+                  <Video className="w-4 h-4" /> PHÁT CLIP
+                </button>
+              )}
 
               {/* VOICE MENU (Moved here) */}
               <div className="relative">
@@ -1285,6 +1294,14 @@ export default function LearningView() {
           </div>
         </div>
       )}
+
+      {/* ═══ MEDIA PLAYER MODAL ═══ */}
+      <MediaPlayerModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        url={material.content_url}
+        title={material.title}
+      />
 
       <Footer />
 
