@@ -74,7 +74,42 @@ const generateQuizFromAI = async (topic, limit = 5) => {
     }
 };
 
+/**
+ * HÀM RIÊNG: Tạo Quiz Sinh tồn Vô cực (Ngẫu nhiên kiến thức)
+ */
+const generateRandomQuizFromAI = async (limit = 5) => {
+    const prompt = `Bạn là một hệ thống trò chơi trắc nghiệm bách khoa toàn thư. Hãy tạo ${limit} câu hỏi trắc nghiệm tiếng Việt hoàn toàn ngẫu nhiên ở các lĩnh vực khác nhau (Toán học mẹo, Địa lý, Lịch sử, Khoa học, Đời sống, Văn học, Câu đố vui, v.v.). Mỗi câu hỏi phải thuộc một lĩnh vực khác nhau để kiểm tra kiến thức tổng quát của người chơi.
+    
+    YÊU CẦU BẮT BUỘC:
+    1. Chỉ trả về duy nhất một mảng JSON.
+    2. Cấu trúc mỗi phần tử: {"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": "...", "explanation": "..."}.
+    3. 'correct_answer' phải trùng khớp hoàn toàn với một trong các 'options'.
+    4. 'explanation' giải thích ngắn gọn (1-2 câu) đáp án đúng.
+    5. Không dùng markdown code block (như \`\`\`json). Không có text thừa.`;
+
+    try {
+        const text = await generateContent(prompt);
+        const jsonMatch = text.match(/\[.*\]/s);
+        if (!jsonMatch) throw new Error("AI không trả về JSON.");
+        return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+        console.error("Random Quiz Gen Error:", error.message);
+        // Fallback
+        const mockQuestions = [];
+        for (let i = 1; i <= limit; i++) {
+            mockQuestions.push({
+                question: `(Random Mock) Câu hỏi ngẫu nhiên số ${i}?`,
+                options: ["Đúng", "Sai", "Có thể", "Không biết"],
+                correct_answer: "Đúng",
+                explanation: "Đây là câu hỏi ngẫu nhiên được tạo dự phòng do lỗi API."
+            });
+        }
+        return mockQuestions;
+    }
+};
+
 module.exports = {
     generateContent,
-    generateQuizFromAI
+    generateQuizFromAI,
+    generateRandomQuizFromAI
 };

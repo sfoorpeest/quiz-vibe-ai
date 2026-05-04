@@ -11,9 +11,11 @@ const contactRoutes = require('./routes/contactRoutes');
 const materialRoutes = require('./routes/materialRoutes');
 const myLessonRoutes = require('./routes/myLessonRoutes');
 const chatRoutes = require('./routes/chatRoutes'); // Thêm route cho chat
+const badgeRoutes = require('./routes/badgeRoutes'); // Thẻ thành tích (Badges)
 const path = require('path');
 const http = require('http'); // Import http để tạo server chung cho Express và Socket
 const { initSocket } = require('./socket/socket'); // Import hàm khởi tạo socket
+const { initGameSocket } = require('./socket/gameSocket'); // Socket cho Live Challenge
 require('dotenv').config();
 
 const { connectDB } = require('./config/database');
@@ -25,6 +27,9 @@ const server = http.createServer(app); // Tạo HTTP server từ app Express
 // Workflow: chatController cần io để emit event đến receiver sau khi upload/forward file
 const io = initSocket(server);
 app.set('io', io); // Gắn io vào app để dùng qua req.app.get('io')
+
+// Khởi tạo Game Socket (namespace /game) — tách biệt khỏi Chat
+initGameSocket(io);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
@@ -40,6 +45,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/materials', materialRoutes);
 app.use('/my-lessons', myLessonRoutes);
 app.use('/api/chat', chatRoutes); // Đăng ký route chat
+app.use('/api/badges', badgeRoutes); // Đăng ký route thẻ thành tích
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

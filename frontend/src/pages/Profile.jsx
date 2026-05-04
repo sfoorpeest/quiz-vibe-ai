@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Bookmark, BookCopy, LayoutDashboard, RefreshCcw, Settings2, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, Award, Bookmark, BookCopy, LayoutDashboard, RefreshCcw, Settings2, TriangleAlert } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
 import ProfileActivity from '../components/profile/ProfileActivity';
@@ -9,6 +9,7 @@ import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileInfo from '../components/profile/ProfileInfo';
 import ProfileSettings from '../components/profile/ProfileSettings';
 import ProfileTabs from '../components/profile/ProfileTabs';
+import ProfileBadges from '../components/profile/ProfileBadges';
 import { useAuth } from '../context/AuthContext';
 import { useItemPreference } from '../context/ItemPreferenceContext';
 import { profileService } from '../services/profileService';
@@ -16,6 +17,7 @@ import { materialService } from '../services/materialService';
 
 const tabs = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
+  { id: 'badges', label: 'Thẻ Thành Tích', icon: Award },
   { id: 'courses', label: 'Tiến trình học tập', icon: BookCopy },
   { id: 'saved', label: 'Bộ sưu tập', icon: Bookmark },
   { id: 'settings', label: 'Cài đặt', icon: Settings2 },
@@ -829,6 +831,7 @@ export default function Profile() {
               </div>
 
               {activeTab === 'overview' && renderOverview()}
+              {activeTab === 'badges' && <ProfileBadges />}
               {activeTab === 'courses' && renderCourses()}
               {activeTab === 'saved' && renderSaved()}
               {activeTab === 'settings' && renderSettings()}

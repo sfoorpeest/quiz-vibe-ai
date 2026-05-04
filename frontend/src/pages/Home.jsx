@@ -34,6 +34,9 @@ export default function Home() {
   const [creatorFilter, setCreatorFilter] = useState(''); // ID người tạo
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [systemTags, setSystemTags] = useState([]); // Tags từ hệ thống
+  
+  // State lưu thông tin rank và điểm cho widget Edu Game
+  const [leaderboardStats, setLeaderboardStats] = useState({ rank: 'N/A', totalScore: 0 });
 
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
@@ -57,6 +60,19 @@ export default function Home() {
         const tagsRes = await api.get('/api/edu/tags');
         if (isMounted && tagsRes.data && tagsRes.data.status === 'success') {
           setSystemTags(tagsRes.data.data);
+        }
+        
+        // Fetch Leaderboard for Edu Game widget
+        try {
+          const lbRes = await api.get('/api/quiz/leaderboard');
+          if (isMounted && lbRes.data && lbRes.data.data) {
+            const myEntry = lbRes.data.data.find(p => p.user_id === user?.id);
+            if (myEntry) {
+              setLeaderboardStats({ rank: myEntry.rank, totalScore: myEntry.total_score || 0 });
+            }
+          }
+        } catch (lbErr) {
+          console.error("Lỗi khi tải Leaderboard:", lbErr);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu Home:", err);
@@ -701,10 +717,10 @@ export default function Home() {
                     </p>
                     <div className="flex gap-4">
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Best: 12,450
+                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Pts: {Number(leaderboardStats.totalScore).toLocaleString()}
                        </span>
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #14
+                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #{leaderboardStats.rank}
                        </span>
                     </div>
                  </div>
