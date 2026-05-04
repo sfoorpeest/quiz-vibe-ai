@@ -80,6 +80,10 @@ export const eduService = {
     const response = await api.post('/api/edu/worksheets/submit', { worksheet_id: worksheetId, answers });
     return response.data;
   },
+  deleteWorksheet: async (id) => {
+    const response = await api.delete(`/api/edu/worksheets/${id}`);
+    return response.data;
+  },
   getWorksheetsByMaterial: async (materialId) => {
     const response = await api.get(`/api/edu/worksheets/material/${materialId}`);
     return response.data;

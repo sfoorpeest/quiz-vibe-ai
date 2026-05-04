@@ -61,16 +61,17 @@ export default function WorksheetBuilder() {
       const transformedWs = (wsRes.data || []).map(ws => {
         let blocks = [];
         try {
-          const content = JSON.parse(ws.content);
+          const content = typeof ws.content === 'string' ? JSON.parse(ws.content) : ws.content;
           blocks = [
             { id: `blk-h-${ws.id}`, type: 'header', data: { schoolName: '', className: '', studentName: '', phone: '' } },
-            ...content.map(q => ({
+            ...(Array.isArray(content) ? content : []).map(q => ({
               id: `blk-q-${q.id}`,
               type: 'open_question',
               data: { question: q.question, lines: 4 }
             }))
           ];
         } catch (e) {
+          console.error("Failed to parse worksheet content:", e);
           blocks = [];
         }
         return {
@@ -116,6 +117,20 @@ export default function WorksheetBuilder() {
     }
   };
 
+  const handleDeleteWorksheet = async (wsId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa phiếu học tập này không?')) return;
+    
+    try {
+      await eduService.deleteWorksheet(wsId);
+      toast.success('Đã xóa phiếu học tập');
+      if (String(selectedId) === String(wsId)) setSelectedId(null);
+      fetchData();
+    } catch (error) {
+      console.error('Delete Worksheet Error:', error);
+      toast.error('Không thể xóa phiếu học tập');
+    }
+  };
+
   React.useEffect(() => {
     fetchData();
   }, []);
@@ -136,7 +151,7 @@ export default function WorksheetBuilder() {
 
   // ─── Current worksheet ───
   const currentWorksheet = useMemo(
-    () => worksheets.find(w => w.id === selectedId),
+    () => worksheets.find(w => String(w.id) === String(selectedId)),
     [worksheets, selectedId]
   );
 
@@ -443,13 +458,13 @@ export default function WorksheetBuilder() {
                       }
                     }}
                     className={`w-full text-left p-4 rounded-xl transition-all duration-200 cursor-pointer ${
-                      selectedId === ws.id
+                      String(selectedId) === String(ws.id)
                         ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg'
                         : 'bg-slate-900/40 border border-slate-700/30 hover:bg-slate-800/60 hover:border-slate-600/50'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`text-sm font-bold truncate ${selectedId === ws.id ? 'text-cyan-300' : 'text-slate-200'}`}>
+                      <p className={`text-sm font-bold truncate ${String(selectedId) === String(ws.id) ? 'text-cyan-300' : 'text-slate-200'}`}>
                         {ws.title}
                       </p>
                       <div className="flex items-center gap-1">
@@ -476,6 +491,17 @@ export default function WorksheetBuilder() {
                           title={ws.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
                         >
                           <Heart className={`w-3 h-3 ${ws.isFavorite ? 'fill-rose-300' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteWorksheet(ws.id);
+                          }}
+                          className="h-6 w-6 rounded-md border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/30 flex items-center justify-center transition-all"
+                          title="Xóa phiếu"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -643,6 +669,10 @@ export default function WorksheetBuilder() {
                     
                     <button onClick={handleDownloadWord} className="ws-toolbar-btn ws-toolbar-btn-secondary" title="Tải file Word">
                       <Download className="w-4 h-4" />
+                    </button>
+
+                    <button onClick={() => handleDeleteWorksheet(currentWorksheet.id)} className="ws-toolbar-btn ws-toolbar-btn-secondary text-red-400 hover:bg-red-500/10 hover:border-red-500/30" title="Xóa phiếu">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                     
                     <button onClick={handlePrint} className="ws-toolbar-btn ws-toolbar-btn-primary">
