@@ -101,7 +101,8 @@ exports.saveQuizResult = async (req, res) => {
             total,
             correctCount,
             wrongCount,
-            wrongQuestions
+            wrongQuestions,
+            gameMode
         } = req.body;
         const userId = req.user.id;
 
@@ -160,7 +161,7 @@ exports.saveQuizResult = async (req, res) => {
             correctCount: resolvedCorrectCount,
             totalQuestions: Number(total) || resolvedCorrectCount + resolvedWrongCount,
             timeTaken: timeTaken
-        });
+        }, gameMode);
 
         res.status(201).json({
             status: 'success',
@@ -178,7 +179,7 @@ exports.saveQuizResult = async (req, res) => {
  */
 exports.checkAnswers = async (req, res) => {
     try {
-        const { quizId, materialId, selectedAnswers } = req.body;
+        const { quizId, materialId, selectedAnswers, gameMode } = req.body;
         const userId = req.user.id;
 
         if (!Array.isArray(selectedAnswers) || selectedAnswers.length === 0) {
@@ -255,7 +256,7 @@ exports.checkAnswers = async (req, res) => {
             correctCount,
             totalQuestions,
             timeTaken: timeTaken2
-        });
+        }, gameMode);
 
         if (retryRequired) {
             return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount, newBadges: newBadges || [] });

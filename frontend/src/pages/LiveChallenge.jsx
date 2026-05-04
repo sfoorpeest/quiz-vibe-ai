@@ -69,17 +69,27 @@ export default function LiveChallenge() {
       setIsFinished(true);
     });
 
+    // Nhận huy hiệu mới từ Live Challenge
+    s.on('game:badge_unlocked', ({ badges }) => {
+      if (badges && badges.length > 0) {
+        window.dispatchEvent(new CustomEvent('badge:unlocked', { detail: { badges } }));
+      }
+    });
+
     // Có người rời phòng
     s.on('game:player_left', ({ players: pList }) => {
       setPlayers(pList);
     });
 
     return () => {
-      // Dọn dẹp: xóa window.gameSocket và ngắt kết nối khi rời trang
-      if (window.gameSocket) {
-        window.gameSocket.emit('game:leave');
-        window.gameSocket.disconnect();
-        window.gameSocket = null;
+      // Chỉ gỡ bỏ các listener khi component unmount
+      // Không disconnect ở đây vì React 18 StrictMode sẽ mount/unmount/mount ngay lập tức làm mất kết nối
+      if (s) {
+        s.off('game:question');
+        s.off('game:tick');
+        s.off('game:answer_result');
+        s.off('game:finished');
+        s.off('game:player_left');
       }
     };
   }, [navigate]);
@@ -93,6 +103,11 @@ export default function LiveChallenge() {
 
   // Rời phòng
   const handleLeave = () => {
+    if (socket) {
+      socket.emit('game:leave');
+      socket.disconnect();
+      window.gameSocket = null;
+    }
     navigate('/games');
   };
 

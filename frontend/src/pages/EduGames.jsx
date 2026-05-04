@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Clock, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
@@ -90,10 +91,11 @@ export default function EduGames() {
           setStudyCards(resBadges.data.data.all);
         }
 
-        // 4. Lấy số lượng người dùng online thực tế
+        // 4. Lấy số lượng người dùng online thực tế qua API (dự phòng)
         const resOnline = await api.get('/api/stats/online-count');
         if (resOnline.data && resOnline.data.status === 'success') {
-          setOnlineCount(resOnline.data.count);
+          // Chỉ set nếu chưa có giá trị từ socket (socket sẽ realtime hơn)
+          setOnlineCount(prev => prev > 0 ? prev : resOnline.data.count);
         }
       } catch (error) {
         console.error("Error fetching EduGames data:", error);
@@ -101,25 +103,34 @@ export default function EduGames() {
         setIsLoadingLeaderboard(false);
       }
     };
-    if (user) {
-      fetchData();
-      // Poll mỗi 30s để cập nhật số lượng online
-      const interval = setInterval(async () => {
-        try {
-          const resOnline = await api.get('/api/stats/online-count');
-          if (resOnline.data && resOnline.data.status === 'success') {
-            setOnlineCount(resOnline.data.count);
-          }
-        } catch (e) { /* ignore */ }
-      }, 30000);
-      return () => clearInterval(interval);
-    }
+    if (user) fetchData();
   }, [user]);
 
-  // Cập nhật GAME_MODES với số lượng online thực tế
-  const currentModes = GAME_MODES.map(mode => {
+  // Kết nối socket để lấy số người online cho Live Challenge (Real-time từ L-frontend)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const serverUrl = API_URL.replace('/api', '');
+
+    const socket = io(`${serverUrl}/game`, {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('game:online_count', (count) => {
+      setOnlineCount(count);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const displayGameModes = GAME_MODES.map(mode => {
     if (mode.id === 'live') {
-      return { ...mode, playersOnline: onlineCount };
+      return { ...mode, playersOnline: onlineCount > 0 ? onlineCount : 0 };
     }
     return mode;
   });
@@ -178,7 +189,7 @@ export default function EduGames() {
 
           {/* LEFT: Game Modes (65%) */}
           <div className="flex-2 space-y-6">
-            {currentModes.map(mode => {
+            {displayGameModes.map(mode => {
               const Icon = mode.icon;
               return (
                 <div
@@ -203,7 +214,7 @@ export default function EduGames() {
                         <button className={`flex items-center gap-2 bg-linear-to-r ${mode.gradient} text-slate-950 px-6 py-3 rounded-xl font-extrabold transition-all active:scale-95 shadow-lg text-sm`}>
                           <Play className="w-4 h-4 fill-current" /> Vào chơi
                         </button>
-                        {mode.playersOnline && (
+                        {mode.playersOnline !== null && (
                           <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                             {mode.playersOnline} đang online

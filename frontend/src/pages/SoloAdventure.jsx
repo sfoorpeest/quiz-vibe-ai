@@ -154,7 +154,8 @@ export default function SoloAdventure() {
           total: totalAnswered,
           correctCount: correctTotal,
           wrongCount: totalAnswered - correctTotal,
-          time_taken: timeTaken
+          time_taken: timeTaken,
+          gameMode: 'SOLO'
         });
         if (res.data?.newBadges?.length > 0) {
           window.dispatchEvent(new CustomEvent('badge:unlocked', { detail: { badges: res.data.newBadges } }));

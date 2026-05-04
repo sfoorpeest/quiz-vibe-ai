@@ -23,7 +23,8 @@ const historyValidator = (req, res, next) => {
         material_id: Joi.any().optional().allow(null), 
         quiz_id: Joi.any().optional().allow(null),
         action: Joi.string().valid('VIEWED_MATERIAL', 'STARTED_QUIZ', 'COMPLETED_QUIZ').required(),
-        progress: Joi.number().min(0).max(100).required() 
+        progress: Joi.number().min(0).max(100).required(),
+        time_spent: Joi.number().min(0).optional()
     });
 
     const { error } = schema.validate(req.body);
