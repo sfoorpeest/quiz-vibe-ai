@@ -4,8 +4,8 @@ import { Heart, Flame, Zap, Clock, Shield, Skull, ArrowRight, Home, RotateCcw, T
 import api from '../api/axiosClient';
 import Footer from '../components/Footer';
 
-const TIME_PER_Q = 18;
-const MAX_LIVES = 1;
+const TIME_PER_Q = 20;
+const MAX_LIVES = 3;
 
 const playSound = (type) => {
   try {
@@ -82,7 +82,7 @@ export default function SoloAdventure() {
     e?.preventDefault();
     setIsGenerating(true);
     try {
-      const res = await api.post('/api/quiz/generate-random', { limit: 5 });
+      const res = await api.post('/api/quiz/generate-random', { limit: 10 });
       const data = res.data?.data || [];
       if (data.length > 0) {
         setQuestions(data);
@@ -113,16 +113,18 @@ export default function SoloAdventure() {
       setMaxCombo(p => Math.max(p, newCombo));
       if (newCombo >= 3) playSound('combo');
       const multiplier = newCombo >= 5 ? 3 : newCombo >= 3 ? 2 : 1;
-      const timeBonus = Math.floor(timeLeft / 3);
-      setScore(p => p + (100 * multiplier) + (timeBonus * 10));
+      setScore(p => p + (100 * multiplier));
       setCorrectTotal(p => p + 1);
     } else {
       playSound('wrong');
       setCombo(0);
       setShake(true);
       setTimeout(() => setShake(false), 500);
-      setLives(0);
-      setTimeout(() => setPhase('gameover'), 1200);
+      const newLives = lives - 1;
+      setLives(newLives);
+      if (newLives <= 0) {
+        setTimeout(() => setPhase('gameover'), 1200);
+      }
     }
     setTotalAnswered(p => p + 1);
   };
@@ -130,15 +132,9 @@ export default function SoloAdventure() {
   const handleNext = () => {
     if (lives <= 0) { setPhase('gameover'); return; }
     
-    // Background loading: Load more if we're near the end
-    if (idx >= questions.length - 3) {
-      api.post('/api/quiz/generate-random', { limit: 5 })
-        .then(res => {
-          const newData = res.data?.data || [];
-          if (newData.length > 0) {
-            setQuestions(prev => [...prev, ...newData]);
-          }
-        }).catch(err => console.error("Auto-load error:", err));
+    if (idx >= questions.length - 1) {
+      setPhase('gameover');
+      return;
     }
 
     setIdx(p => p + 1);
@@ -203,7 +199,7 @@ export default function SoloAdventure() {
 
             <div className="flex items-center justify-center gap-5 mb-8">
               {[
-                { icon: Skull, label: '1 Mạng (Sudden Death)', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+                { icon: Shield, label: '3 Mạng (Survival)', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
                 { icon: Clock, label: `${TIME_PER_Q}s/câu`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
                 { icon: Zap, label: 'Kiến thức Vô cực', color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
               ].map((r, i) => (
@@ -216,7 +212,7 @@ export default function SoloAdventure() {
 
             <form onSubmit={handleGenerate} className="space-y-4">
               <div className="w-full bg-slate-800/40 border border-slate-600/30 text-slate-300 rounded-2xl p-5 text-center text-sm shadow-inner">
-                Hệ thống sẽ liên tục đặt ra các câu hỏi ngẫu nhiên từ mọi lĩnh vực. Hãy xem bạn có thể trụ được bao lâu!
+                Hệ thống sẽ đặt ra 10 câu hỏi ngẫu nhiên từ mọi lĩnh vực. Hãy xem bạn có thể trả lời đúng bao nhiêu câu!
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => navigate(-1)}
@@ -224,7 +220,7 @@ export default function SoloAdventure() {
                   Quay lại
                 </button>
                 <button type="submit" disabled={isGenerating}
-                  className="flex-[2] flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 text-white px-5 py-3.5 rounded-xl font-extrabold transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm active:scale-95 hover:shadow-cyan-500/30">
+                  className="flex-[2] flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-70 text-white px-5 py-3.5 rounded-xl font-extrabold transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm active:scale-95 hover:shadow-cyan-500/30">
                   {isGenerating ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang tạo...</> : <><Flame className="w-4 h-4" /> Bắt đầu Sinh Tồn</>}
                 </button>
               </div>
@@ -334,7 +330,7 @@ export default function SoloAdventure() {
           {/* Question counter */}
           <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/30 rounded-xl px-3 py-2">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Câu số</span>
-            <span className="text-xs font-bold text-white">{idx + 1}</span>
+            <span className="text-xs font-bold text-white">{idx + 1}/{questions.length}</span>
           </div>
         </div>
 
@@ -382,8 +378,8 @@ export default function SoloAdventure() {
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Target className="w-3.5 h-3.5" /> Trạng thái</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between border-b border-slate-800/30 pb-2">
-                <span className="text-xs text-slate-400">Đã qua</span>
-                <span className="text-sm font-bold text-white">{idx} câu</span>
+                <span className="text-xs text-slate-400">Tiến độ</span>
+                <span className="text-sm font-bold text-white">{idx + 1}/{questions.length}</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-800/30 pb-2">
                 <span className="text-xs text-slate-400">Đúng</span>

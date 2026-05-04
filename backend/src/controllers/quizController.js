@@ -121,6 +121,9 @@ exports.saveQuizResult = async (req, res) => {
             ? wrongQuestions
             : [];
 
+        // Lấy score thực tế từ game (ví dụ: điểm Solo Adventure có multiplier), nếu không có thì fallback về số câu đúng
+        const resolvedScore = score !== undefined ? Number(score) : resolvedCorrectCount;
+
         // Lưu vào bảng results
         // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions, time_taken
         const timeTaken = Number(req.body.time_taken) || 0;
@@ -133,7 +136,7 @@ exports.saveQuizResult = async (req, res) => {
                     userId,
                     quizId || null,
                     materialId || null,
-                    resolvedCorrectCount,
+                    resolvedScore,
                     resolvedCorrectCount,
                     resolvedWrongCount,
                     JSON.stringify(resolvedWrongQuestions),
@@ -277,12 +280,13 @@ exports.getLeaderboard = async (req, res) => {
                 u.name, 
                 COUNT(r.id) as quizzes_taken,
                 SUM(r.score) as total_score,
-                MAX(r.score) as high_score
+                MAX(r.score) as high_score,
+                SUM(r.time_taken) as total_time
             FROM results r
             JOIN users u ON r.user_id = u.id
-            WHERE r.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            WHERE r.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             GROUP BY u.id
-            ORDER BY total_score DESC
+            ORDER BY total_score DESC, total_time ASC
             LIMIT 10
         `, { type: QueryTypes.SELECT });
 
