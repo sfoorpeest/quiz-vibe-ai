@@ -4,6 +4,7 @@ const ApiLog = require('../models/ApiLog');
 const aiService = require('../services/aiService');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
+const badgeChecker = require('../services/badgeChecker');
 
 exports.createAiQuiz = async (req, res) => {
     try {
@@ -60,6 +61,31 @@ exports.createAiQuiz = async (req, res) => {
         }
         console.error("Controller Error:", error.message);
         res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * 1.5. Tạo Random Quiz cho Solo Adventure (Sinh tồn vô cực)
+ * Dùng endpoint riêng không lưu vào bảng Quiz gốc để tránh rác DB nếu user chỉ chơi 1-2 câu.
+ */
+exports.generateRandomQuiz = async (req, res) => {
+    try {
+        const { limit = 5 } = req.body;
+        const questionsFromAi = await aiService.generateRandomQuizFromAI(limit);
+
+        const questionsToReturn = questionsFromAi.map(q => ({
+            content: q.question + (q.explanation ? `\n\n[EXPLAIN]${q.explanation}` : ""),
+            options: q.options,
+            correct_answer: q.correct_answer
+        }));
+
+        res.status(200).json({
+            message: "Đã tạo câu hỏi ngẫu nhiên thành công!",
+            data: questionsToReturn
+        });
+    } catch (error) {
+        console.error("Random Quiz Controller Error:", error.message);
+        res.status(500).json({ error: "Lỗi khi sinh câu hỏi ngẫu nhiên." });
     }
 };
 
@@ -126,9 +152,17 @@ exports.saveQuizResult = async (req, res) => {
             }
         );
 
+        // === BADGE CHECKER: Kiểm tra và cấp thẻ thành tích ===
+        const newBadges = await badgeChecker.processQuizCompletion(userId, {
+            correctCount: resolvedCorrectCount,
+            totalQuestions: Number(total) || resolvedCorrectCount + resolvedWrongCount,
+            timeTaken: timeTaken
+        });
+
         res.status(201).json({
             status: 'success',
-            message: "Đã lưu kết quả thi thành công!"
+            message: "Đã lưu kết quả thi thành công!",
+            newBadges: newBadges || []
         });
     } catch (error) {
         console.error("Save Result Error:", error);
@@ -211,11 +245,20 @@ exports.checkAnswers = async (req, res) => {
             }
         );
 
+        // === BADGE CHECKER: Kiểm tra và cấp thẻ thành tích ===
+        const totalQuestions = questions.length;
+        const timeTaken2 = Number(req.body.time_taken) || 0;
+        const newBadges = await badgeChecker.processQuizCompletion(userId, {
+            correctCount,
+            totalQuestions,
+            timeTaken: timeTaken2
+        });
+
         if (retryRequired) {
-            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount });
+            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount, newBadges: newBadges || [] });
         }
 
-        return res.status(200).json({ retryRequired: false, score: correctCount });
+        return res.status(200).json({ retryRequired: false, score: correctCount, newBadges: newBadges || [] });
     } catch (error) {
         console.error('Check Answers Error:', error);
         return res.status(500).json({ message: 'Lỗi khi kiểm tra đáp án' });
@@ -227,23 +270,31 @@ exports.checkAnswers = async (req, res) => {
  */
 exports.getLeaderboard = async (req, res) => {
     try {
-        // Lấy top 10 người có tổng điểm cao nhất hoặc điểm trung bình
+        // Lấy top 10 người có tổng điểm cao nhất trong 7 ngày qua (Bảng xếp hạng tuần)
         const leaderboard = await sequelize.query(`
             SELECT 
+                u.id as user_id,
                 u.name, 
                 COUNT(r.id) as quizzes_taken,
                 SUM(r.score) as total_score,
                 MAX(r.score) as high_score
             FROM results r
             JOIN users u ON r.user_id = u.id
+            WHERE r.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             GROUP BY u.id
             ORDER BY total_score DESC
             LIMIT 10
         `, { type: QueryTypes.SELECT });
 
+        // Format data: gán rank
+        const formattedLeaderboard = leaderboard.map((player, index) => ({
+            ...player,
+            rank: index + 1
+        }));
+
         res.status(200).json({
             status: 'success',
-            data: leaderboard
+            data: formattedLeaderboard
         });
     } catch (error) {
         console.error("Leaderboard Error:", error);

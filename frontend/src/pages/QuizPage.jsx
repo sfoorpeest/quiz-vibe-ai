@@ -265,6 +265,13 @@ export default function QuizPage() {
         const result = { ...res.data, wrongAnswers, fullReviewData };
         setRetryResult(result);
 
+        // === BADGE TOAST: Dispatch event nếu có thẻ mới ===
+        if (res.data.newBadges && res.data.newBadges.length > 0) {
+          window.dispatchEvent(new CustomEvent('badge:unlocked', {
+            detail: { badges: res.data.newBadges }
+          }));
+        }
+
         // Lưu vào localStorage để LearningView tải lại khi user quay về
         if (materialId) {
           localStorage.setItem(
