@@ -12,6 +12,7 @@ const materialRoutes = require('./routes/materialRoutes');
 const myLessonRoutes = require('./routes/myLessonRoutes');
 const chatRoutes = require('./routes/chatRoutes'); // Thêm route cho chat
 const badgeRoutes = require('./routes/badgeRoutes'); // Thẻ thành tích (Badges)
+const statsRoutes = require('./routes/statsRoutes'); // Thống kê hệ thống
 const path = require('path');
 const http = require('http'); // Import http để tạo server chung cho Express và Socket
 const { initSocket } = require('./socket/socket'); // Import hàm khởi tạo socket
@@ -46,6 +47,7 @@ app.use('/materials', materialRoutes);
 app.use('/my-lessons', myLessonRoutes);
 app.use('/api/chat', chatRoutes); // Đăng ký route chat
 app.use('/api/badges', badgeRoutes); // Đăng ký route thẻ thành tích
+app.use('/api/stats', statsRoutes); // Đăng ký route thống kê
 
 // Phục vụ file tĩnh (ảnh avatar)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

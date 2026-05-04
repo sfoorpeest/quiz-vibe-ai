@@ -269,31 +269,57 @@ exports.checkAnswers = async (req, res) => {
 };
 
 /**
- * 4. Lấy bảng xếp hạng (Leaderboard)
+ * 4. Lấy bảng xếp hạng (Leaderboard) - Logic Edu Game
+ * Thứ tự ưu tiên:
+ * 1. Điểm cao nhất (Best Score) - DESC
+ * 2. Số lần làm bài (Attempts) - ASC
+ * 3. Thời gian hoàn thành (Time) - ASC
+ * 4. Thời điểm đạt được (Timestamp) - ASC
  */
 exports.getLeaderboard = async (req, res) => {
     try {
-        // Lấy top 10 người có tổng điểm cao nhất trong 7 ngày qua (Bảng xếp hạng tuần)
+        const { quizId, materialId, limit = 10 } = req.query;
+        
+        let whereClause = 'WHERE 1=1';
+        const replacements = [];
+
+        if (quizId) {
+            whereClause += ' AND r.quiz_id = ?';
+            replacements.push(quizId);
+        }
+        if (materialId) {
+            whereClause += ' AND r.material_id = ?';
+            replacements.push(materialId);
+        }
+
         const leaderboard = await sequelize.query(`
             SELECT 
                 u.id as user_id,
                 u.name, 
-                COUNT(r.id) as quizzes_taken,
-                SUM(r.score) as total_score,
+                up.avatar_url,
                 MAX(r.score) as high_score,
-                SUM(r.time_taken) as total_time
+                COUNT(r.id) as attempts,
+                MIN(r.time_taken) as best_time,
+                MIN(COALESCE(r.created_at, r.submitted_at)) as achieved_at
             FROM results r
             JOIN users u ON r.user_id = u.id
-            WHERE r.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            ${whereClause}
             GROUP BY u.id
-            ORDER BY total_score DESC, total_time ASC
-            LIMIT 10
-        `, { type: QueryTypes.SELECT });
+            ORDER BY high_score DESC, attempts ASC, best_time ASC, achieved_at ASC
+            LIMIT ?
+        `, { 
+            replacements: [...replacements, parseInt(limit)],
+            type: QueryTypes.SELECT 
+        });
 
-        // Format data: gán rank
+        // Format data: gán rank và ép kiểu dữ liệu
         const formattedLeaderboard = leaderboard.map((player, index) => ({
             ...player,
-            rank: index + 1
+            rank: index + 1,
+            high_score: parseFloat(player.high_score || 0),
+            attempts: parseInt(player.attempts || 0),
+            best_time: parseInt(player.best_time || 0)
         }));
 
         res.status(200).json({

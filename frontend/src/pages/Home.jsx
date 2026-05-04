@@ -68,7 +68,7 @@ export default function Home() {
           if (isMounted && lbRes.data && lbRes.data.data) {
             const myEntry = lbRes.data.data.find(p => p.user_id === user?.id);
             if (myEntry) {
-              setLeaderboardStats({ rank: myEntry.rank, totalScore: myEntry.total_score || 0 });
+              setLeaderboardStats({ rank: myEntry.rank, totalScore: myEntry.high_score || 0 });
             }
           }
         } catch (lbErr) {
