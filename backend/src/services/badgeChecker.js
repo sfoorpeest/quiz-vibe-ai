@@ -45,9 +45,9 @@ async function ensureUserStats(userId) {
 /**
  * Cập nhật user_stats sau khi hoàn thành quiz.
  * @param {number} userId - ID người dùng
- * @param {object} quizResult - Kết quả quiz { correctCount, wrongCount, totalQuestions, timeTaken }
+ * @param {string} gameMode - Chế độ game (tùy chọn: 'SOLO', 'LIVE')
  */
-async function updateStatsAfterQuiz(userId, quizResult) {
+async function updateStatsAfterQuiz(userId, quizResult, gameMode) {
     await ensureUserStats(userId);
 
     const { correctCount, totalQuestions, timeTaken } = quizResult;
@@ -85,6 +85,22 @@ async function updateStatsAfterQuiz(userId, quizResult) {
         END,
         last_practice_date = CURDATE()
     `;
+
+    // Cập nhật stats game (Solo / Live)
+    if (gameMode === 'SOLO') {
+        updateQuery += `, total_solo_plays = COALESCE(total_solo_plays, 0) + 1`;
+        if (correctCount > 0) {
+            updateQuery += `, total_monster_kills = COALESCE(total_monster_kills, 0) + ${correctCount}`;
+        }
+    } else if (gameMode === 'LIVE') {
+        updateQuery += `, total_live_plays = COALESCE(total_live_plays, 0) + 1`;
+        if (quizResult.isLiveWinner) {
+            updateQuery += `, total_live_wins = COALESCE(total_live_wins, 0) + 1`;
+            updateQuery += `, current_live_win_streak = COALESCE(current_live_win_streak, 0) + 1`;
+        } else {
+            updateQuery += `, current_live_win_streak = 0`;
+        }
+    }
 
     updateQuery += ` WHERE user_id = ?`;
 
@@ -151,9 +167,9 @@ async function checkAndAwardBadges(userId) {
  * Entry point chính: Gọi sau khi user submit quiz.
  * Cập nhật stats -> kiểm tra badges -> trả về thẻ mới.
  */
-async function processQuizCompletion(userId, quizResult) {
+async function processQuizCompletion(userId, quizResult, gameMode = null) {
     try {
-        await updateStatsAfterQuiz(userId, quizResult);
+        await updateStatsAfterQuiz(userId, quizResult, gameMode);
         const newBadges = await checkAndAwardBadges(userId);
         return newBadges;
     } catch (error) {

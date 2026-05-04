@@ -69,6 +69,13 @@ export default function LiveChallenge() {
       setIsFinished(true);
     });
 
+    // Nhận huy hiệu mới từ Live Challenge
+    s.on('game:badge_unlocked', ({ badges }) => {
+      if (badges && badges.length > 0) {
+        window.dispatchEvent(new CustomEvent('badge:unlocked', { detail: { badges } }));
+      }
+    });
+
     // Có người rời phòng
     s.on('game:player_left', ({ players: pList }) => {
       setPlayers(pList);

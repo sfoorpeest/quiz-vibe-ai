@@ -193,9 +193,23 @@ function endGame(io, roomId) {
 
     io.to(roomId).emit('game:finished', { standings, winner });
 
-    // Xóa ánh xạ player → room
-    for (const [socketId] of room.players) {
+    // Xử lý Badges và xóa ánh xạ
+    const badgeChecker = require('../services/badgeChecker');
+    for (const [socketId, player] of room.players) {
         playerRoomMap.delete(socketId);
+        
+        // Gọi service kiểm tra badge
+        const isWinner = winner && winner.id === player.userId;
+        badgeChecker.processQuizCompletion(player.userId, {
+            correctCount: player.correctCount,
+            totalQuestions: room.questions.length,
+            timeTaken: 0, // Live mode tính time theo tick
+            isLiveWinner: isWinner
+        }, 'LIVE').then(newBadges => {
+            if (newBadges && newBadges.length > 0) {
+                io.to(socketId).emit('game:badge_unlocked', { badges: newBadges });
+            }
+        }).catch(err => console.error("Error processing live badges:", err));
     }
 
     // Dọn dẹp phòng sau 10 giây
