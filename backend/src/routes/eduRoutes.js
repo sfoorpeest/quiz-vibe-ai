@@ -71,6 +71,7 @@ router.get('/worksheets/public/:id', eduController.getWorksheetById);
 router.get('/worksheets/assigned', auth, checkRole([1]), eduController.getWorksheetsForStudent);
 router.post('/worksheets/generate', auth, checkRole([2, 3]), eduController.generateWorksheetWithAI);
 router.post('/worksheets/submit', auth, checkRole([1, 2, 3]), eduController.submitWorksheet);
+router.delete('/worksheets/:id', auth, checkRole([2, 3]), eduController.deleteWorksheet);
 router.get('/worksheets/material/:material_id', auth, eduController.getWorksheetsByMaterial);
 
 // 7. Quản trị hệ thống (Chỉ Admin mới có quyền)

@@ -1098,9 +1098,13 @@ exports.generateWorksheetWithAI = async (req, res) => {
         Lưu ý: Chỉ trả về JSON, không kèm văn bản khác.`;
 
         let aiResult = await aiService.generateContent(prompt);
-        // Làm sạch dữ liệu trả về từ AI (loại bỏ markdown block nếu có)
-        aiResult = aiResult.replace(/```json\n|\n```|```/g, '').trim();
-        const parsedContent = JSON.parse(aiResult);
+        // Trích xuất JSON từ phản hồi của AI (phòng trường hợp AI thêm văn bản thừa)
+        const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("AI không trả về định dạng JSON hợp lệ.");
+        }
+        
+        const parsedContent = JSON.parse(jsonMatch[0]);
 
         // Lưu thông tin phiếu học tập đã sinh vào Database
         const [worksheetId] = await sequelize.query(
@@ -1176,6 +1180,34 @@ exports.getWorksheetById = async (req, res) => {
         res.status(200).json({ status: 'success', data: worksheet[0] });
     } catch (error) {
         res.status(500).json({ message: 'Lỗi khi lấy thông tin phiếu học tập' });
+    }
+};
+
+// Xóa phiếu học tập
+exports.deleteWorksheet = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const teacherId = req.user.id;
+
+        // Kiểm tra quyền sở hữu
+        const worksheet = await sequelize.query(
+            'SELECT * FROM worksheets WHERE id = ? AND created_by = ?',
+            { replacements: [id, teacherId], type: QueryTypes.SELECT }
+        );
+
+        if (!worksheet[0]) {
+            return res.status(404).json({ message: 'Không tìm thấy phiếu học tập hoặc bạn không có quyền xóa' });
+        }
+
+        await sequelize.query('DELETE FROM worksheets WHERE id = ?', {
+            replacements: [id],
+            type: QueryTypes.DELETE
+        });
+
+        res.status(200).json({ status: 'success', message: 'Đã xóa phiếu học tập thành công' });
+    } catch (error) {
+        console.error('Delete Worksheet Error:', error);
+        res.status(500).json({ message: 'Lỗi khi xóa phiếu học tập' });
     }
 };
 
