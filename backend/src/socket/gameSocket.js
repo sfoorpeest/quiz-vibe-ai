@@ -193,12 +193,33 @@ function endGame(io, roomId) {
 
     io.to(roomId).emit('game:finished', { standings, winner });
 
-    // Xử lý Badges và xóa ánh xạ
+    // Xử lý Lưu kết quả vào Database, Badges và xóa ánh xạ
+    const { sequelize } = require('../config/database');
+    const { QueryTypes } = require('sequelize');
     const badgeChecker = require('../services/badgeChecker');
+
     for (const [socketId, player] of room.players) {
         playerRoomMap.delete(socketId);
         
-        // Gọi service kiểm tra badge
+        // 1. Lưu kết quả thi đấu vào bảng results để hiển thị trên Leaderboard
+        // Tính toán sơ bộ thời gian chơi (khoảng TICK_SECONDS * số câu hỏi)
+        const estimatedTime = room.questions.length * TICK_SECONDS;
+        
+        sequelize.query(`
+            INSERT INTO results (user_id, score, correct_count, wrong_count, time_taken, game_mode, created_at)
+            VALUES (?, ?, ?, ?, ?, 'LIVE', NOW())
+        `, {
+            replacements: [
+                player.userId,
+                player.score,
+                player.correctCount,
+                Math.max(0, room.questions.length - player.correctCount),
+                estimatedTime
+            ],
+            type: QueryTypes.INSERT
+        }).catch(err => console.error("Error saving live result to DB:", err));
+
+        // 2. Gọi service kiểm tra badge
         const isWinner = winner && winner.id === player.userId;
         badgeChecker.processQuizCompletion(player.userId, {
             correctCount: player.correctCount,

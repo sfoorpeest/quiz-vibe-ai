@@ -128,10 +128,12 @@ exports.saveQuizResult = async (req, res) => {
         // Lưu vào bảng results
         // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions, time_taken
         const timeTaken = Number(req.body.time_taken) || 0;
+        const effectiveGameMode = gameMode || 'PRACTICE';
+
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, game_mode, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
@@ -141,7 +143,8 @@ exports.saveQuizResult = async (req, res) => {
                     resolvedCorrectCount,
                     resolvedWrongCount,
                     JSON.stringify(resolvedWrongQuestions),
-                    timeTaken
+                    timeTaken,
+                    effectiveGameMode
                 ],
                 type: QueryTypes.INSERT
             }
@@ -220,10 +223,12 @@ exports.checkAnswers = async (req, res) => {
 
         // Lưu mọi lần làm quiz để đánh giá tiến độ nhất quán (đúng hoặc sai)
         const timeTaken = Number(req.body.time_taken) || 0;
+        const effectiveGameMode = gameMode || 'PRACTICE';
+
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, game_mode, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
@@ -233,7 +238,8 @@ exports.checkAnswers = async (req, res) => {
                     correctCount,
                     wrongAnswers.length,
                     JSON.stringify(wrongAnswers),
-                    timeTaken
+                    timeTaken,
+                    effectiveGameMode
                 ],
                 type: QueryTypes.INSERT
             }
@@ -279,7 +285,7 @@ exports.checkAnswers = async (req, res) => {
  */
 exports.getLeaderboard = async (req, res) => {
     try {
-        const { quizId, materialId, limit = 10 } = req.query;
+        const { quizId, materialId, limit = 10, mode } = req.query;
         
         let whereClause = 'WHERE 1=1';
         const replacements = [];
@@ -292,32 +298,55 @@ exports.getLeaderboard = async (req, res) => {
             whereClause += ' AND r.material_id = ?';
             replacements.push(materialId);
         }
+        
+        // Nếu không có filter cụ thể, mặc định lấy các mode game để hiển thị Arena
+        if (!quizId && !materialId) {
+            whereClause += " AND r.game_mode IN ('SOLO', 'LIVE')";
+        } else if (mode) {
+            whereClause += " AND r.game_mode = ?";
+            replacements.push(mode);
+        }
 
-        const leaderboard = await sequelize.query(`
-            SELECT 
-                u.id as user_id,
-                u.name, 
-                up.avatar_url,
-                MAX(r.score) as high_score,
-                COUNT(r.id) as attempts,
-                MIN(r.time_taken) as best_time,
-                MIN(COALESCE(r.created_at, r.submitted_at)) as achieved_at
-            FROM results r
-            JOIN users u ON r.user_id = u.id
-            LEFT JOIN user_profiles up ON u.id = up.user_id
-            ${whereClause}
-            GROUP BY u.id
-            ORDER BY high_score DESC, attempts ASC, best_time ASC, achieved_at ASC
-            LIMIT ?
-        `, { 
-            replacements: [...replacements, parseInt(limit)],
+        const currentUserId = req.user.id;
+
+        const query = `
+            WITH UserStats AS (
+                SELECT 
+                    u.id as user_id,
+                    u.name, 
+                    up.avatar_url,
+                    MAX(r.score) as high_score,
+                    COUNT(r.id) as attempts,
+                    MIN(NULLIF(r.time_taken, 0)) as best_time,
+                    MIN(r.created_at) as achieved_at
+                FROM results r
+                JOIN users u ON r.user_id = u.id
+                LEFT JOIN user_profiles up ON u.id = up.user_id
+                ${whereClause}
+                GROUP BY u.id
+            ),
+            RankedStats AS (
+                SELECT 
+                    *,
+                    RANK() OVER (ORDER BY high_score DESC, attempts ASC, best_time ASC, achieved_at ASC) as \`rank\`
+                FROM UserStats
+            )
+            SELECT * FROM RankedStats
+            WHERE \`rank\` <= ? OR user_id = ?
+            ORDER BY \`rank\` ASC
+        `;
+
+        const leaderboardResults = await sequelize.query(query, { 
+            replacements: [...replacements, parseInt(limit), currentUserId],
             type: QueryTypes.SELECT 
         });
 
-        // Format data: gán rank và ép kiểu dữ liệu
-        const formattedLeaderboard = leaderboard.map((player, index) => ({
+        // Tách top list và user info
+        const topList = leaderboardResults.filter(p => p.rank <= parseInt(limit));
+        const currentUserStats = leaderboardResults.find(p => p.user_id === currentUserId);
+
+        const formattedTopList = topList.map(player => ({
             ...player,
-            rank: index + 1,
             high_score: parseFloat(player.high_score || 0),
             attempts: parseInt(player.attempts || 0),
             best_time: parseInt(player.best_time || 0)
@@ -325,7 +354,13 @@ exports.getLeaderboard = async (req, res) => {
 
         res.status(200).json({
             status: 'success',
-            data: formattedLeaderboard
+            data: formattedTopList,
+            currentUser: currentUserStats ? {
+                ...currentUserStats,
+                high_score: parseFloat(currentUserStats.high_score || 0),
+                attempts: parseInt(currentUserStats.attempts || 0),
+                best_time: parseInt(currentUserStats.best_time || 0)
+            } : null
         });
     } catch (error) {
         console.error("Leaderboard Error:", error);

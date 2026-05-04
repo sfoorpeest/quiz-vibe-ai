@@ -65,17 +65,16 @@ export default function EduGames() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Lấy Leaderboard
+        // 1. Lấy Leaderboard và Rank của tôi
         const resLeaderboard = await api.get('/api/quiz/leaderboard');
-        if (resLeaderboard.data && resLeaderboard.data.data) {
-          const lbData = resLeaderboard.data.data;
-          setLeaderboard(lbData);
+        if (resLeaderboard.data && resLeaderboard.data.status === 'success') {
+          setLeaderboard(resLeaderboard.data.data);
           
-          // Tìm rank và điểm của user hiện tại
-          const myEntry = lbData.find(p => p.user_id === user?.id);
-          if (myEntry) {
-            setPlayerRank(myEntry.rank);
-            setPlayerTotalScore(myEntry.high_score || 0);
+          // Sử dụng dữ liệu currentUser từ backend trả về (chính xác hơn vì backend tính rank toàn hệ thống)
+          const myStats = resLeaderboard.data.currentUser;
+          if (myStats) {
+            setPlayerRank(myStats.rank);
+            setPlayerTotalScore(myStats.high_score || 0);
           }
         }
         
@@ -277,7 +276,7 @@ export default function EduGames() {
                               <Target className="w-2.5 h-2.5" /> {player.attempts} lần
                             </span>
                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
-                              <Clock className="w-2.5 h-2.5" /> {player.best_time}s
+                              <Clock className="w-2.5 h-2.5" /> {player.best_time ? `${player.best_time}s` : '--'}
                             </span>
                           </div>
                         </div>
