@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User, Tag, Hash, GraduationCap, LayoutGrid, Layers } from 'lucide-react';
+import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User, Tag, Hash, GraduationCap, LayoutGrid, Layers, Bookmark, Heart } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { useAuth } from '../context/AuthContext';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 
 import { materialService } from '../services/materialService';
 
@@ -65,13 +65,13 @@ function FilterSection({ title, icon, defaultOpen = true, children }) {
 }
 
 export default function Materials() {
-  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [materials, setMaterials] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(false);
   const [popularTags, setPopularTags] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { ensureStates, getState, toggleSaved, toggleFavorite, isPending } = useItemPreference();
 
   const searchQuery = searchParams.get('keyword') || '';
   const selectedSubject = searchParams.get('subject') || 'Tất cả';
@@ -116,7 +116,9 @@ export default function Materials() {
         if (selectedTag) params.tag = selectedTag;
         
         const res = await materialService.getMaterials(params);
-        setMaterials(res.data || []);
+        const baseMaterials = Array.isArray(res.data) ? res.data : [];
+        setMaterials(baseMaterials);
+        await ensureStates('material', baseMaterials.map((mat) => String(mat.id)));
         setPagination(res.pagination || {});
       } catch (err) {
         console.error("Failed to fetch materials:", err);
@@ -386,6 +388,11 @@ export default function Materials() {
                 </div>
               ) : materials.length > 0 ? (
                 materials.map((mat, idx) => (
+                  (() => {
+                    const pref = getState('material', mat.id);
+                    const isSaved = pref.isSaved;
+                    const isFavorite = pref.isFavorite;
+                    return (
                   <div
                     key={mat.id}
                     className={`group grid grid-cols-1 lg:grid-cols-[auto_1fr_80px_140px_100px_80px_auto] items-center gap-4 px-6 py-4 transition-all duration-200 hover:bg-slate-800/60 cursor-pointer ${
@@ -397,7 +404,10 @@ export default function Materials() {
 
                     {/* Title */}
                     <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition-colors truncate">{mat.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition-colors truncate">{mat.title}</h4>
+                        {isFavorite && <span className="text-rose-400 text-[10px] font-bold">❤</span>}
+                      </div>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5 lg:hidden">{mat.type.toUpperCase()} • {mat.created_by}</p>
                     </div>
 
@@ -426,11 +436,47 @@ export default function Materials() {
 
                     {/* Download */}
                     <div className="flex justify-end">
-                      <button className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all active:scale-90">
-                        <Download className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={isPending('material', mat.id, 'save')}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await toggleSaved('material', mat.id);
+                            } catch (error) {
+                              console.error('Toggle save material failed:', error);
+                            }
+                          }}
+                          className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ${isSaved ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-amber-300 hover:border-amber-500/40'}`}
+                          title={isSaved ? 'Bỏ lưu' : 'Lưu'}
+                        >
+                          <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-amber-300' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending('material', mat.id, 'favorite')}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await toggleFavorite('material', mat.id);
+                            } catch (error) {
+                              console.error('Toggle favorite material failed:', error);
+                            }
+                          }}
+                          className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all active:scale-90 ${isFavorite ? 'bg-rose-500/10 border-rose-500/40 text-rose-300' : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-rose-300 hover:border-rose-500/40'}`}
+                          title={isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-rose-300' : ''}`} />
+                        </button>
+                        <button className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/40 hover:bg-emerald-500/10 transition-all active:scale-90">
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                    );
+                  })()
                 ))
               ) : (
                 <div className="py-16 text-center">

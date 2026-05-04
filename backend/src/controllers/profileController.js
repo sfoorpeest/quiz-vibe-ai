@@ -1,9 +1,90 @@
 const User = require('../models/User');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
+const { supabase } = require('../config/supabase');
 const { getMaterialLearningSnapshot } = require('../services/materialService');
+
+const sendProfileError = (res, statusCode, message, error) => res.status(statusCode).json({
+    success: false,
+    message,
+    error: error ? String(error.message || error) : null,
+});
+
+const ALLOWED_ITEM_TYPES = new Set(['material', 'assignment']);
+
+const normalizeItemType = (value) => {
+    const normalized = String(value || '').toLowerCase().trim();
+    return ALLOWED_ITEM_TYPES.has(normalized) ? normalized : null;
+};
+
+const normalizeItemId = (value) => {
+    const normalized = String(value || '').trim();
+    return normalized ? normalized : null;
+};
+
+const upsertUserItemAction = async (userId, itemType, itemId, updates) => {
+    const [existing] = await sequelize.query(
+        `SELECT is_saved, is_favorite
+         FROM user_item_actions
+         WHERE user_id = :userId
+           AND item_type = :itemType
+           AND item_id = :itemId
+         LIMIT 1`,
+        {
+            replacements: { userId, itemType, itemId },
+            type: QueryTypes.SELECT
+        }
+    );
+
+    const nextSaved = typeof updates.isSaved === 'boolean'
+        ? updates.isSaved
+        : Boolean(existing?.is_saved);
+    const nextFavorite = typeof updates.isFavorite === 'boolean'
+        ? updates.isFavorite
+        : Boolean(existing?.is_favorite);
+
+    await sequelize.query(
+        `INSERT INTO user_item_actions
+            (user_id, item_id, item_type, is_saved, is_favorite, created_at, updated_at)
+         VALUES (:userId, :itemId, :itemType, :isSaved, :isFavorite, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            is_saved = VALUES(is_saved),
+            is_favorite = VALUES(is_favorite),
+            updated_at = NOW()`,
+        {
+            replacements: {
+                userId,
+                itemId,
+                itemType,
+                isSaved: nextSaved ? 1 : 0,
+                isFavorite: nextFavorite ? 1 : 0,
+            },
+            type: QueryTypes.INSERT
+        }
+    );
+
+    return {
+        itemId,
+        type: itemType,
+        isSaved: nextSaved,
+        isFavorite: nextFavorite,
+    };
+};
+
+const buildItemTypeWhere = (itemType) => {
+    const normalized = normalizeItemType(itemType);
+    if (!normalized) {
+        return {
+            clause: '',
+            replacements: {}
+        };
+    }
+
+    return {
+        clause: ' AND a.item_type = :itemType ',
+        replacements: { itemType: normalized }
+    };
+};
 
 // --- LẤY THÔNG TIN PROFILE ---
 exports.getProfile = async (req, res) => {
@@ -151,16 +232,72 @@ exports.uploadAvatar = async (req, res) => {
         const userId = req.user.id;
 
         if (!req.file) {
-            return res.status(400).json({ message: "Chưa chọn ảnh đại diện." });
+            return sendProfileError(res, 400, 'Chưa chọn ảnh đại diện.', 'NO_FILE');
         }
 
-        const avatarPath = `/uploads/avatars/${req.file.filename}`;
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY || !supabase) {
+            return sendProfileError(res, 503, 'Thiếu cấu hình Supabase cho upload avatar.', 'SUPABASE_CONFIG_MISSING');
+        }
+
+        const mimeToExt = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+        };
+
+        const ext = mimeToExt[req.file.mimetype];
+        if (!ext) {
+            return sendProfileError(res, 400, 'Định dạng ảnh không hợp lệ.', 'INVALID_IMAGE_TYPE');
+        }
+
+        const avatarObjectPath = `${userId}.${ext}`;
 
         // Đảm bảo row tồn tại trong user_profiles
-        const [existing] = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
+        const [existing] = await sequelize.query("SELECT user_id, avatar_url FROM user_profiles WHERE user_id = :userId", {
             replacements: { userId },
             type: QueryTypes.SELECT
         });
+
+        // Xóa avatar cũ trên Supabase nếu có
+        if (existing?.avatar_url) {
+            let oldObjectPath = null;
+
+            try {
+                const oldUrl = String(existing.avatar_url);
+                if (oldUrl.includes('/storage/v1/object/public/avatars/')) {
+                    oldObjectPath = decodeURIComponent(oldUrl.split('/storage/v1/object/public/avatars/')[1] || '').split('?')[0];
+                } else if (!oldUrl.startsWith('/uploads/')) {
+                    oldObjectPath = oldUrl;
+                }
+            } catch (e) {
+                oldObjectPath = null;
+            }
+
+            if (oldObjectPath) {
+                await supabase.storage.from('avatars').remove([oldObjectPath]);
+            }
+        }
+
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(avatarObjectPath, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true,
+            });
+
+        if (uploadError) {
+            return sendProfileError(res, 502, 'Upload avatar thất bại.', uploadError);
+        }
+
+        const { data: publicData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(avatarObjectPath);
+
+        const avatarPath = publicData?.publicUrl || null;
+        if (!avatarPath) {
+            return sendProfileError(res, 502, 'Không thể tạo URL avatar.', 'PUBLIC_URL_FAILED');
+        }
 
         if (!existing) {
             await sequelize.query("INSERT INTO user_profiles (user_id, avatar_url) VALUES (:userId, :avatarPath)", {
@@ -198,7 +335,7 @@ exports.uploadAvatar = async (req, res) => {
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);
-        res.status(500).json({ message: "Lỗi máy chủ.", error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ.', error: error.message });
     }
 };
 
@@ -408,6 +545,171 @@ exports.getDashboardSummary = async (req, res) => {
     } catch (error) {
         console.error('Profile getDashboardSummary Error:', error);
         res.json({ stats: {}, lastMaterial: null });
+    }
+};
+
+exports.saveItem = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const itemType = normalizeItemType(req.body?.type);
+        const itemId = normalizeItemId(req.body?.itemId);
+
+        if (!itemType || !itemId) {
+            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+        }
+
+        const data = await upsertUserItemAction(userId, itemType, itemId, { isSaved: true });
+        return res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        console.error('Profile saveItem Error:', error);
+        return res.status(500).json({ message: 'Không thể lưu mục.' });
+    }
+};
+
+exports.unsaveItem = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const itemType = normalizeItemType(req.body?.type);
+        const itemId = normalizeItemId(req.body?.itemId);
+
+        if (!itemType || !itemId) {
+            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+        }
+
+        const data = await upsertUserItemAction(userId, itemType, itemId, { isSaved: false });
+        return res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        console.error('Profile unsaveItem Error:', error);
+        return res.status(500).json({ message: 'Không thể bỏ lưu mục.' });
+    }
+};
+
+exports.favoriteItem = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const itemType = normalizeItemType(req.body?.type);
+        const itemId = normalizeItemId(req.body?.itemId);
+
+        if (!itemType || !itemId) {
+            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+        }
+
+        const data = await upsertUserItemAction(userId, itemType, itemId, { isFavorite: true });
+        return res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        console.error('Profile favoriteItem Error:', error);
+        return res.status(500).json({ message: 'Không thể thêm yêu thích.' });
+    }
+};
+
+exports.unfavoriteItem = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const itemType = normalizeItemType(req.body?.type);
+        const itemId = normalizeItemId(req.body?.itemId);
+
+        if (!itemType || !itemId) {
+            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+        }
+
+        const data = await upsertUserItemAction(userId, itemType, itemId, { isFavorite: false });
+        return res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        console.error('Profile unfavoriteItem Error:', error);
+        return res.status(500).json({ message: 'Không thể bỏ yêu thích.' });
+    }
+};
+
+exports.getSavedItems = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { clause, replacements } = buildItemTypeWhere(req.query?.type);
+        const rows = await sequelize.query(
+            `SELECT
+                a.item_id AS itemId,
+                a.item_type AS type,
+                COALESCE(a.is_saved, 0) AS isSaved,
+                COALESCE(a.is_favorite, 0) AS isFavorite,
+                a.updated_at AS updatedAt
+             FROM user_item_actions a
+             WHERE a.user_id = :userId
+               AND a.is_saved = 1
+               ${clause}
+             ORDER BY a.updated_at DESC`,
+            {
+                replacements: { userId, ...replacements },
+                type: QueryTypes.SELECT
+            }
+        );
+        return res.status(200).json({ data: rows });
+    } catch (error) {
+        console.error('Profile getSavedItems Error:', error);
+        return res.status(500).json({ message: 'Không thể tải danh sách đã lưu.' });
+    }
+};
+
+exports.getFavoriteItems = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { clause, replacements } = buildItemTypeWhere(req.query?.type);
+        const rows = await sequelize.query(
+            `SELECT
+                a.item_id AS itemId,
+                a.item_type AS type,
+                COALESCE(a.is_saved, 0) AS isSaved,
+                COALESCE(a.is_favorite, 0) AS isFavorite,
+                a.updated_at AS updatedAt
+             FROM user_item_actions a
+             WHERE a.user_id = :userId
+               AND a.is_favorite = 1
+               ${clause}
+             ORDER BY a.updated_at DESC`,
+            {
+                replacements: { userId, ...replacements },
+                type: QueryTypes.SELECT
+            }
+        );
+        return res.status(200).json({ data: rows });
+    } catch (error) {
+        console.error('Profile getFavoriteItems Error:', error);
+        return res.status(500).json({ message: 'Không thể tải danh sách yêu thích.' });
+    }
+};
+
+exports.getItemStates = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const itemType = normalizeItemType(req.body?.type);
+        const itemIds = Array.isArray(req.body?.itemIds)
+            ? req.body.itemIds.map(normalizeItemId).filter(Boolean)
+            : [];
+
+        if (!itemType || itemIds.length === 0) {
+            return res.status(200).json({ data: [] });
+        }
+
+        const placeholders = itemIds.map(() => '?').join(', ');
+        const rows = await sequelize.query(
+            `SELECT
+                a.item_id AS itemId,
+                a.item_type AS type,
+                COALESCE(a.is_saved, 0) AS isSaved,
+                COALESCE(a.is_favorite, 0) AS isFavorite,
+                a.updated_at AS updatedAt
+             FROM user_item_actions a
+             WHERE a.user_id = ?
+               AND a.item_type = ?
+               AND a.item_id IN (${placeholders})`,
+            {
+                replacements: [userId, itemType, ...itemIds],
+                type: QueryTypes.SELECT
+            }
+        );
+
+        return res.status(200).json({ data: rows });
+    } catch (error) {
+        console.error('Profile getItemStates Error:', error);
+        return res.status(500).json({ message: 'Không thể tải trạng thái mục.' });
     }
 };
 

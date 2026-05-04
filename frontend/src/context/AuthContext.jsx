@@ -76,7 +76,12 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = useCallback((newUserData) => {
     setUser(prevUser => {
-      const updated = { ...prevUser, ...newUserData };
+      const avatarChanged = typeof newUserData?.avatar === 'string' && newUserData.avatar !== prevUser?.avatar;
+      const updated = {
+        ...prevUser,
+        ...newUserData,
+        ...(avatarChanged ? { avatarVersion: Date.now() } : {}),
+      };
       localStorage.setItem('user', JSON.stringify(updated));
       return updated;
     });

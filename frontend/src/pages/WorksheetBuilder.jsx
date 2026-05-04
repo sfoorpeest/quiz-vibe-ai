@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Printer, Eye, Edit3, Plus, Trash2,
   FileText, GraduationCap, ChevronDown, Save, Sparkles,
-  ClipboardList, Search, X, Users, FolderOpen, Share2, Check, Download
+  ClipboardList, Search, X, Users, FolderOpen, Share2, Check, Download, Bookmark, Heart
 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
+import { itemActionService } from '../services/itemActionService';
 import {
   HeaderBlock,
   TableBlock,
@@ -36,17 +37,21 @@ export default function WorksheetBuilder() {
   const [worksheets, setWorksheets] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedId, setSelectedId] = useState(searchParams.get('id') || id || null);
   const [editMode, setEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAssignGroup, setShowAssignGroup] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [worksheetFilter, setWorksheetFilter] = useState('all');
+  const [pendingWorksheetActionId, setPendingWorksheetActionId] = useState(null);
 
   // ─── Fetch Data ───
   const fetchData = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const [wsRes, groupsRes] = await Promise.all([
         eduService.getAllWorksheets(),
         eduService.getGroups()
@@ -79,12 +84,32 @@ export default function WorksheetBuilder() {
 
       setWorksheets(transformedWs);
       setGroups(groupsRes.data || []);
+
+      if (user && transformedWs.length > 0) {
+        try {
+          const ids = transformedWs.map((ws) => String(ws.id));
+          const rows = await itemActionService.getStates({ itemIds: ids, type: 'assignment' });
+          const stateById = new Map(rows.map((row) => [String(row.itemId), row]));
+          setWorksheets((prev) => prev.map((ws) => {
+            const state = stateById.get(String(ws.id));
+            return {
+              ...ws,
+              isSaved: Boolean(state?.isSaved),
+              isFavorite: Boolean(state?.isFavorite),
+            };
+          }));
+        } catch (error) {
+          console.error('Không thể tải trạng thái phiếu học tập:', error);
+        }
+      }
       
       // If we came from a redirect with an ID, select it
       const queryId = searchParams.get('id');
       if (queryId) setSelectedId(Number(queryId));
       
     } catch (error) {
+      console.error('WorksheetBuilder fetchData error:', error);
+      setLoadError('Không thể tải danh sách phiếu học tập.');
       toast.error('Không thể tải danh sách phiếu học tập');
     } finally {
       setLoading(false);
@@ -129,8 +154,51 @@ export default function WorksheetBuilder() {
         w.subject.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+
+    if (worksheetFilter === 'saved') {
+      list = list.filter((w) => Boolean(w.isSaved));
+    }
+
+    if (worksheetFilter === 'favorite') {
+      list = list.filter((w) => Boolean(w.isFavorite));
+    }
+
     return list;
-  }, [worksheets, searchQuery, filterGroupId]);
+  }, [worksheets, searchQuery, filterGroupId, worksheetFilter]);
+
+  const toggleWorksheetSaved = async (worksheetId, currentState) => {
+    setPendingWorksheetActionId(worksheetId);
+    setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isSaved: !currentState } : ws));
+    try {
+      if (currentState) {
+        await itemActionService.unsave({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
+      } else {
+        await itemActionService.save({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
+      }
+    } catch (error) {
+      console.error('Toggle save worksheet failed:', error);
+      setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isSaved: currentState } : ws));
+    } finally {
+      setPendingWorksheetActionId(null);
+    }
+  };
+
+  const toggleWorksheetFavorite = async (worksheetId, currentState) => {
+    setPendingWorksheetActionId(worksheetId);
+    setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isFavorite: !currentState } : ws));
+    try {
+      if (currentState) {
+        await itemActionService.unfavorite({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
+      } else {
+        await itemActionService.favorite({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
+      }
+    } catch (error) {
+      console.error('Toggle favorite worksheet failed:', error);
+      setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isFavorite: currentState } : ws));
+    } finally {
+      setPendingWorksheetActionId(null);
+    }
+  };
 
   // ─── Toggle group assignment ───
   const toggleGroupAssignment = (groupId) => {
@@ -345,19 +413,72 @@ export default function WorksheetBuilder() {
 
               {/* Worksheet cards */}
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="flex items-center gap-2 pb-2">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'saved', label: 'Đã lưu' },
+                    { id: 'favorite', label: 'Yêu thích' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setWorksheetFilter(opt.id)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition ${worksheetFilter === opt.id ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300' : 'bg-slate-900/60 border-slate-700/40 text-slate-400 hover:text-slate-200'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
                 {filteredWorksheets.map(ws => (
-                  <button
+                  <div
                     key={ws.id}
                     onClick={() => { setSelectedId(ws.id); setEditMode(false); }}
-                    className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedId(ws.id);
+                        setEditMode(false);
+                      }
+                    }}
+                    className={`w-full text-left p-4 rounded-xl transition-all duration-200 cursor-pointer ${
                       selectedId === ws.id
                         ? 'bg-cyan-500/10 border border-cyan-500/30 shadow-lg'
                         : 'bg-slate-900/40 border border-slate-700/30 hover:bg-slate-800/60 hover:border-slate-600/50'
                     }`}
                   >
-                    <p className={`text-sm font-bold truncate ${selectedId === ws.id ? 'text-cyan-300' : 'text-slate-200'}`}>
-                      {ws.title}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm font-bold truncate ${selectedId === ws.id ? 'text-cyan-300' : 'text-slate-200'}`}>
+                        {ws.title}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={pendingWorksheetActionId === ws.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleWorksheetSaved(ws.id, Boolean(ws.isSaved));
+                          }}
+                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${ws.isSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-700 text-slate-400 hover:text-amber-300'}`}
+                          title={ws.isSaved ? 'Bỏ lưu' : 'Lưu'}
+                        >
+                          <Bookmark className={`w-3 h-3 ${ws.isSaved ? 'fill-amber-300' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pendingWorksheetActionId === ws.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleWorksheetFavorite(ws.id, Boolean(ws.isFavorite));
+                          }}
+                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${ws.isFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-700 text-slate-400 hover:text-rose-300'}`}
+                          title={ws.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                        >
+                          <Heart className={`w-3 h-3 ${ws.isFavorite ? 'fill-rose-300' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
                     <p className="text-xs text-slate-500 truncate mt-1">{ws.subtitle}</p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-400">{ws.subject}</span>
@@ -368,7 +489,7 @@ export default function WorksheetBuilder() {
                         </span>
                       ))}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -404,6 +525,16 @@ export default function WorksheetBuilder() {
 
           {/* ─── RIGHT: Worksheet Editor / Preview (3 cols) ─── */}
           <div className="lg:col-span-3">
+            {loadError && !loading ? (
+              <div className="bg-slate-900/40 backdrop-blur-xl border border-red-500/20 rounded-3xl p-8 text-center mb-6">
+                <p className="text-red-300 font-bold mb-2">Không thể tải phiếu học tập</p>
+                <p className="text-slate-400 text-sm mb-4">{loadError}</p>
+                <button onClick={fetchData} className="ws-toolbar-btn ws-toolbar-btn-secondary mx-auto">
+                  Thử lại
+                </button>
+              </div>
+            ) : null}
+
             {!currentWorksheet ? (
               <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/30 rounded-3xl p-20 text-center">
                 <ClipboardList className="w-16 h-16 text-slate-700 mx-auto mb-4" />
@@ -415,6 +546,26 @@ export default function WorksheetBuilder() {
                 {/* Toolbar */}
                 <div className="ws-toolbar no-print">
                   <div className="ws-toolbar-left">
+                    <button
+                      type="button"
+                      disabled={pendingWorksheetActionId === currentWorksheet.id}
+                      onClick={() => toggleWorksheetSaved(currentWorksheet.id, Boolean(currentWorksheet.isSaved))}
+                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheet.isSaved ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' : ''}`}
+                    >
+                      <Bookmark className={`w-3.5 h-3.5 ${currentWorksheet.isSaved ? 'fill-amber-300' : ''}`} />
+                      {currentWorksheet.isSaved ? 'Đã lưu' : 'Lưu'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={pendingWorksheetActionId === currentWorksheet.id}
+                      onClick={() => toggleWorksheetFavorite(currentWorksheet.id, Boolean(currentWorksheet.isFavorite))}
+                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheet.isFavorite ? 'text-rose-300 border-rose-500/30 bg-rose-500/10' : ''}`}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${currentWorksheet.isFavorite ? 'fill-rose-300' : ''}`} />
+                      {currentWorksheet.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
+                    </button>
+
                     <button
                       onClick={() => setEditMode(!editMode)}
                       className={`ws-toolbar-btn ws-toolbar-btn-secondary ${editMode ? 'active' : ''}`}

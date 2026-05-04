@@ -467,6 +467,19 @@ exports.getAllTags = async (req, res) => {
         const userId = req.user.id;
         const roleId = req.user.role_id;
 
+        const [hasTagsColumn] = await sequelize.query(
+            `SELECT COUNT(*) AS total
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'materials'
+               AND COLUMN_NAME = 'tags'`,
+            { type: QueryTypes.SELECT }
+        );
+
+        if (Number(hasTagsColumn?.total || 0) === 0) {
+            return res.status(200).json({ status: 'success', data: [] });
+        }
+
         let query = '';
         let replacements = [];
 
@@ -504,7 +517,7 @@ exports.getAllTags = async (req, res) => {
         res.status(200).json({ status: 'success', data: Array.from(allTags) });
     } catch (error) {
         console.error("Get Tags Error:", error);
-        res.status(500).json({ message: "Lỗi khi lấy danh sách tags" });
+        res.status(200).json({ status: 'success', data: [], success: false, message: 'Lỗi khi lấy danh sách tags', error: error.message });
     }
 };
 

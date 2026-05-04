@@ -1,5 +1,11 @@
 const materialService = require('../services/materialService');
 
+const sendError = (res, statusCode, message, error) => res.status(statusCode).json({
+    success: false,
+    message,
+    error: error ? String(error.message || error) : null,
+});
+
 exports.getMaterials = async (req, res) => {
     try {
         const { search = '', type = '', subject = '', grade = '', tag = '', page = '1', limit = '10' } = req.query;
@@ -34,7 +40,7 @@ exports.getTags = async (req, res) => {
         return res.status(200).json({ data: tags });
     } catch (error) {
         console.error('Get tags error:', error);
-        return res.status(500).json({ message: 'Failed to get tags' });
+        return sendError(res, 500, 'Failed to get tags', error);
     }
 };
 
@@ -85,6 +91,100 @@ exports.getMyLessons = async (req, res) => {
         });
     } catch (error) {
         console.error('Get my lessons error:', error);
-        return res.status(500).json({ message: 'Failed to get my lessons' });
+        return sendError(res, 500, 'Failed to get my lessons', error);
+    }
+};
+
+exports.getSavedMaterials = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materials = await materialService.getSavedMaterials(userId);
+        return res.status(200).json({ data: materials });
+    } catch (error) {
+        console.error('Get saved materials error:', error);
+        return sendError(res, 500, 'Failed to get saved materials', error);
+    }
+};
+
+exports.getFavoriteMaterials = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materials = await materialService.getFavoriteMaterials(userId);
+        return res.status(200).json({ data: materials });
+    } catch (error) {
+        console.error('Get favorite materials error:', error);
+        return sendError(res, 500, 'Failed to get favorite materials', error);
+    }
+};
+
+exports.saveMaterial = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materialId = Number(req.params.materialId);
+        const preference = await materialService.setMaterialPreference(userId, materialId, { isSaved: true });
+        return res.status(200).json({ status: 'success', data: preference });
+    } catch (error) {
+        if (error.message === 'INVALID_MATERIAL_ID') {
+            return res.status(400).json({ message: 'Invalid material id' });
+        }
+        if (error.message === 'MATERIAL_NOT_FOUND') {
+            return res.status(404).json({ message: 'Material not found' });
+        }
+        console.error('Save material error:', error);
+        return sendError(res, 500, 'Failed to save material', error);
+    }
+};
+
+exports.unsaveMaterial = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materialId = Number(req.params.materialId);
+        const preference = await materialService.setMaterialPreference(userId, materialId, { isSaved: false });
+        return res.status(200).json({ status: 'success', data: preference });
+    } catch (error) {
+        if (error.message === 'INVALID_MATERIAL_ID') {
+            return res.status(400).json({ message: 'Invalid material id' });
+        }
+        if (error.message === 'MATERIAL_NOT_FOUND') {
+            return res.status(404).json({ message: 'Material not found' });
+        }
+        console.error('Unsave material error:', error);
+        return sendError(res, 500, 'Failed to unsave material', error);
+    }
+};
+
+exports.favoriteMaterial = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materialId = Number(req.params.materialId);
+        const preference = await materialService.setMaterialPreference(userId, materialId, { isFavorite: true });
+        return res.status(200).json({ status: 'success', data: preference });
+    } catch (error) {
+        if (error.message === 'INVALID_MATERIAL_ID') {
+            return res.status(400).json({ message: 'Invalid material id' });
+        }
+        if (error.message === 'MATERIAL_NOT_FOUND') {
+            return res.status(404).json({ message: 'Material not found' });
+        }
+        console.error('Favorite material error:', error);
+        return sendError(res, 500, 'Failed to favorite material', error);
+    }
+};
+
+exports.unfavoriteMaterial = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const materialId = Number(req.params.materialId);
+        const preference = await materialService.setMaterialPreference(userId, materialId, { isFavorite: false });
+        return res.status(200).json({ status: 'success', data: preference });
+    } catch (error) {
+        if (error.message === 'INVALID_MATERIAL_ID') {
+            return res.status(400).json({ message: 'Invalid material id' });
+        }
+        if (error.message === 'MATERIAL_NOT_FOUND') {
+            return res.status(404).json({ message: 'Material not found' });
+        }
+        console.error('Unfavorite material error:', error);
+        return sendError(res, 500, 'Failed to unfavorite material', error);
     }
 };

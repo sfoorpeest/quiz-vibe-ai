@@ -6,13 +6,45 @@ const UserAvatar = ({ user, size = 'md', className = '' }) => {
 
   const avatarUrl = user.avatar;
   const VITE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const avatarVersion = user.avatarVersion || user.avatarUpdatedAt || null;
+
+  const appendVersion = (url) => {
+    if (!avatarVersion) return url;
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.set('v', String(avatarVersion));
+      return parsed.toString();
+    } catch {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}v=${encodeURIComponent(String(avatarVersion))}`;
+    }
+  };
   
   const getAvatarSrc = () => {
     if (!avatarUrl) return null;
-    if (avatarUrl.startsWith('/uploads')) {
-      return `${VITE_API_URL}${avatarUrl}`;
+
+    // Full URL (including Supabase public/signed URL)
+    if (/^https?:\/\//i.test(avatarUrl)) {
+      return appendVersion(avatarUrl);
     }
-    return avatarUrl;
+
+    // Legacy local path fallback
+    if (avatarUrl.startsWith('/uploads')) {
+      return appendVersion(`${VITE_API_URL}${avatarUrl}`);
+    }
+
+    // Absolute storage path fallback
+    if (avatarUrl.startsWith('/storage/v1/') && VITE_SUPABASE_URL) {
+      return appendVersion(`${VITE_SUPABASE_URL}${avatarUrl}`);
+    }
+
+    // Object path fallback (e.g. "6.jpg")
+    if (VITE_SUPABASE_URL) {
+      return appendVersion(`${VITE_SUPABASE_URL}/storage/v1/object/public/avatars/${avatarUrl}`);
+    }
+
+    return appendVersion(avatarUrl);
   };
 
   const src = getAvatarSrc();

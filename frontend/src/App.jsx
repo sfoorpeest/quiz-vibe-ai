@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ItemPreferenceProvider } from './context/ItemPreferenceContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -30,7 +31,8 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-center" reverseOrder={false} />
+        <ItemPreferenceProvider>
+  <Toaster position="top-center" reverseOrder={false} />
         <Routes>
           <Route path="/test" element={<div style={{color:'white', padding:'50px'}}>React is Working!</div>} />
           <Route path="/" element={<Home />} />
@@ -158,6 +160,7 @@ function App() {
           <Route path="/shared/worksheet/:id" element={<WorksheetPublic />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ItemPreferenceProvider>
       </AuthProvider>
     </BrowserRouter>
   );

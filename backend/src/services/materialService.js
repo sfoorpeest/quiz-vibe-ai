@@ -20,6 +20,21 @@ const TYPE_CASE_SQL = `
 
 const ALLOWED_TYPES = new Set(['video', 'audio', 'document']);
 
+async function tableExists(tableName) {
+    const [row] = await sequelize.query(
+        `SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?`,
+        {
+            replacements: [tableName],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    return Number(row?.total || 0) > 0;
+}
+
 function normalizeReadProgress(progress) {
     const parsed = Number(progress);
     if (!Number.isFinite(parsed)) {
@@ -125,39 +140,11 @@ function normalizePagination(page, limit) {
     return { page: normalizedPage, limit: normalizedLimit, offset: (normalizedPage - 1) * normalizedLimit };
 }
 
-async function listMaterials({ search, type, subject, grade, tag, page, limit, userId, roleId }) {
+async function listMaterials({ search, type, subject, grade, page, limit }) {
     const { page: normalizedPage, limit: normalizedLimit, offset } = normalizePagination(page, limit);
 
-    /**
-     * LOGIC PHÂN QUYỀN TRUY CẬP (ACCESS CONTROL):
-     * 1. Public: Mọi người đều thấy (visibility = 'public').
-     * 2. Private: Chỉ người tạo thấy (created_by = userId).
-     * 3. Group Shared: Thấy nếu thuộc group được giao bài (group_materials).
-     * 4. Personal Shared: Thấy nếu được giao bài cá nhân (user_materials).
-     */
-    const whereClauses = ['(visibility = "public"'];
+    const whereClauses = ['1=1'];
     const replacements = [];
-
-    if (userId) {
-        // Nếu là Teacher hoặc Admin, họ được quyền xem các học liệu do chính họ tạo ra (kể cả đang để private)
-        if (roleId === 2 || roleId === 3) {
-            whereClauses[0] += ' OR created_by = ?';
-            replacements.push(userId);
-        }
-        
-        // Truy vấn con: Tìm các tài liệu được giao cho các Lớp (Group) mà User này là thành viên
-        whereClauses[0] += ` OR id IN (
-            SELECT material_id FROM group_materials WHERE group_id IN (
-                SELECT group_id FROM group_members WHERE user_id = ?
-            )
-        )`;
-        replacements.push(userId);
-
-        // Truy vấn con: Tìm các tài liệu được giao đích danh cho cá nhân User này
-        whereClauses[0] += ' OR id IN (SELECT material_id FROM user_materials WHERE user_id = ?)';
-        replacements.push(userId);
-    }
-    whereClauses[0] += ')';
 
     if (search && search.trim()) {
         whereClauses.push('(title LIKE ? OR description LIKE ?)');
@@ -172,7 +159,6 @@ async function listMaterials({ search, type, subject, grade, tag, page, limit, u
     // Filter by subject with intelligent mapping (Refined to prevent false positives)
     if (subject && subject !== 'Tất cả') {
         const subjectMap = {
-            // === Phổ thông (THPT) ===
             'Toán học': ['Toán học', 'Toán', '#Toán'],
             'Vật lý': ['Vật lý', 'Vật lí', '#Vật lý', '#Vật lí'],
             'Hóa học': ['Hóa học', '#Hóa học', '#Hóa'],
@@ -181,41 +167,7 @@ async function listMaterials({ search, type, subject, grade, tag, page, limit, u
             'Lịch sử': ['Lịch sử', '#Lịch sử', '#Sử'],
             'Địa lý': ['Địa lý', 'Địa lí', '#Địa lý', '#Địa lí', '#Địa'],
             'Tiếng Anh': ['Tiếng Anh', 'English', '#Tiếng Anh', '#Anh'],
-            'Tin học': ['Tin học', 'IT', '#Tin học', '#Tin'],
-            'Giáo dục công dân': ['Giáo dục công dân', 'GDCD', 'Đạo đức', 'Pháp luật'],
-            // === Đại học / Chuyên ngành ===
-            'Công nghệ thông tin': ['Công nghệ thông tin', 'CNTT', 'IT', 'Computing', 'Hệ thống thông tin'],
-            'Khoa học máy tính': ['Khoa học máy tính', 'Computer Science', 'Thuật toán', 'Cơ sở dữ liệu', 'AI', 'Machine Learning'],
-            'Kỹ thuật phần mềm': ['Kỹ thuật phần mềm', 'Software Engineering', 'Phát triển phần mềm', 'Kiểm thử', 'Maintenance'],
-            'An toàn thông tin': ['An toàn thông tin', 'Cyber Security', 'Bảo mật', 'Mã hóa', 'Hacking', 'Network Security'],
-            'Kinh tế & Tài chính': ['Kinh tế', 'Tài chính', 'Finance', 'Kinh tế học', 'Tiền tệ', 'Thị trường'],
-            'Quản trị kinh doanh': ['Quản trị kinh doanh', 'Business Administration', 'Quản trị', 'CEO', 'Lãnh đạo', 'Doanh nghiệp'],
-            'Marketing & Truyền thông': ['Marketing', 'Truyền thông', 'Communication', 'PR', 'Quảng cáo', 'Branding', 'Digital Marketing'],
-            'Kế toán & Kiểm toán': ['Kế toán', 'Kiểm toán', 'Accounting', 'Auditing', 'Thuế', 'Báo cáo tài chính'],
-            'Logistics & Chuỗi cung ứng': ['Logistics', 'Chuỗi cung ứng', 'Supply Chain', 'Vận chuyển', 'Kho bãi', 'Xuất nhập khẩu'],
-            'Ngân hàng & Bảo hiểm': ['Ngân hàng', 'Bảo hiểm', 'Banking', 'Insurance', 'Tín dụng', 'Lãi suất'],
-            'Du lịch & Khách sạn': ['Du lịch', 'Khách sạn', 'Tourism', 'Hospitality', 'Lữ hành', 'Nhà hàng'],
-            'Kỹ thuật & Công nghệ': ['Kỹ thuật', 'Technology', 'Công nghệ', 'Kỹ sư'],
-            'Kiến trúc & Xây dựng': ['Kiến trúc', 'Xây dựng', 'Architecture', 'Construction', 'Công trình', 'Thiết kế nhà'],
-            'Điện - Điện tử': ['Điện', 'Điện tử', 'Electronics', 'Mạch điện', 'Vi điều khiển'],
-            'Cơ khí & Tự động hóa': ['Cơ khí', 'Tự động hóa', 'Mechanical', 'Automation', 'Robot', 'Máy móc'],
-            'Y Dược & Sức khỏe': ['Y học', 'Y khoa', 'Dược', 'Sức khỏe', 'Y tế', 'Bác sĩ', 'Bệnh lý'],
-            'Điều dưỡng': ['Điều dưỡng', 'Nursing', 'Chăm sóc bệnh nhân', 'Y tá'],
-            'Tâm lý học': ['Tâm lý học', 'Psychology', 'Tâm lý', 'Hành vi', 'Trị liệu'],
-            'Luật & Pháp lý': ['Luật', 'Pháp luật', 'Legal', 'Tố tụng', 'Quyền lợi', 'Hiến pháp'],
-            'Sư phạm & Giáo dục': ['Sư phạm', 'Giáo dục', 'Education', 'Giảng dạy', 'Phương pháp dạy học'],
-            'Ngôn ngữ học': ['Ngôn ngữ học', 'Linguistics', 'Ngữ pháp', 'Ngữ âm', 'Từ vựng'],
-            'Công nghệ sinh học': ['Công nghệ sinh học', 'Biotechnology', 'Gen', 'Tế bào', 'Vi sinh'],
-            'Khoa học môi trường': ['Môi trường', 'Environmental Science', 'Biến đổi khí hậu', 'Sinh thái'],
-            'Thiết kế đồ họa': ['Thiết kế đồ họa', 'Graphic Design', 'Photoshop', 'Illustrator', 'UI/UX', 'Mỹ thuật'],
-            'Nhiếp ảnh & Điện ảnh': ['Nhiếp ảnh', 'Điện ảnh', 'Photography', 'Film', 'Quay phim', 'Dựng phim'],
-            // === Xã hội & Kỹ năng ===
-            'Lập trình': ['Lập trình', 'Programming', 'Code', 'JavaScript', 'Python', 'Java', 'React', 'NodeJS', 'Web'],
-            'Tài chính cá nhân': ['Tài chính cá nhân', 'Tiết kiệm', 'Đầu tư', 'Quản lý tiền', 'Chứng khoán'],
-            'Kỹ năng mềm': ['Kỹ năng mềm', 'Giao tiếp', 'Thuyết trình', 'Làm việc nhóm', 'Critical Thinking'],
-            'Khởi nghiệp': ['Khởi nghiệp', 'Startup', 'Ý tưởng kinh doanh', 'Gọi vốn'],
-            'Kinh doanh online': ['Kinh doanh online', 'E-commerce', 'Bán hàng online', 'Shopee', 'TikTok Shop'],
-            'Đầu tư chứng khoán': ['Chứng khoán', 'Stock', 'Đầu tư', 'Thị trường tài chính', 'Cổ phiếu']
+            'Tin học': ['Tin học', 'IT', '#Tin học', '#Tin']
         };
 
         const subjectVariations = subjectMap[subject] || [subject];
@@ -227,7 +179,7 @@ async function listMaterials({ search, type, subject, grade, tag, page, limit, u
         });
     }
 
-    // Filter by grade/level with intelligent mapping
+    // Filter by grade (e.g., "Lớp 12")
     if (grade && grade !== 'Tất cả') {
         const gradeMap = {
             'Lớp 10': ['Lớp 10', 'lớp 10', 'khối 10', 'K10', ' 10', '#10'],
@@ -250,12 +202,6 @@ async function listMaterials({ search, type, subject, grade, tag, page, limit, u
             whereClauses.push('(title LIKE ? OR description LIKE ?)');
             replacements.push(`%${grade}%`, `%${grade}%`);
         }
-    }
-
-    // Filter by tag
-    if (tag && tag.trim()) {
-        whereClauses.push('(tags LIKE ? OR description LIKE ?)');
-        replacements.push(`%${tag.trim()}%`, `%${tag.trim()}%`);
     }
 
     const whereSQL = whereClauses.join(' AND ');
@@ -327,6 +273,9 @@ async function getMaterialDetailById(id) {
 }
 
 async function getMyLessons(userId) {
+    const hasUserMaterials = await tableExists('user_materials');
+    const hasPreferences = await tableExists('user_material_preferences');
+
     const assignmentQuery = `
         SELECT
             q.id,
@@ -337,7 +286,6 @@ async function getMyLessons(userId) {
             q.created_at,
             q.progress
         FROM (
-            /* Giao bài cá nhân */
             SELECT DISTINCT
                 m.id,
                 m.title,
@@ -346,6 +294,8 @@ async function getMyLessons(userId) {
                 m.content,
                 m.created_at,
                 um.assigned_at,
+                ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+                ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
                 COALESCE((
                     SELECT lh2.progress
                     FROM learning_history lh2
@@ -354,35 +304,13 @@ async function getMyLessons(userId) {
                         AND lh2.action = 'VIEWED_MATERIAL'
                     ORDER BY lh2.created_at DESC, lh2.id DESC
                     LIMIT 1
-                ), 0) as progress
+                ), 0) AS progress
             FROM user_materials um
             INNER JOIN materials m ON m.id = um.material_id
+            ${hasPreferences ? `LEFT JOIN user_material_preferences pref
+                ON pref.user_id = um.user_id
+               AND pref.material_id = m.id` : ''}
             WHERE um.user_id = ?
-
-            UNION
-
-            /* Giao bài theo lớp */
-            SELECT DISTINCT
-                m.id,
-                m.title,
-                ${TYPE_CASE_SQL} AS type,
-                m.content_url,
-                m.content,
-                m.created_at,
-                gm.assigned_at,
-                COALESCE((
-                    SELECT lh2.progress
-                    FROM learning_history lh2
-                    WHERE lh2.user_id = ?
-                        AND lh2.material_id = m.id
-                        AND lh2.action = 'VIEWED_MATERIAL'
-                    ORDER BY lh2.created_at DESC, lh2.id DESC
-                    LIMIT 1
-                ), 0) as progress
-            FROM group_materials gm
-            INNER JOIN group_members gmb ON gmb.group_id = gm.group_id
-            INNER JOIN materials m ON m.id = gm.material_id
-            WHERE gmb.user_id = ?
         ) q
         ORDER BY COALESCE(q.assigned_at, q.created_at) DESC
     `;
@@ -396,39 +324,45 @@ async function getMyLessons(userId) {
             m.content,
             m.created_at,
             lh.created_at as activity_at,
-            COALESCE(lh.progress, 0) as progress
+            ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+            ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
+            COALESCE(lh.progress, 0) AS progress
         FROM learning_history lh
         INNER JOIN materials m ON m.id = lh.material_id
+        ${hasPreferences ? `LEFT JOIN user_material_preferences pref
+            ON pref.user_id = lh.user_id
+           AND pref.material_id = m.id` : ''}
         WHERE lh.user_id = ?
           AND lh.material_id IS NOT NULL
-                    AND lh.action = 'VIEWED_MATERIAL'
-                    AND lh.id = (
-                            SELECT MAX(id)
-                            FROM learning_history
-                            WHERE user_id = lh.user_id
-                                AND material_id = m.id
-                                AND action = 'VIEWED_MATERIAL'
-                    )
+          AND lh.action = 'VIEWED_MATERIAL'
+          AND lh.id = (
+                SELECT MAX(id)
+                FROM learning_history
+                WHERE user_id = lh.user_id
+                    AND material_id = m.id
+                    AND action = 'VIEWED_MATERIAL'
+          )
         ORDER BY activity_at DESC
     `;
 
     // Preferred source remains assignments, but read-history rows must be merged in so
     // progress does not drop when a material is learned outside assignment mapping.
     let assignedRows = [];
-    try {
+    if (hasUserMaterials) {
+        try {
         assignedRows = await sequelize.query(assignmentQuery, {
-            replacements: [userId, userId, userId],
+            replacements: [userId],
             type: QueryTypes.SELECT
         });
-    } catch (error) {
-        console.error('MY LESSONS ERROR:', error);
-        // If user_materials does not exist yet, continue with fallback query.
-        const isMissingRelation =
-            String(error?.original?.code || '') === 'ER_NO_SUCH_TABLE' ||
-            /user_materials/i.test(String(error?.message || ''));
+        } catch (error) {
+            console.error('MY LESSONS ERROR:', error);
+            const isMissingRelation =
+                String(error?.original?.code || '') === 'ER_NO_SUCH_TABLE' ||
+                /user_materials|user_material_preferences/i.test(String(error?.message || ''));
 
-        if (!isMissingRelation) {
-            throw error;
+            if (!isMissingRelation) {
+                throw error;
+            }
         }
     }
 
@@ -450,14 +384,22 @@ async function getMyLessons(userId) {
             return;
         }
 
+        const mergedFlags = {
+            is_saved: Number(existing.is_saved || 0) || Number(row.is_saved || 0) ? 1 : 0,
+            is_favorite: Number(existing.is_favorite || 0) || Number(row.is_favorite || 0) ? 1 : 0,
+        };
+
         const existingRead = normalizeReadProgress(existing.progress);
         const candidateRead = normalizeReadProgress(row.progress);
         const existingTime = toTimeValue(existing.activity_at || existing.assigned_at || existing.created_at);
         const candidateTime = toTimeValue(row.activity_at || row.assigned_at || row.created_at);
 
         if (candidateRead > existingRead || (candidateRead === existingRead && candidateTime > existingTime)) {
-            mergedById.set(id, { ...existing, ...row });
+            mergedById.set(id, { ...existing, ...row, ...mergedFlags });
+            return;
         }
+
+        mergedById.set(id, { ...existing, ...mergedFlags });
     });
 
     return attachLatestQuizResult([...mergedById.values()], userId);
@@ -520,6 +462,8 @@ async function attachLatestQuizResult(lessons, userId) {
             ...lesson,
             progress: effectiveProgress,
             reading_progress: baseProgress,
+            is_saved: Number(lesson.is_saved || 0),
+            is_favorite: Number(lesson.is_favorite || 0),
             last_score: latestQuiz ? Number(latestQuiz.last_score) : null,
             quiz_status: quizStatus,
             last_attempt_date: latestQuiz?.last_attempt_date || null,
@@ -527,40 +471,188 @@ async function attachLatestQuizResult(lessons, userId) {
     });
 }
 
-/**
- * Trích xuất danh sách tag phổ biến từ description của tất cả materials.
- * Tags được lưu dưới dạng [TAGS:tag1,tag2,tag3] trong description.
- */
 async function getPopularTags(limitCount = 30) {
+    const hasTagsColumn = await sequelize.query(
+        `SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'materials'
+           AND COLUMN_NAME = 'tags'`,
+        { type: QueryTypes.SELECT }
+    );
+
+    if (Number(hasTagsColumn?.[0]?.total || 0) === 0) {
+        return [];
+    }
+
     const rows = await sequelize.query(
-        `SELECT description FROM materials WHERE description LIKE '%[TAGS:%' AND visibility = 'public'`,
+        `SELECT tags FROM materials WHERE tags IS NOT NULL AND TRIM(tags) <> ''`,
         { type: QueryTypes.SELECT }
     );
 
     const tagFrequency = new Map();
-    rows.forEach(row => {
-        const match = row.description?.match(/^\[TAGS:(.*?)\]/);
-        if (match) {
-            match[1].split(',').forEach(tag => {
-                const cleaned = tag.trim();
-                if (cleaned) {
-                    tagFrequency.set(cleaned, (tagFrequency.get(cleaned) || 0) + 1);
-                }
+    rows.forEach((row) => {
+        String(row?.tags || '')
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .forEach((tag) => {
+                tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
             });
-        }
     });
 
-    // Sort by frequency (most popular first), return top N
     return [...tagFrequency.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, limitCount)
         .map(([tag, count]) => ({ tag, count }));
 }
 
+async function getPreferredMaterials(userId, preferenceField) {
+    const hasPreferences = await tableExists('user_material_preferences');
+    if (!hasPreferences) {
+        return [];
+    }
+
+    const field = preferenceField === 'is_favorite' ? 'is_favorite' : 'is_saved';
+    const rows = await sequelize.query(
+        `SELECT
+            m.id,
+            m.title,
+            ${TYPE_CASE_SQL} AS type,
+            m.content_url,
+            m.content,
+            m.created_at,
+            pref.updated_at AS preference_updated_at,
+            COALESCE(pref.is_saved, 0) AS is_saved,
+            COALESCE(pref.is_favorite, 0) AS is_favorite,
+            COALESCE((
+                SELECT lh2.progress
+                FROM learning_history lh2
+                WHERE lh2.user_id = pref.user_id
+                  AND lh2.material_id = m.id
+                  AND lh2.action = 'VIEWED_MATERIAL'
+                ORDER BY lh2.created_at DESC, lh2.id DESC
+                LIMIT 1
+            ), 0) AS progress
+         FROM user_material_preferences pref
+         INNER JOIN materials m ON m.id = pref.material_id
+         WHERE pref.user_id = ?
+           AND pref.${field} = 1
+         ORDER BY pref.updated_at DESC`,
+        {
+            replacements: [userId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    return attachLatestQuizResult(rows, userId);
+}
+
+async function getSavedMaterials(userId) {
+    return getPreferredMaterials(userId, 'is_saved');
+}
+
+async function getFavoriteMaterials(userId) {
+    return getPreferredMaterials(userId, 'is_favorite');
+}
+
+async function materialExists(materialId) {
+    const [row] = await sequelize.query(
+        `SELECT id FROM materials WHERE id = ? LIMIT 1`,
+        {
+            replacements: [materialId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    return Boolean(row?.id);
+}
+
+async function setMaterialPreference(userId, materialId, updates) {
+    const hasPreferences = await tableExists('user_material_preferences');
+    if (!hasPreferences) {
+        return {
+            materialId: Number(materialId),
+            isSaved: Boolean(updates.isSaved),
+            isFavorite: Boolean(updates.isFavorite),
+        };
+    }
+
+    const normalizedMaterialId = Number(materialId);
+    if (!Number.isInteger(normalizedMaterialId) || normalizedMaterialId <= 0) {
+        throw new Error('INVALID_MATERIAL_ID');
+    }
+
+    const exists = await materialExists(normalizedMaterialId);
+    if (!exists) {
+        throw new Error('MATERIAL_NOT_FOUND');
+    }
+
+    const [existing] = await sequelize.query(
+        `SELECT is_saved, is_favorite
+         FROM user_material_preferences
+         WHERE user_id = ? AND material_id = ?
+         LIMIT 1`,
+        {
+            replacements: [userId, normalizedMaterialId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    const nextSaved = typeof updates.isSaved === 'boolean'
+        ? updates.isSaved
+        : Boolean(existing?.is_saved);
+    const nextFavorite = typeof updates.isFavorite === 'boolean'
+        ? updates.isFavorite
+        : Boolean(existing?.is_favorite);
+
+    await sequelize.query(
+        `INSERT INTO user_material_preferences
+            (user_id, material_id, is_saved, is_favorite, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            is_saved = VALUES(is_saved),
+            is_favorite = VALUES(is_favorite),
+            updated_at = NOW()`,
+        {
+            replacements: [
+                userId,
+                normalizedMaterialId,
+                nextSaved ? 1 : 0,
+                nextFavorite ? 1 : 0,
+            ],
+            type: QueryTypes.INSERT
+        }
+    );
+
+    const [snapshot] = await sequelize.query(
+        `SELECT
+            material_id,
+            COALESCE(is_saved, 0) AS is_saved,
+            COALESCE(is_favorite, 0) AS is_favorite
+         FROM user_material_preferences
+         WHERE user_id = ? AND material_id = ?
+         LIMIT 1`,
+        {
+            replacements: [userId, normalizedMaterialId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    return {
+        materialId: normalizedMaterialId,
+        isSaved: Boolean(snapshot?.is_saved),
+        isFavorite: Boolean(snapshot?.is_favorite),
+    };
+}
+
 module.exports = {
     listMaterials,
     getMaterialDetailById,
     getMyLessons,
+    getSavedMaterials,
+    getFavoriteMaterials,
+    setMaterialPreference,
     getMaterialLearningSnapshot,
     computeEffectiveProgress,
     getPopularTags,
