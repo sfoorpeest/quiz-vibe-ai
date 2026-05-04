@@ -133,26 +133,26 @@ export default function WaitingRoom() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(251,146,60,0.06),transparent_40%)]" />
       <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
       {/* Floating orbs */}
-      <div className="absolute top-[15%] left-[20%] w-80 h-80 bg-amber-500/[0.06] rounded-full blur-[120px] animate-pulse pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[15%] w-96 h-96 bg-orange-600/[0.05] rounded-full blur-[140px] animate-[pulse_4s_ease-in-out_infinite] pointer-events-none" />
+      <div className="absolute top-[15%] left-[20%] w-80 h-80 bg-amber-500/6 rounded-full blur-[120px] animate-pulse pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[15%] w-96 h-96 bg-orange-600/5 rounded-full blur-[140px] animate-[pulse_4s_ease-in-out_infinite] pointer-events-none" />
 
       {/* Main Card */}
       <div className="relative z-10 w-full max-w-lg bg-slate-900/60 backdrop-blur-2xl border border-amber-500/10 p-10 rounded-[32px] shadow-[0_0_80px_rgba(245,158,11,0.06),0_30px_60px_rgba(0,0,0,0.4)]">
         {/* Glow ring */}
-        <div className="absolute -inset-px rounded-[32px] bg-gradient-to-b from-amber-500/20 via-transparent to-orange-500/10 pointer-events-none" />
+        <div className="absolute -inset-px rounded-[32px] bg-linear-to-b from-amber-500/20 via-transparent to-orange-500/10 pointer-events-none" />
 
         <div className="relative">
           {/* Header */}
           <div className="flex justify-center mb-6">
             <div className="relative">
               <div className="absolute inset-0 bg-amber-500/30 rounded-2xl blur-xl animate-pulse" />
-              <div className="relative w-18 h-18 bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/25">
+              <div className="relative w-18 h-18 bg-linear-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/25">
                 <Swords className="w-9 h-9 text-white drop-shadow-lg" />
               </div>
             </div>
           </div>
 
-          <h1 className="text-2xl font-black text-center mb-1 bg-gradient-to-r from-amber-300 via-orange-200 to-red-300 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-black text-center mb-1 bg-linear-to-r from-amber-300 via-orange-200 to-red-300 bg-clip-text text-transparent">
             Live Challenge
           </h1>
           <p className="text-slate-400 text-center text-sm mb-8">
@@ -174,7 +174,7 @@ export default function WaitingRoom() {
             <div className="flex justify-center mb-8">
               <div className="relative">
                 <div className="absolute inset-0 bg-amber-500/30 rounded-full blur-2xl animate-pulse" />
-                <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-2xl">
+                <div className="relative w-24 h-24 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-2xl">
                   <span className="text-4xl font-black text-white animate-bounce">{countdown}</span>
                 </div>
               </div>
@@ -235,7 +235,7 @@ export default function WaitingRoom() {
                   >
                     {player ? (
                       <>
-                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarColors[i]} flex items-center justify-center shadow-lg`}>
+                        <div className={`w-10 h-10 rounded-full bg-linear-to-br ${avatarColors[i]} flex items-center justify-center shadow-lg`}>
                           <User className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-[10px] font-bold text-slate-300 truncate w-full text-center">

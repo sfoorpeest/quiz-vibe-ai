@@ -116,10 +116,10 @@ export default function LiveChallenge() {
       <div className="min-h-screen bg-[#0a0e1a] text-white flex flex-col items-center justify-center p-6 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.15),transparent_50%)]" />
         <div className="relative z-10 max-w-lg w-full bg-slate-900/80 backdrop-blur-xl border border-amber-500/20 p-8 rounded-[32px] text-center shadow-2xl">
-          <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(245,158,11,0.4)]">
+          <div className="w-24 h-24 bg-linear-to-br from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(245,158,11,0.4)]">
             <Trophy className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-500">TRẬN ĐẤU KẾT THÚC</h1>
+          <h1 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-linear-to-r from-amber-300 to-orange-500">TRẬN ĐẤU KẾT THÚC</h1>
           {winner && (
             <p className="text-lg text-slate-300 mb-8">
               Nhà vô địch: <strong className="text-amber-400 text-xl">{winner.name}</strong>
@@ -154,7 +154,7 @@ export default function LiveChallenge() {
       {/* ═══ PHẦN TRÊN: ĐƯỜNG ĐUA ═══ */}
       <div className="h-[40vh] border-b border-slate-800 bg-[#0f1423] relative overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-[#0a0e1a] to-transparent">
+        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-linear-to-b from-[#0a0e1a] to-transparent">
           <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2 rounded-xl backdrop-blur-md border border-slate-700">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ</span>
             <span className="text-sm font-black text-white">{questionIndex + 1} / {totalQuestions || '?'}</span>
@@ -175,7 +175,7 @@ export default function LiveChallenge() {
                 {/* Lane background */}
                 <div className="absolute inset-0 top-1/2 -translate-y-1/2 h-1.5 bg-slate-800/50 rounded-full overflow-hidden">
                   {/* Đường kẻ đứt */}
-                  <div className="absolute inset-0 w-full h-full bg-[linear-gradient(90deg,transparent_0%,transparent_50%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.05)_100%)] bg-[length:20px_100%]" />
+                  <div className="absolute inset-0 w-full h-full bg-[linear-gradient(90deg,transparent_0%,transparent_50%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.05)_100%)] bg-size-[20px_100%]" />
                 </div>
 
                 {/* Avatar di chuyển */}
@@ -183,7 +183,7 @@ export default function LiveChallenge() {
                   className="absolute z-10 transition-all duration-1000 ease-out flex items-center gap-3"
                   style={{ left: `calc(${progress}% - 24px)` }}
                 >
-                  <div className={`relative w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] border-2 ${isMe ? 'border-amber-400' : 'border-slate-700'} bg-gradient-to-br ${avatarColors[i % avatarColors.length]}`}>
+                  <div className={`relative w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] border-2 ${isMe ? 'border-amber-400' : 'border-slate-700'} bg-linear-to-br ${avatarColors[i % avatarColors.length]}`}>
                     <User className="w-5 h-5 text-white" />
                     {isMe && <Crown className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 text-amber-400 drop-shadow-md" />}
                   </div>
@@ -210,7 +210,7 @@ export default function LiveChallenge() {
       <div className="flex-1 bg-slate-900 flex items-center justify-center p-6 relative">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(59,130,246,0.05),transparent_60%)]" />
 
-        <div className="max-w-4xl w-full w-full relative z-10">
+        <div className="max-w-4xl w-full relative z-10">
           {!currentQuestion ? (
             <div className="text-center p-12 bg-slate-800/30 rounded-[32px] border border-slate-700/50 animate-pulse">
               <span className="text-xl font-bold text-slate-400">Chuẩn bị vòng đua...</span>
@@ -233,7 +233,7 @@ export default function LiveChallenge() {
                   {/* Left: Question Number */}
                   <div className="hidden md:flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-slate-900/50 border border-slate-700/50 shrink-0">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Câu số</span>
-                    <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-cyan-300">
+                    <span className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-br from-blue-400 to-cyan-300">
                       {questionIndex + 1}
                     </span>
                   </div>
@@ -283,7 +283,7 @@ export default function LiveChallenge() {
                       }`}>
                         {String.fromCharCode(65 + idx)}
                       </div>
-                      <span className="flex-1 text-base md:text-lg break-words">{option}</span>
+                      <span className="flex-1 text-base md:text-lg wrap-break-word">{option}</span>
                       
                       {/* Icons for Result */}
                       {answerResult && isCorrect && <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />}

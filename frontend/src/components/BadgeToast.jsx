@@ -50,7 +50,7 @@ function BadgeToastItem({ badge, onDismiss }) {
 
   return (
     <div
-      className={`relative flex items-center gap-4 rounded-2xl border ${tier.border} bg-gradient-to-r ${tier.bg} 
+      className={`relative flex items-center gap-4 rounded-2xl border ${tier.border} bg-linear-to-r ${tier.bg} 
         px-5 py-4 shadow-xl ${tier.glow} backdrop-blur-xl
         animate-[slideInRight_0.5s_ease-out]`}
       style={{ minWidth: 320 }}
@@ -110,7 +110,7 @@ export default function BadgeToast() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3" style={{ pointerEvents: 'auto' }}>
+    <div className="fixed top-4 right-4 z-9999 flex flex-col gap-3" style={{ pointerEvents: 'auto' }}>
       {toasts.map((toast) => (
         <BadgeToastItem
           key={toast._toastId}

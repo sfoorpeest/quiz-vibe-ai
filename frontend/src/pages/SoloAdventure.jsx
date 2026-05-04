@@ -183,18 +183,18 @@ export default function SoloAdventure() {
 
         <div className="relative z-10 w-full max-w-xl bg-slate-900/60 backdrop-blur-2xl border border-cyan-500/10 p-10 rounded-[32px] shadow-[0_0_80px_rgba(6,182,212,0.06),0_30px_60px_rgba(0,0,0,0.4)]">
           {/* Glow ring */}
-          <div className="absolute -inset-px rounded-[32px] bg-gradient-to-b from-cyan-500/20 via-transparent to-violet-500/10 pointer-events-none" />
+          <div className="absolute -inset-px rounded-[32px] bg-linear-to-b from-cyan-500/20 via-transparent to-violet-500/10 pointer-events-none" />
 
           <div className="relative">
             <div className="flex justify-center mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-cyan-500/30 rounded-2xl blur-xl animate-pulse" />
-                <div className="relative w-18 h-18 bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/25">
+                <div className="relative w-18 h-18 bg-linear-to-br from-cyan-500 via-blue-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/25">
                   <Shield className="w-9 h-9 text-white drop-shadow-lg" />
                 </div>
               </div>
             </div>
-            <h1 className="text-3xl font-black text-center mb-2 bg-gradient-to-r from-cyan-300 via-blue-200 to-violet-300 bg-clip-text text-transparent">Thử Thách Sinh Tồn</h1>
+            <h1 className="text-3xl font-black text-center mb-2 bg-linear-to-r from-cyan-300 via-blue-200 to-violet-300 bg-clip-text text-transparent">Thử Thách Sinh Tồn</h1>
             <p className="text-slate-400 text-center text-sm mb-8">Kiến thức vô tận. Sai 1 lần = Game Over!</p>
 
             <div className="flex items-center justify-center gap-5 mb-8">
@@ -220,7 +220,7 @@ export default function SoloAdventure() {
                   Quay lại
                 </button>
                 <button type="submit" disabled={isGenerating}
-                  className="flex-[2] flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-70 text-white px-5 py-3.5 rounded-xl font-extrabold transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm active:scale-95 hover:shadow-cyan-500/30">
+                  className="flex-2 flex items-center justify-center gap-2 bg-linear-to-r from-cyan-600 via-blue-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-70 text-white px-5 py-3.5 rounded-xl font-extrabold transition-all shadow-lg shadow-cyan-500/20 disabled:shadow-none text-sm active:scale-95 hover:shadow-cyan-500/30">
                   {isGenerating ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang tạo...</> : <><Flame className="w-4 h-4" /> Bắt đầu Sinh Tồn</>}
                 </button>
               </div>
@@ -242,7 +242,7 @@ export default function SoloAdventure() {
         <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)',backgroundSize:'40px 40px'}} />
 
         <div className={`relative z-10 w-full max-w-md bg-slate-900/60 backdrop-blur-2xl border ${isWin ? 'border-cyan-500/15' : 'border-red-500/15'} p-10 rounded-[32px] shadow-[0_0_80px_rgba(0,0,0,0.4)] text-center`}>
-          <div className={`absolute -inset-px rounded-[32px] bg-gradient-to-b ${isWin ? 'from-cyan-500/20 via-transparent to-blue-500/10' : 'from-red-500/20 via-transparent to-orange-500/10'} pointer-events-none`} />
+          <div className={`absolute -inset-px rounded-[32px] bg-linear-to-b ${isWin ? 'from-cyan-500/20 via-transparent to-blue-500/10' : 'from-red-500/20 via-transparent to-orange-500/10'} pointer-events-none`} />
           <div className="relative">
             <div className="flex justify-center mb-5">
               <div className="relative">
@@ -255,7 +255,7 @@ export default function SoloAdventure() {
 
             {/* Score highlight */}
             <div className={`mb-5 rounded-2xl border p-5 ${isWin ? 'border-cyan-500/20 bg-cyan-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
-              <p className="text-4xl font-black bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">{score.toLocaleString()}</p>
+              <p className="text-4xl font-black bg-linear-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">{score.toLocaleString()}</p>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Tổng điểm</p>
             </div>
 
@@ -274,7 +274,7 @@ export default function SoloAdventure() {
 
             <div className="flex flex-col gap-3">
               <button onClick={() => navigate('/games')}
-                className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 text-white px-5 py-3.5 rounded-xl font-extrabold shadow-lg shadow-cyan-500/20 text-sm active:scale-95 transition-all hover:shadow-cyan-500/30">
+                className="flex items-center justify-center gap-2 w-full bg-linear-to-r from-cyan-600 via-blue-600 to-violet-600 text-white px-5 py-3.5 rounded-xl font-extrabold shadow-lg shadow-cyan-500/20 text-sm active:scale-95 transition-all hover:shadow-cyan-500/30">
                 <Home className="w-4 h-4" /> Về sảnh
               </button>
             </div>
@@ -301,14 +301,14 @@ export default function SoloAdventure() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.07),transparent_40%)]" />
       <div className="absolute inset-0 opacity-[0.025]" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)',backgroundSize:'32px 32px'}} />
       {/* Floating glow orbs */}
-      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-cyan-500/[0.06] rounded-full blur-[100px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
-      <div className="absolute bottom-[15%] right-[8%] w-80 h-80 bg-violet-600/[0.05] rounded-full blur-[120px] pointer-events-none animate-[pulse_8s_ease-in-out_infinite_2s]" />
-      <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/[0.03] rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-cyan-500/6 rounded-full blur-[100px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
+      <div className="absolute bottom-[15%] right-[8%] w-80 h-80 bg-violet-600/5 rounded-full blur-[120px] pointer-events-none animate-[pulse_8s_ease-in-out_infinite_2s]" />
+      <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/3 rounded-full blur-[150px] pointer-events-none" />
       {/* Decorative floating shapes */}
-      <div className="absolute top-[20%] right-[12%] w-20 h-20 border border-cyan-500/[0.08] rounded-2xl rotate-45 pointer-events-none" />
-      <div className="absolute bottom-[25%] left-[8%] w-16 h-16 border border-violet-500/[0.08] rounded-full pointer-events-none" />
-      <div className="absolute top-[60%] right-[5%] w-12 h-12 border border-blue-500/[0.06] rounded-lg rotate-12 pointer-events-none" />
-      <div className="absolute top-[35%] left-[3%] w-8 h-8 bg-cyan-500/[0.04] rounded-full pointer-events-none" />
+      <div className="absolute top-[20%] right-[12%] w-20 h-20 border border-cyan-500/8 rounded-2xl rotate-45 pointer-events-none" />
+      <div className="absolute bottom-[25%] left-[8%] w-16 h-16 border border-violet-500/8 rounded-full pointer-events-none" />
+      <div className="absolute top-[60%] right-[5%] w-12 h-12 border border-blue-500/6 rounded-lg rotate-12 pointer-events-none" />
+      <div className="absolute top-[35%] left-[3%] w-8 h-8 bg-cyan-500/4 rounded-full pointer-events-none" />
       {combo >= 3 && <div className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${combo >= 5 ? 'bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,0.10),transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(251,146,60,0.08),transparent_60%)]'}`} />}
 
       {/* Top Bar */}
@@ -337,7 +337,7 @@ export default function SoloAdventure() {
         {/* Time Bar */}
         <div className="max-w-4xl mx-auto mt-2">
           <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-            <div className={`h-full rounded-full bg-gradient-to-r ${timerColor} transition-all duration-1000 ease-linear`}
+            <div className={`h-full rounded-full bg-linear-to-r ${timerColor} transition-all duration-1000 ease-linear`}
               style={{ width: `${timeRatio * 100}%` }} />
           </div>
           <div className="flex items-center justify-between mt-1">
@@ -359,8 +359,8 @@ export default function SoloAdventure() {
         <div className={`text-[10px] font-black uppercase tracking-widest ${combo >= 5 ? 'text-purple-400' : combo >= 3 ? 'text-orange-400' : 'text-slate-600'}`}>COMBO</div>
         <div className="relative w-4 h-56 rounded-full bg-slate-800/80 border border-slate-700/30 overflow-hidden shadow-inner">
           {/* Base subtle glow when empty */}
-          <div className="absolute bottom-0 w-full h-full bg-gradient-to-t from-slate-700/20 to-transparent rounded-full" />
-          <div className={`absolute bottom-0 w-full rounded-full transition-all duration-500 ${combo >= 5 ? 'bg-gradient-to-t from-purple-500 via-pink-500 to-fuchsia-400 shadow-[0_0_16px_rgba(168,85,247,0.6)]' : combo >= 3 ? 'bg-gradient-to-t from-orange-600 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(251,146,60,0.5)]' : combo >= 1 ? 'bg-gradient-to-t from-cyan-600 via-cyan-500 to-blue-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'bg-gradient-to-t from-cyan-700/40 to-cyan-600/20 shadow-[0_0_6px_rgba(6,182,212,0.15)]'}`}
+          <div className="absolute bottom-0 w-full h-full bg-linear-to-t from-slate-700/20 to-transparent rounded-full" />
+          <div className={`absolute bottom-0 w-full rounded-full transition-all duration-500 ${combo >= 5 ? 'bg-linear-to-t from-purple-500 via-pink-500 to-fuchsia-400 shadow-[0_0_16px_rgba(168,85,247,0.6)]' : combo >= 3 ? 'bg-linear-to-t from-orange-600 via-amber-500 to-yellow-400 shadow-[0_0_14px_rgba(251,146,60,0.5)]' : combo >= 1 ? 'bg-linear-to-t from-cyan-600 via-cyan-500 to-blue-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'bg-linear-to-t from-cyan-700/40 to-cyan-600/20 shadow-[0_0_6px_rgba(6,182,212,0.15)]'}`}
             style={{ height: `${combo === 0 ? 8 : Math.min((combo / 5) * 100, 100)}%` }} />
         </div>
         <div className={`text-sm font-black ${combo >= 5 ? 'text-purple-300 drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]' : combo >= 3 ? 'text-orange-300 drop-shadow-[0_0_6px_rgba(251,146,60,0.5)]' : combo >= 1 ? 'text-cyan-400' : 'text-slate-600'}`}>
@@ -395,9 +395,9 @@ export default function SoloAdventure() {
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.04] p-[22px] text-center relative overflow-hidden group scale-[0.99]">
+          <div className="rounded-2xl border border-cyan-500/15 bg-cyan-500/4 p-[22px] text-center relative overflow-hidden group scale-[0.99]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <p className="text-3xl font-black bg-gradient-to-r from-cyan-300 via-blue-300 to-violet-300 bg-clip-text text-transparent relative z-10">{score.toLocaleString()}</p>
+            <p className="text-3xl font-black bg-linear-to-r from-cyan-300 via-blue-300 to-violet-300 bg-clip-text text-transparent relative z-10">{score.toLocaleString()}</p>
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 relative z-10">Score</p>
           </div>
         </aside>
@@ -405,8 +405,8 @@ export default function SoloAdventure() {
         {/* Center - Question */}
         <div className="w-full max-w-3xl" key={idx}>
           {/* Question card */}
-          <div className="mb-6 rounded-3xl border border-slate-700/15 bg-gradient-to-b from-slate-800/40 to-slate-900/40 backdrop-blur-xl p-10 lg:p-14 shadow-[0_0_60px_rgba(0,0,0,0.15)] relative overflow-hidden">
-            <div className="absolute -inset-px rounded-3xl bg-gradient-to-b from-cyan-500/[0.05] to-transparent pointer-events-none" />
+          <div className="mb-6 rounded-3xl border border-slate-700/15 bg-linear-to-b from-slate-800/40 to-slate-900/40 backdrop-blur-xl p-10 lg:p-14 shadow-[0_0_60px_rgba(0,0,0,0.15)] relative overflow-hidden">
+            <div className="absolute -inset-px rounded-3xl bg-linear-to-b from-cyan-500/5 to-transparent pointer-events-none" />
             <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-black text-center leading-tight tracking-tight text-slate-100 relative z-10">
               {questionText}
             </h2>
@@ -446,7 +446,7 @@ export default function SoloAdventure() {
 
           {/* Explanation */}
           {answered && explanation && (
-            <div className="mt-5 rounded-2xl border border-cyan-500/10 bg-cyan-500/[0.03] backdrop-blur-sm p-5 text-sm text-slate-300 leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="mt-5 rounded-2xl border border-cyan-500/10 bg-cyan-500/3 backdrop-blur-sm p-5 text-sm text-slate-300 leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-300">
               <span className="text-cyan-400 font-bold mr-1">💡</span> {explanation}
             </div>
           )}
@@ -455,7 +455,7 @@ export default function SoloAdventure() {
           {answered && lives > 0 && (
             <div className="mt-6 flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-300">
               <button onClick={handleNext}
-                className="group flex items-center gap-3 bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 text-white px-7 py-4 rounded-2xl font-black shadow-[0_0_30px_rgba(6,182,212,0.25)] text-sm active:scale-95 transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(6,182,212,0.35)]">
+                className="group flex items-center gap-3 bg-linear-to-r from-cyan-600 via-blue-600 to-violet-600 text-white px-7 py-4 rounded-2xl font-black shadow-[0_0_30px_rgba(6,182,212,0.25)] text-sm active:scale-95 transition-all hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(6,182,212,0.35)]">
                 {idx < questions.length - 1 ? 'Tiếp tục' : 'Xem kết quả'}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </button>

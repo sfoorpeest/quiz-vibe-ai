@@ -14,7 +14,7 @@ const GameFooter = ({ mode = 'Solo Adventure', topic = '' }) => {
   return (
     <footer className="relative z-20 border-t border-slate-700/15 bg-[#0a0e1a]/90 backdrop-blur-xl">
       {/* Top glow line */}
-      <div className="absolute -top-px left-1/2 h-px w-1/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+      <div className="absolute -top-px left-1/2 h-px w-1/3 -translate-x-1/2 bg-linear-to-r from-transparent via-cyan-500/30 to-transparent" />
 
       <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

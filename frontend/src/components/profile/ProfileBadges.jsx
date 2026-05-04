@@ -69,7 +69,7 @@ function BadgeCard({ badge }) {
     >
       {/* Glow effect cho thẻ đã mở */}
       {isUnlocked && (
-        <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${tier.gradient} opacity-[0.04] group-hover:opacity-[0.08] transition-opacity`} />
+        <div className={`absolute inset-0 rounded-3xl bg-linear-to-br ${tier.gradient} opacity-[0.04] group-hover:opacity-[0.08] transition-opacity`} />
       )}
 
       <div className="relative z-10">
@@ -77,7 +77,7 @@ function BadgeCard({ badge }) {
         <div className="flex items-start justify-between mb-3">
           <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl
             ${isUnlocked
-              ? `bg-gradient-to-br ${tier.gradient} shadow-lg ${tier.glow}`
+              ? `bg-linear-to-br ${tier.gradient} shadow-lg ${tier.glow}`
               : 'bg-slate-800 text-slate-500'
             }`}
           >
@@ -234,7 +234,7 @@ export default function ProfileBadges() {
         {/* Progress ring */}
         <div className="mb-5 h-2 w-full rounded-full bg-slate-800 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-1000"
+            className="h-full rounded-full bg-linear-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-1000"
             style={{ width: `${summary.percentage}%` }}
           />
         </div>
