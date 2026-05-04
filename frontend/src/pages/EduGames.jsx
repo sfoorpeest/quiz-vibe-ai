@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
+import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Clock, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -9,15 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
 
 // ═══════════════════════════════════════════════════════════
-// MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
+// CẤU HÌNH GAME MODES
 // ═══════════════════════════════════════════════════════════
-const MOCK_PLAYER_STATS = {
-  rank: 14,
-  totalMatches: 87,
-  winRate: 72,
-  bestScore: 12450,
-  currentStreak: 5,
-};
 
 const GAME_MODES = [
   {
@@ -31,7 +24,7 @@ const GAME_MODES = [
     borderColor: 'border-amber-500/30 hover:border-amber-500/60',
     tag: 'HOT',
     tagColor: 'bg-red-500 text-white',
-    playersOnline: 124,
+    playersOnline: 0,
   },
   {
     id: 'solo',
@@ -72,17 +65,16 @@ export default function EduGames() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Lấy Leaderboard
+        // 1. Lấy Leaderboard và Rank của tôi
         const resLeaderboard = await api.get('/api/quiz/leaderboard');
-        if (resLeaderboard.data && resLeaderboard.data.data) {
-          const lbData = resLeaderboard.data.data;
-          setLeaderboard(lbData);
+        if (resLeaderboard.data && resLeaderboard.data.status === 'success') {
+          setLeaderboard(resLeaderboard.data.data);
           
-          // Tìm rank và điểm của user hiện tại
-          const myEntry = lbData.find(p => p.user_id === user?.id);
-          if (myEntry) {
-            setPlayerRank(myEntry.rank);
-            setPlayerTotalScore(myEntry.total_score || 0);
+          // Sử dụng dữ liệu currentUser từ backend trả về (chính xác hơn vì backend tính rank toàn hệ thống)
+          const myStats = resLeaderboard.data.currentUser;
+          if (myStats) {
+            setPlayerRank(myStats.rank);
+            setPlayerTotalScore(myStats.high_score || 0);
           }
         }
         
@@ -97,6 +89,13 @@ export default function EduGames() {
         if (resBadges.data && resBadges.data.data && resBadges.data.data.all) {
           setStudyCards(resBadges.data.data.all);
         }
+
+        // 4. Lấy số lượng người dùng online thực tế qua API (dự phòng)
+        const resOnline = await api.get('/api/stats/online-count');
+        if (resOnline.data && resOnline.data.status === 'success') {
+          // Chỉ set nếu chưa có giá trị từ socket (socket sẽ realtime hơn)
+          setOnlineCount(prev => prev > 0 ? prev : resOnline.data.count);
+        }
       } catch (error) {
         console.error("Error fetching EduGames data:", error);
       } finally {
@@ -106,12 +105,12 @@ export default function EduGames() {
     if (user) fetchData();
   }, [user]);
 
-  // Kết nối socket để lấy số người online cho Live Challenge
+  // Kết nối socket để lấy số người online cho Live Challenge (Real-time từ L-frontend)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     const serverUrl = API_URL.replace('/api', '');
 
     const socket = io(`${serverUrl}/game`, {
@@ -130,7 +129,7 @@ export default function EduGames() {
 
   const displayGameModes = GAME_MODES.map(mode => {
     if (mode.id === 'live') {
-      return { ...mode, playersOnline: onlineCount > 0 ? onlineCount : 1 }; // Ít nhất là 1 (chính là mình)
+      return { ...mode, playersOnline: onlineCount > 0 ? onlineCount : 0 };
     }
     return mode;
   });
@@ -214,7 +213,7 @@ export default function EduGames() {
                         <button className={`flex items-center gap-2 bg-linear-to-r ${mode.gradient} text-slate-950 px-6 py-3 rounded-xl font-extrabold transition-all active:scale-95 shadow-lg text-sm`}>
                           <Play className="w-4 h-4 fill-current" /> Vào chơi
                         </button>
-                        {mode.playersOnline && (
+                        {mode.playersOnline !== null && (
                           <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                             {mode.playersOnline} đang online
@@ -243,7 +242,7 @@ export default function EduGames() {
             {/* Leaderboard Widget */}
             <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
               <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2 mb-5">
-                <Trophy className="w-4 h-4 text-amber-400" /> Bảng xếp hạng tuần
+                <Trophy className="w-4 h-4 text-amber-400" /> Bảng xếp hạng toàn cầu
               </h3>
               <div className="space-y-2.5">
                 {isLoadingLeaderboard ? (
@@ -251,7 +250,7 @@ export default function EduGames() {
                     <div className="w-6 h-6 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
                   </div>
                 ) : leaderboard.length === 0 ? (
-                  <p className="text-center text-slate-500 text-sm py-4">Chưa có dữ liệu xếp hạng tuần này.</p>
+                  <p className="text-center text-slate-500 text-sm py-4">Chưa có dữ liệu xếp hạng.</p>
                 ) : (
                   leaderboard.map((player) => {
                     const badge = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : '';
@@ -270,8 +269,18 @@ export default function EduGames() {
                           {badge || `#${player.rank}`}
                         </span>
                         <img src={avatarUrl} className="w-8 h-8 rounded-full border-2 border-slate-700 shadow-sm object-cover" alt={player.name} />
-                        <span className="flex-1 text-sm font-bold text-slate-200 truncate">{player.name}</span>
-                        <span className="text-xs font-bold text-slate-400">{Number(player.total_score).toLocaleString()}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-200 truncate">{player.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
+                              <Target className="w-2.5 h-2.5" /> {player.attempts} lần
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
+                              <Clock className="w-2.5 h-2.5" /> {player.best_time ? `${player.best_time}s` : '--'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-cyan-400">{Number(player.high_score).toLocaleString()}</span>
                       </div>
                     );
                   })
