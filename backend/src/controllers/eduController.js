@@ -730,7 +730,7 @@ exports.getUserDashboard = async (req, res) => {
 
         const statsResult = await sequelize.query(
             `SELECT COUNT(DISTINCT material_id) as total_learned FROM learning_history 
-             WHERE user_id = ? AND (action = 'VIEWED_MATERIAL' OR action = 'COMPLETED_QUIZ')`,
+             WHERE user_id = ? AND ((action = 'VIEWED_MATERIAL' AND progress >= 50) OR action = 'COMPLETED_QUIZ')`,
             { replacements: [userId], type: QueryTypes.SELECT }
         );
 

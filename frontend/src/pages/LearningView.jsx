@@ -63,10 +63,15 @@ export default function LearningView() {
   const contentRef = useRef(null);
   const learningStartRef = useRef(Date.now()); // Timer: thời điểm bắt đầu học (ms)
   const accumulatedTimeRef = useRef(0); // Timer: số giây đã học tích luỹ giữa các lần gửi
+  const maxProgressRef = useRef(0);
 
   useEffect(() => {
     volumeRef.current = volume;
   }, [volume]);
+
+  useEffect(() => {
+    maxProgressRef.current = maxProgress;
+  }, [maxProgress]);
 
   const googleAudioRef = useRef(null);
   const googleAudioQueueRef = useRef([]);
@@ -166,7 +171,7 @@ export default function LearningView() {
         api.post('/api/edu/learning/track', {
           material_id: id,
           action: 'VIEWED_MATERIAL',
-          progress: 0,
+          progress: maxProgressRef.current,
           time_spent: totalSeconds
         }).catch(() => {});
       }
@@ -850,7 +855,13 @@ export default function LearningView() {
           <div className="w-full h-1 bg-slate-800 z-10 relative">
             {/* Track đã xem nhiều nhất (maxProgress - màu chính) */}
             <div
-              className={`h-full transition-all duration-300 ${maxProgress >= 100 ? 'bg-emerald-500' : maxProgress >= 90 ? 'bg-cyan-500' : 'bg-linear-to-r from-blue-500 to-amber-500'}`}
+              className={`h-full transition-all duration-300 ${
+                quizProgressStatus === 'FAIL' 
+                  ? 'bg-linear-to-r from-amber-500 to-orange-400' 
+                  : maxProgress >= 100 ? 'bg-emerald-500' 
+                  : maxProgress >= 90 ? 'bg-cyan-500' 
+                  : 'bg-linear-to-r from-blue-500 to-amber-500'
+              }`}
               style={{ width: `${maxProgress}%` }}
             />
             {/* Vị trí cuộn hiện tại (mờ hơn, chỉ hiện nếu đang cuộn ngược) */}

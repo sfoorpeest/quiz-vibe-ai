@@ -528,19 +528,30 @@ export default function Home() {
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg uppercase tracking-wider">Đang xem dở</span>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">{dashboardData.lastMaterial.title}</h2>
+                <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">
+                  {dashboardData.lastMaterial.title.replace(/_/g, ' ')}
+                </h2>
                 <p className="text-blue-200/80 text-sm mb-8 max-w-md relative z-10 line-clamp-2">
-                  {dashboardData.lastMaterial.description || "Hãy tiếp tục hoàn thành bài học này để nắm vững kiến thức nhé!"}
+                  {dashboardData.lastMaterial.description ? dashboardData.lastMaterial.description.replace(/^\[TAGS:.*?\]/, '').trim() : "Hãy tiếp tục hoàn thành bài học này để nắm vững kiến thức nhé!"}
                 </p>
                 
                 <div className="mb-8 relative z-10 max-w-md">
                   <div className="flex justify-between text-sm font-bold text-slate-200 mb-2">
                     <span>Tiến độ học tập</span>
-                    <span>{dashboardData.lastMaterial.progress}%</span>
+                    <div className="flex items-center gap-2">
+                      {dashboardData.lastMaterial.quizStatus === 'FAIL' && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-sm uppercase tracking-wider">Chưa đạt Quiz</span>
+                      )}
+                      <span>{dashboardData.lastMaterial.progress}%</span>
+                    </div>
                   </div>
                   <div className="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden shadow-inner">
                     <div 
-                      className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_var(--color-blue-500)] transition-all duration-1000" 
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        dashboardData.lastMaterial.quizStatus === 'FAIL' 
+                        ? 'bg-linear-to-r from-amber-500 to-orange-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]' 
+                        : 'bg-linear-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_var(--color-blue-500)]'
+                      }`} 
                       style={{ width: `${dashboardData.lastMaterial.progress}%` }}
                     ></div>
                   </div>
@@ -561,25 +572,25 @@ export default function Home() {
               <h3 className={`text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 ${!dashboardData.lastMaterial ? 'text-left' : 'text-center sm:text-left'}`}>Hồ sơ Của Bạn</h3>
               
               <div className={`space-y-6 ${!dashboardData.lastMaterial ? 'space-y-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl mx-auto w-full' : ''}`}>
-                <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                  <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                <Link to="/my-lessons" className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 hover:border-blue-500/30 transition-all group/stat">
+                  <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover/stat:bg-emerald-500/20 transition-colors">
                     <CheckCircle className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
                     <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.totalLearned}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Khóa/Bài đã học</p>
                   </div>
-                </div>
+                </Link>
                 
-                <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                  <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                <Link to="/practice" className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 hover:border-amber-500/30 transition-all group/stat">
+                  <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover/stat:bg-amber-500/20 transition-colors">
                     <Trophy className="w-7 h-7 text-amber-400" />
                   </div>
                   <div>
                     <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.avgScore}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Điểm trung bình Quiz</p>
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -840,7 +851,9 @@ export default function Home() {
                     <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item.id}</span>
                     <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">{item.title}</h4>
+                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">
+                    {item.title.replace(/_/g, ' ')}
+                  </h4>
                   
                   {/* Tách và hiển thị nội dung sạch + Tags */}
                   {(() => {

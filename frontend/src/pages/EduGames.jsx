@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
@@ -61,6 +62,7 @@ export default function EduGames() {
   
   const [userStats, setUserStats] = useState(null);
   const [studyCards, setStudyCards] = useState([]);
+  const [onlineCount, setOnlineCount] = useState(0);
   
   // State tính toán cho Banner
   const [playerRank, setPlayerRank] = useState('N/A');
@@ -103,6 +105,35 @@ export default function EduGames() {
     };
     if (user) fetchData();
   }, [user]);
+
+  // Kết nối socket để lấy số người online cho Live Challenge
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const serverUrl = API_URL.replace('/api', '');
+
+    const socket = io(`${serverUrl}/game`, {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('game:online_count', (count) => {
+      setOnlineCount(count);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const displayGameModes = GAME_MODES.map(mode => {
+    if (mode.id === 'live') {
+      return { ...mode, playersOnline: onlineCount > 0 ? onlineCount : 1 }; // Ít nhất là 1 (chính là mình)
+    }
+    return mode;
+  });
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const serverUrl = API_URL.replace('/api', '');
@@ -158,7 +189,7 @@ export default function EduGames() {
 
           {/* LEFT: Game Modes (65%) */}
           <div className="flex-2 space-y-6">
-            {GAME_MODES.map(mode => {
+            {displayGameModes.map(mode => {
               const Icon = mode.icon;
               return (
                 <div

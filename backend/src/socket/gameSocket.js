@@ -225,10 +225,16 @@ function initGameSocket(io) {
         }
     });
 
+    const updateOnlineCount = () => {
+        gameNs.emit('game:online_count', gameNs.sockets.size);
+    };
+
     gameNs.on('connection', (socket) => {
         const userId = socket.user.id;
         const userName = socket.user.name || `Player_${userId}`;
         console.log(`🎮 Game: User ${userName} connected (${socket.id})`);
+
+        updateOnlineCount();
 
         // ═══ FIND MATCH ═══
         socket.on('game:find_match', async () => {
@@ -363,6 +369,7 @@ function initGameSocket(io) {
         socket.on('disconnect', () => {
             console.log(`🎮 Game: User ${userName} disconnected`);
             handlePlayerLeave(gameNs, socket);
+            updateOnlineCount();
         });
     });
 
