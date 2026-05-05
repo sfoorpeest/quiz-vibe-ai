@@ -136,13 +136,13 @@ export default function LearningView() {
             // Fetch progress thực tế từ database
             try {
               const progressRes = await api.get(`/api/edu/learning/progress/${id}`);
-              if (progressRes.data && progressRes.data.status === 'success') {
-                const savedProgress = progressRes.data.progress || 0;
-                const savedReadingProgress = progressRes.data.readingProgress || 0;
+              if (progressRes.data?.success && progressRes.data?.data) {
+                const savedProgress = progressRes.data.data.progress || 0;
+                const savedReadingProgress = progressRes.data.data.readingProgress || 0;
                 setMaxProgress(savedProgress);
                 setLastSavedProgress(savedReadingProgress);
                 setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
-                setQuizProgressStatus(progressRes.data.quizStatus || null);
+                setQuizProgressStatus(progressRes.data.data.quizStatus || null);
               }
             } catch (pErr) {
               console.error("Lỗi khi tải tiến độ cũ:", pErr);
@@ -624,10 +624,11 @@ export default function LearningView() {
         question: newUserMsg.text
       });
 
-      if (response.data && response.data.answer) {
+      const aiAnswer = response.data?.data?.answer;
+      if (aiAnswer) {
         setChatHistory(prev => [
           ...prev,
-          { sender: 'ai', text: response.data.answer }
+          { sender: 'ai', text: aiAnswer }
         ]);
       }
     } catch (error) {

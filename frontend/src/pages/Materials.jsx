@@ -84,7 +84,7 @@ export default function Materials() {
     const fetchTags = async () => {
       try {
         const res = await materialService.getTags();
-        setPopularTags(res.data || []);
+        setPopularTags(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error('Failed to fetch tags:', err);
       }
@@ -116,10 +116,10 @@ export default function Materials() {
         if (selectedTag) params.tag = selectedTag;
         
         const res = await materialService.getMaterials(params);
-        const baseMaterials = Array.isArray(res.data) ? res.data : [];
+        const baseMaterials = Array.isArray(res?.data) ? res.data : [];
         setMaterials(baseMaterials);
         await ensureStates('material', baseMaterials.map((mat) => String(mat.id)));
-        setPagination(res.pagination || {});
+        setPagination(res?.pagination || {});
       } catch (err) {
         console.error("Failed to fetch materials:", err);
       } finally {

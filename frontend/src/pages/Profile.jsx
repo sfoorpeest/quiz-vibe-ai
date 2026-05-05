@@ -172,8 +172,8 @@ export default function Profile() {
 
       try {
         const lessonsResponse = await materialService.getMyLessons();
-        const lessonsData = Array.isArray(lessonsResponse?.data)
-          ? lessonsResponse.data
+        const lessonsData = Array.isArray(lessonsResponse?.lessons)
+          ? lessonsResponse.lessons
           : Array.isArray(lessonsResponse)
             ? lessonsResponse
             : [];

@@ -59,6 +59,7 @@ const generateQuizFromAI = async (topic, limit = 5) => {
         return JSON.parse(jsonMatch[0]);
     } catch (error) {
         console.error("Quiz Parse Error or AI Error:", error.message);
+        console.warn('[AI_FALLBACK] generateQuizFromAI JSON parse failed, using mock questions.');
         // Trả về Quiz mẫu cực đẹp để test giao diện
         const mockQuestions = [];
         for (let i = 1; i <= limit; i++) {
@@ -94,7 +95,7 @@ const generateRandomQuizFromAI = async (limit = 5) => {
         return JSON.parse(jsonMatch[0]);
     } catch (error) {
         console.error("Random Quiz Gen Error:", error.message);
-        console.warn("AI random quiz parsing failed, using fallback mock questions.");
+        console.warn('[AI_FALLBACK] generateRandomQuizFromAI JSON parse failed, using fallback mock questions.');
         // Fallback
         const mockQuestions = [];
         for (let i = 1; i <= limit; i++) {

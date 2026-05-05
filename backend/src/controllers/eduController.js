@@ -72,7 +72,7 @@ exports.analyzeDraftMaterial = async (req, res) => {
         try {
             parsedResult = JSON.parse(aiResultText);
         } catch(e) {
-            console.warn("AI draft parsing failed, using fallback summary/tags:", e.message);
+            console.warn('[AI_FALLBACK] analyzeDraftMaterial JSON parse failed, using fallback summary/tags:', e.message);
             // Fallback nếu JSON parse lỗi
             parsedResult = {
                 summary: "Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.",

@@ -3,7 +3,11 @@ import api from '../api/axiosClient';
 export const authService = {
   login: async (email, password) => {
     const response = await api.post('/api/auth/login', { email, password });
-    return response.data;
+    const payload = response.data;
+    if (!payload || payload.success === false) {
+      throw new Error(payload?.message || 'Đăng nhập thất bại');
+    }
+    return payload.data;
   },
 
   register: async (name, email, password, secretCode = '') => {

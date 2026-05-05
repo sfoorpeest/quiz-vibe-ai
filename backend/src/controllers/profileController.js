@@ -23,6 +23,23 @@ const normalizeItemId = (value) => {
     return normalized ? normalized : null;
 };
 
+const parseFeaturedBadges = (value) => {
+    if (Array.isArray(value)) {
+        return value;
+    }
+    if (typeof value !== 'string') {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('[PROFILE_PARSE] featured_badges JSON parse failed, fallback to empty array:', error.message);
+        return [];
+    }
+};
+
 const upsertUserItemAction = async (userId, itemType, itemId, updates) => {
     const [existing] = await sequelize.query(
         `SELECT is_saved, is_favorite
@@ -128,7 +145,7 @@ exports.getProfile = async (req, res) => {
 
         // Find highest featured tier
         let highestFeaturedTier = null;
-        const featuredIds = typeof profile.featured_badges === 'string' ? JSON.parse(profile.featured_badges) : (profile.featured_badges || []);
+        const featuredIds = parseFeaturedBadges(profile.featured_badges);
         if (featuredIds.length > 0) {
             const [highestBadge] = await sequelize.query(
                 'SELECT tier FROM badges WHERE id IN (?) ORDER BY FIELD(tier, "BRONZE", "SILVER", "GOLD", "DIAMOND") DESC LIMIT 1',
@@ -245,7 +262,7 @@ exports.updateProfile = async (req, res) => {
                 notificationEmail: Boolean(updated.notification_email),
                 notificationLearning: Boolean(updated.notification_learning),
                 isProfilePrivate: Boolean(updated.is_profile_private),
-                featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+                featuredBadges: parseFeaturedBadges(updated.featured_badges),
                 equippedBadgeId: updated.equipped_badge_id || null
             },
             errorCode: null
@@ -367,7 +384,7 @@ exports.uploadAvatar = async (req, res) => {
                 notificationEmail: Boolean(updated.notification_email),
                 notificationLearning: Boolean(updated.notification_learning),
                 isProfilePrivate: Boolean(updated.is_profile_private),
-                featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+                featuredBadges: parseFeaturedBadges(updated.featured_badges),
                 equippedBadgeId: updated.equipped_badge_id || null
             },
             errorCode: null

@@ -44,7 +44,7 @@ export default function MyLessons() {
           eduService.getStudentGroups()
         ]);
 
-        const apiLessons = (lessonsRes.data || []).map(m => ({
+        const apiLessons = (lessonsRes.lessons || []).map(m => ({
           id: m.id,
           type: 'lesson',
           title: m.title || 'Bài học',

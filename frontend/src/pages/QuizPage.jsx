@@ -165,14 +165,17 @@ export default function QuizPage() {
         limit: 5 // Default sinh 5 câu cho nhanh
       });
 
-      if (res.data && res.data.data && res.data.data.length > 0) {
-        setQuestions(res.data.data);
-        setQuizId(res.data.quizId); // Lưu quizId từ backend
+      const payload = res.data?.data;
+      const generatedQuestions = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      if (generatedQuestions.length > 0) {
+        setQuestions(generatedQuestions);
+        setQuizId(payload?.quizId ?? null); // Lưu quizId từ backend
         quizStartTimeRef.current = Date.now(); // Bắt đầu đếm giờ
-      } else if (res.data && res.data.questions && res.data.questions.length > 0) {
-        setQuestions(res.data.questions);
-        setQuizId(res.data.quizId);
-        quizStartTimeRef.current = Date.now();
       } else {
         alert("Không nhận được dữ liệu hợp lệ từ AI. Hãy thử lại chủ đề khác.");
       }
@@ -240,6 +243,7 @@ export default function QuizPage() {
           selectedAnswers: answersRef.current,
           time_taken: timeTaken
         });
+        const resultPayload = res.data?.data || {};
 
         // Xây dựng danh sách đầy đủ tất cả câu (đúng + sai) để lưu và hiển thị
         const fullReviewData = questions.map((q, idx) => {
@@ -262,13 +266,13 @@ export default function QuizPage() {
         });
 
         const wrongAnswers = fullReviewData.filter(r => !r.isCorrect);
-        const result = { ...res.data, wrongAnswers, fullReviewData };
+        const result = { ...resultPayload, wrongAnswers, fullReviewData };
         setRetryResult(result);
 
         // === BADGE TOAST: Dispatch event nếu có thẻ mới ===
-        if (res.data.newBadges && res.data.newBadges.length > 0) {
+        if (resultPayload.newBadges && resultPayload.newBadges.length > 0) {
           window.dispatchEvent(new CustomEvent('badge:unlocked', {
-            detail: { badges: res.data.newBadges }
+            detail: { badges: resultPayload.newBadges }
           }));
         }
 
