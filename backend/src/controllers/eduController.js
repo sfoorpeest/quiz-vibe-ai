@@ -72,6 +72,7 @@ exports.analyzeDraftMaterial = async (req, res) => {
         try {
             parsedResult = JSON.parse(aiResultText);
         } catch(e) {
+            console.warn("AI draft parsing failed, using fallback summary/tags:", e.message);
             // Fallback nếu JSON parse lỗi
             parsedResult = {
                 summary: "Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.",
@@ -629,6 +630,7 @@ exports.extractFileContent = async (req, res) => {
                 );
             }
         } catch (e) {
+            console.warn('[AI_FALLBACK] extractFileContent draft JSON parse failed, using fallback summary/tags:', e.message);
             console.error("JSON Parse Error for Draft:", aiDraftText);
             sourceTitle = sourceTitle.replace(/_/g, ' ').trim();
             parsedDraft = { 
@@ -1123,7 +1125,13 @@ exports.generateWorksheetWithAI = async (req, res) => {
             throw new Error("AI không trả về định dạng JSON hợp lệ.");
         }
         
-        const parsedContent = JSON.parse(jsonMatch[0]);
+        let parsedContent;
+        try {
+            parsedContent = JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+            console.warn('[AI_FALLBACK] generateWorksheetWithAI JSON parse failed:', parseError.message);
+            throw parseError;
+        }
 
         // Lưu thông tin phiếu học tập đã sinh vào Database
         const [worksheetId] = await sequelize.query(

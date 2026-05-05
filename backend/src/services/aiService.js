@@ -94,6 +94,7 @@ const generateRandomQuizFromAI = async (limit = 5) => {
         return JSON.parse(jsonMatch[0]);
     } catch (error) {
         console.error("Random Quiz Gen Error:", error.message);
+        console.warn("AI random quiz parsing failed, using fallback mock questions.");
         // Fallback
         const mockQuestions = [];
         for (let i = 1; i <= limit; i++) {
