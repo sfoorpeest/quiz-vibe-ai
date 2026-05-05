@@ -68,12 +68,17 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ success: false, message: "Missing credentials", data: null, errorCode: "MISSING_CREDENTIALS" });
+        }
+
         const user = await User.findOne({ where: { email } });
 
-        if (!user) return res.status(404).json({ success: false, message: "Tài khoản không tồn tại", data: null, errorCode: "USER_NOT_FOUND" });
+        if (!user) return res.status(401).json({ success: false, message: "Invalid credentials", data: null, errorCode: "INVALID_CREDENTIALS" });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(401).json({ success: false, message: "Email hoặc mật khẩu không đúng", data: null, errorCode: "INVALID_PASSWORD" });
+        if (!isMatch) return res.status(401).json({ success: false, message: "Invalid credentials", data: null, errorCode: "INVALID_CREDENTIALS" });
 
         const token = jwt.sign(
             { id: user.id, role_id: user.role_id },
@@ -93,7 +98,6 @@ exports.login = async (req, res) => {
                     role_id: user.role_id
                 }
             },
-            token: token,
             errorCode: null
         });
     } catch (error) {
