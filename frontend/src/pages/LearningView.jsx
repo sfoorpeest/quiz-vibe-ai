@@ -716,8 +716,8 @@ export default function LearningView() {
                     onClick={async () => {
                       try {
                         setIsLoading(true);
-                        const res = await eduService.getGroups();
-                        setTeacherGroups(res.data || []);
+                        const groups = await eduService.getGroups();
+                        setTeacherGroups(groups);
                         setShowAssignModal(true);
                       } catch (err) {
                         toast.error('Không thể tải danh sách lớp');
@@ -734,9 +734,9 @@ export default function LearningView() {
                     onClick={async () => {
                     try {
                       setIsLoading(true);
-                      const res = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
+                      const worksheet = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
                       toast.success('Đã sinh phiếu học tập bằng AI!');
-                      navigate(`/teacher/worksheets?id=${res.data.id}`);
+                      navigate(`/teacher/worksheets?id=${worksheet.id}`);
                     } catch (error) {
                       toast.error('AI không thể sinh phiếu lúc này');
                     } finally {
@@ -753,9 +753,9 @@ export default function LearningView() {
                     onClick={async () => {
                       try {
                         setIsLoading(true);
-                        const res = await eduService.getTeachers();
+                        const teachers = await eduService.getTeachers();
                         // Lọc bỏ chính mình
-                        setTeachersList((res.data || []).filter(t => t.id !== user.id));
+                        setTeachersList(teachers.filter(t => t.id !== user.id));
                         setSelectedTeachers([]);
                         setShowShareModal(true);
                       } catch (err) {

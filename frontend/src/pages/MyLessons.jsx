@@ -57,7 +57,7 @@ export default function MyLessons() {
           updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
         }));
 
-        const apiWorksheets = (wsRes.data || []).map(w => ({
+        const apiWorksheets = wsRes.map(w => ({
           id: w.id,
           type: 'worksheet',
           title: w.title || 'Phiếu học tập',
@@ -70,9 +70,7 @@ export default function MyLessons() {
         setLessons(apiLessons);
         setWorksheets(apiWorksheets);
         seedMaterialStates(apiLessons);
-        if (groupsRes.data) {
-          setMyGroups(groupsRes.data);
-        }
+        setMyGroups(groupsRes);
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {

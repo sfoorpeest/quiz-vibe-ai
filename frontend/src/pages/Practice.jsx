@@ -40,25 +40,32 @@ export default function Practice() {
 
   const fetchCategories = async () => {
     try {
-      const result = await eduService.getTags();
-      if (!result?.success) {
-        setCategories([]);
-        return;
-      }
-      setCategories((result.data || []).slice(0, 8));
+      const tags = await eduService.getTags();
+      setCategories(tags.slice(0, 8));
     } catch (error) {
       setCategories([]);
     }
   };
 
-  const handleGenerate = (e) => {
+  const handleGenerate = async (e) => {
     e.preventDefault();
-    if (!promptValue.trim()) return;
-    // Mock: Điều hướng tới QuizPage với topic
+    const topic = promptValue.trim();
+    if (!topic) return;
+
     setIsGenerating(true);
-    setTimeout(() => {
-      navigate('/quiz/start', { state: { topic: promptValue } });
-    }, 800);
+    try {
+      const quizData = await eduService.generateQuiz({
+        topic,
+        limit: 5
+      });
+
+      navigate('/quiz/start', { state: { topic, quizData } });
+    } catch (error) {
+      console.error('Failed to generate quiz:', error);
+      alert(error?.response?.data?.message || 'Không thể tạo quiz lúc này. Vui lòng thử lại.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleQuickCategory = (label) => {

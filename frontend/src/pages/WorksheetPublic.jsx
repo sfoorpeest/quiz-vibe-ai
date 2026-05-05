@@ -31,8 +31,7 @@ export default function WorksheetPublic() {
     const fetchWorksheet = async () => {
       try {
         setLoading(true);
-        const res = await eduService.getPublicWorksheet(id);
-        const ws = res.data;
+        const ws = await eduService.getPublicWorksheet(id);
         
         // Transform backend data to frontend structure
         let blocks = [];

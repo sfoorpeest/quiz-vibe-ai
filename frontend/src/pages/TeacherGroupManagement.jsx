@@ -52,11 +52,11 @@ export default function TeacherGroupManagement() {
         eduService.getStudents(),
         eduService.getStudentTimeStats()
       ]);
-      setGroups(groupsRes.data || []);
-      setStudents(studentsRes.data || []);
+      setGroups(groupsRes);
+      setStudents(studentsRes);
       // Build a map: userId -> { total_learning_time, total_quiz_time }
       const statsMap = {};
-      (timeStatsRes.data || []).forEach(s => { statsMap[s.user_id] = s; });
+      timeStatsRes.forEach(s => { statsMap[s.user_id] = s; });
       setTimeStats(statsMap);
     } catch (error) {
       toast.error('Không thể tải dữ liệu lớp học');
@@ -72,8 +72,8 @@ export default function TeacherGroupManagement() {
   const fetchGroupDetails = async (groupId) => {
     if (groupDetails[groupId]) return;
     try {
-      const res = await eduService.getGroupDetails(groupId);
-      setGroupDetails(prev => ({ ...prev, [groupId]: res.data }));
+      const details = await eduService.getGroupDetails(groupId);
+      setGroupDetails(prev => ({ ...prev, [groupId]: details }));
     } catch (error) {
       toast.error('Không thể tải chi tiết nhóm');
     }
