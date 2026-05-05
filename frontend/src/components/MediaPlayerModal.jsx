@@ -37,7 +37,7 @@ export default function MediaPlayerModal({ isOpen, onClose, url, title }) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center animate-in fade-in duration-300"
+      className="fixed inset-0 z-200 flex items-center justify-center animate-in fade-in duration-300"
       onClick={onClose}
     >
       {/* Backdrop */}
@@ -81,7 +81,7 @@ export default function MediaPlayerModal({ isOpen, onClose, url, title }) {
             </div>
           ) : isAudio ? (
             <div className="flex flex-col items-center justify-center py-16 px-8 gap-6">
-              <div className="w-24 h-24 bg-gradient-to-br from-violet-500 to-pink-500 rounded-full flex items-center justify-center shadow-xl shadow-violet-500/30 animate-pulse">
+              <div className="w-24 h-24 bg-linear-to-br from-violet-500 to-pink-500 rounded-full flex items-center justify-center shadow-xl shadow-violet-500/30 animate-pulse">
                 <Volume2 className="w-10 h-10 text-white" />
               </div>
               <p className="text-slate-300 font-semibold text-center">{title}</p>

@@ -314,7 +314,9 @@ exports.getLeaderboard = async (req, res) => {
                 SELECT 
                     u.id as user_id,
                     u.name, 
-                    up.avatar_url,
+                    MAX(up.avatar_url) as avatar_url,
+                    MAX(up.equipped_badge_id) as equipped_badge_id,
+                    MAX(up.featured_badges) as featured_badges,
                     MAX(r.score) as high_score,
                     COUNT(r.id) as attempts,
                     MIN(NULLIF(r.time_taken, 0)) as best_time,
@@ -327,9 +329,21 @@ exports.getLeaderboard = async (req, res) => {
             ),
             RankedStats AS (
                 SELECT 
-                    *,
-                    RANK() OVER (ORDER BY high_score DESC, attempts ASC, best_time ASC, achieved_at ASC) as \`rank\`
-                FROM UserStats
+                    US.*,
+                    b_eq.tier as equipped_badge_tier,
+                    b_eq.icon_url as equipped_badge_icon,
+                    b_eq.name as equipped_badge_name,
+                    (
+                        SELECT b_f.tier 
+                        FROM badges b_f 
+                        WHERE US.featured_badges IS NOT NULL 
+                          AND JSON_CONTAINS(US.featured_badges, CAST(b_f.id AS JSON))
+                        ORDER BY FIELD(b_f.tier, 'BRONZE', 'SILVER', 'GOLD', 'DIAMOND') DESC 
+                        LIMIT 1
+                    ) as highest_featured_tier,
+                    RANK() OVER (ORDER BY US.high_score DESC, US.attempts ASC, US.best_time ASC, US.achieved_at ASC) as \`rank\`
+                FROM UserStats US
+                LEFT JOIN badges b_eq ON b_eq.id = US.equipped_badge_id
             )
             SELECT * FROM RankedStats
             WHERE \`rank\` <= ? OR user_id = ?

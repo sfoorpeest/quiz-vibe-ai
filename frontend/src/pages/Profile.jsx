@@ -831,7 +831,10 @@ export default function Profile() {
               </div>
 
               {activeTab === 'overview' && renderOverview()}
-              {activeTab === 'badges' && <ProfileBadges />}
+              {activeTab === 'badges' && <ProfileBadges profile={profile} onProfileUpdate={(updates) => {
+                setProfile(prev => ({ ...prev, ...updates }));
+                updateUser(updates);
+              }} />}
               {activeTab === 'courses' && renderCourses()}
               {activeTab === 'saved' && renderSaved()}
               {activeTab === 'settings' && renderSettings()}

@@ -117,9 +117,9 @@ module.exports = {
         created_at: new Date()
       },
       {
-        name: 'Thợ Săn Quái Vật',
-        description: 'Tiêu diệt tổng cộng 50 quái vật trong Solo Adventure.',
-        icon_url: '🗡️',
+        name: 'Bậc Thầy Sinh Tồn',
+        description: 'Vượt qua thành công 50 câu hỏi trong Thử Thách Sinh Tồn.',
+        icon_url: '🛡️',
         tier: 'GOLD',
         condition_type: 'MONSTER_KILLS',
         condition_value: 50,

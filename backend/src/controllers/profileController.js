@@ -91,14 +91,17 @@ exports.getProfile = async (req, res) => {
     try {
         const userId = req.user.id;
         
-        // Join users với user_profiles
+        // Join users với user_profiles và badges (cho equipped badge)
         const [profile] = await sequelize.query(`
             SELECT 
                 u.id, u.name, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
-                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
+                up.featured_badges, up.equipped_badge_id,
+                b.tier AS equipped_badge_tier, b.icon_url AS equipped_badge_icon
             FROM users u
             LEFT JOIN user_profiles up ON u.id = up.user_id
+            LEFT JOIN badges b ON up.equipped_badge_id = b.id
             WHERE u.id = :userId
             LIMIT 1
         `, { replacements: { userId }, type: QueryTypes.SELECT });
@@ -109,9 +112,6 @@ exports.getProfile = async (req, res) => {
 
         // Nếu chưa có profile trong user_profiles, tạo mặc định (để các lần sau join có data)
         if (profile.phone === undefined) { 
-            // Điều này xảy ra nếu LEFT JOIN ko tìm thấy row và các field của up là null/undefined
-            // Nhưng thực tế query SELECT * FROM user_profiles where user_id = userId có thể chưa có row.
-            // Nếu up.user_id IS NULL (do left join), ta nên tạo mới.
             const checkProfile = await sequelize.query("SELECT user_id FROM user_profiles WHERE user_id = :userId", {
                 replacements: { userId },
                 type: QueryTypes.SELECT
@@ -125,13 +125,29 @@ exports.getProfile = async (req, res) => {
             }
         }
 
+        // Find highest featured tier
+        let highestFeaturedTier = null;
+        const featuredIds = typeof profile.featured_badges === 'string' ? JSON.parse(profile.featured_badges) : (profile.featured_badges || []);
+        if (featuredIds.length > 0) {
+            const [highestBadge] = await sequelize.query(
+                'SELECT tier FROM badges WHERE id IN (?) ORDER BY FIELD(tier, "BRONZE", "SILVER", "GOLD", "DIAMOND") DESC LIMIT 1',
+                { replacements: [featuredIds], type: QueryTypes.SELECT }
+            );
+            if (highestBadge) highestFeaturedTier = highestBadge.tier;
+        }
+
         res.json({
             ...profile,
             username: profile.name,
             avatar: profile.avatar || null,
             notificationEmail: Boolean(profile.notification_email),
             notificationLearning: Boolean(profile.notification_learning),
-            isProfilePrivate: Boolean(profile.is_profile_private)
+            isProfilePrivate: Boolean(profile.is_profile_private),
+            featuredBadges: featuredIds,
+            equippedBadgeId: profile.equipped_badge_id || null,
+            equippedBadgeTier: profile.equipped_badge_tier || null,
+            equippedBadgeIcon: profile.equipped_badge_icon || null,
+            highestFeaturedTier: highestFeaturedTier
         });
     } catch (error) {
         console.error('Profile getProfile Error:', error);
@@ -205,7 +221,8 @@ exports.updateProfile = async (req, res) => {
             SELECT 
                 u.id, u.name, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
-                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
+                up.featured_badges, up.equipped_badge_id
             FROM users u
             LEFT JOIN user_profiles up ON u.id = up.user_id
             WHERE u.id = :userId
@@ -217,7 +234,9 @@ exports.updateProfile = async (req, res) => {
             avatar: updated.avatar || null,
             notificationEmail: Boolean(updated.notification_email),
             notificationLearning: Boolean(updated.notification_learning),
-            isProfilePrivate: Boolean(updated.is_profile_private)
+            isProfilePrivate: Boolean(updated.is_profile_private),
+            featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+            equippedBadgeId: updated.equipped_badge_id || null
         });
     } catch (error) {
         await t.rollback();
@@ -319,7 +338,8 @@ exports.uploadAvatar = async (req, res) => {
             SELECT 
                 u.id, u.name, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
-                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private
+                up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
+                up.featured_badges, up.equipped_badge_id
             FROM users u
             JOIN user_profiles up ON u.id = up.user_id
             WHERE u.id = :userId
@@ -331,7 +351,9 @@ exports.uploadAvatar = async (req, res) => {
             avatar: updated.avatar || null,
             notificationEmail: Boolean(updated.notification_email),
             notificationLearning: Boolean(updated.notification_learning),
-            isProfilePrivate: Boolean(updated.is_profile_private)
+            isProfilePrivate: Boolean(updated.is_profile_private),
+            featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+            equippedBadgeId: updated.equipped_badge_id || null
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);

@@ -15,27 +15,27 @@ import api from '../api/axiosClient';
 const GAME_MODES = [
   {
     id: 'live',
-    title: 'Live Challenge',
-    subtitle: 'Đấu trường sinh tồn nhiều người chơi. Cạnh tranh tốc độ và độ chính xác!',
+    title: 'Đấu Trường Trực Tuyến',
+    subtitle: 'Cuộc đua tri thức thời gian thực. Trả lời đúng để bứt phá và về đích đầu tiên!',
     icon: Swords,
     color: 'amber',
     gradient: 'from-amber-500 to-orange-600',
     glow: 'shadow-[0_0_40px_rgba(245,158,11,0.25)]',
     borderColor: 'border-amber-500/30 hover:border-amber-500/60',
-    tag: 'HOT',
+    tag: 'SÔI NỔI',
     tagColor: 'bg-red-500 text-white',
     playersOnline: 0,
   },
   {
     id: 'solo',
-    title: 'Solo Adventure',
-    subtitle: 'Nhập vai đánh quái, thử thách kỹ năng sinh tồn và phản xạ cực hạn.',
+    title: 'Thử Thách Sinh Tồn',
+    subtitle: 'Chế độ vượt ải đơn độc. Hãy bảo vệ mạng sống của bạn trước những câu hỏi hóc búa!',
     icon: Shield,
     color: 'blue',
     gradient: 'from-blue-500 to-cyan-500',
     glow: 'shadow-[0_0_40px_rgba(59,130,246,0.20)]',
     borderColor: 'border-blue-500/30 hover:border-blue-500/60',
-    tag: 'RPG',
+    tag: 'KỊCH TÍNH',
     tagColor: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
     playersOnline: null,
   },
@@ -255,6 +255,14 @@ export default function EduGames() {
                   leaderboard.map((player) => {
                     const badge = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : '';
                     const avatarUrl = player.avatar_url ? `${serverUrl}${player.avatar_url}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`;
+
+                    // Equipped badge glow ring styles
+                    const badgeTierGlow = {
+                      DIAMOND: 'ring-2 ring-cyan-400/60 shadow-[0_0_8px_rgba(34,211,238,0.4)]',
+                      GOLD: 'ring-2 ring-yellow-400/60 shadow-[0_0_8px_rgba(234,179,8,0.35)]',
+                      SILVER: 'ring-1 ring-slate-300/40 shadow-[0_0_4px_rgba(148,163,184,0.2)]',
+                      BRONZE: 'ring-1 ring-orange-400/40 shadow-[0_0_4px_rgba(251,146,60,0.2)]',
+                    };
                     
                     return (
                       <div
@@ -268,9 +276,34 @@ export default function EduGames() {
                         }`}>
                           {badge || `#${player.rank}`}
                         </span>
-                        <img src={avatarUrl} className="w-8 h-8 rounded-full border-2 border-slate-700 shadow-sm object-cover" alt={player.name} />
+                        <div className="relative shrink-0">
+                          <img src={avatarUrl} className="w-8 h-8 rounded-full border-2 border-slate-700 shadow-sm object-cover" alt={player.name} />
+                          {/* Equipped Badge Icon with Glow Ring */}
+                          {(player.equipped_badge_icon || player.equipped_badge_tier) && (
+                            <div
+                              className={`absolute -bottom-1.5 -right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-800 text-[10px] transition-all ${badgeTierGlow[player.equipped_badge_tier?.toUpperCase()] || ''}`}
+                              title={player.equipped_badge_name || 'Thành tựu'}
+                            >
+                              {player.equipped_badge_icon || (
+                                player.equipped_badge_tier?.toUpperCase() === 'DIAMOND' ? '💎' :
+                                player.equipped_badge_tier?.toUpperCase() === 'GOLD' ? '🥇' :
+                                player.equipped_badge_tier?.toUpperCase() === 'SILVER' ? '🥈' : '🥉'
+                              )}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-200 truncate">{player.name}</p>
+                          <p className="text-sm font-bold truncate">
+                            <span className={
+                              player.highest_featured_tier?.toUpperCase() === 'DIAMOND' ? 'name-gradient-diamond' :
+                              player.highest_featured_tier?.toUpperCase() === 'GOLD' ? 'name-gradient-gold' :
+                              player.highest_featured_tier?.toUpperCase() === 'SILVER' ? 'name-gradient-silver' :
+                              player.highest_featured_tier?.toUpperCase() === 'BRONZE' ? 'name-gradient-bronze' :
+                              'text-slate-200'
+                            }>
+                              {player.name}
+                            </span>
+                          </p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
                               <Target className="w-2.5 h-2.5" /> {player.attempts} lần
@@ -289,12 +322,27 @@ export default function EduGames() {
             </div>
 
             {/* Study Cards / Thẻ Thành Tích */}
-            <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
-              <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2 mb-5">
-                <Sparkles className="w-4 h-4 text-purple-400" /> Thành tựu
-              </h3>
+            <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20 flex flex-col">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" /> Thành tựu
+                </h3>
+                <Link to="/profile?tab=badges" className="text-[10px] font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2 py-1 rounded-md transition-colors border border-blue-500/20 bg-blue-500/5">
+                  Xem tất cả
+                </Link>
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                {studyCards.slice(0, 6).map(card => {
+                {[...studyCards]
+                  .sort((a, b) => {
+                    if (a.unlocked && !b.unlocked) return -1;
+                    if (!a.unlocked && b.unlocked) return 1;
+                    if (!a.unlocked && !b.unlocked) {
+                      return (b.progress || 0) - (a.progress || 0);
+                    }
+                    return 0;
+                  })
+                  .slice(0, 6)
+                  .map(card => {
                   return (
                     <button
                       key={card.id}

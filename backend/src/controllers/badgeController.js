@@ -166,3 +166,85 @@ exports.getRecentBadges = async (req, res) => {
         res.status(500).json({ message: 'Lỗi khi tải thẻ gần đây' });
     }
 };
+
+/**
+ * POST /api/badges/equip
+ * Trang bị 1 thẻ đại diện cho Bảng xếp hạng.
+ */
+exports.equipBadge = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { badgeId } = req.body;
+
+        if (!badgeId) {
+            // Un-equip (tháo trang bị)
+            await sequelize.query(
+                'UPDATE user_profiles SET equipped_badge_id = NULL WHERE user_id = ?',
+                { replacements: [userId], type: QueryTypes.UPDATE }
+            );
+            return res.status(200).json({ status: 'success', message: 'Đã tháo trang bị danh hiệu' });
+        }
+
+        // Kiểm tra xem user đã mở khóa thẻ này chưa
+        const [userBadge] = await sequelize.query(
+            'SELECT * FROM user_badges WHERE user_id = ? AND badge_id = ?',
+            { replacements: [userId, badgeId], type: QueryTypes.SELECT }
+        );
+
+        if (!userBadge) {
+            return res.status(403).json({ message: 'Bạn chưa đạt được thành tựu này!' });
+        }
+
+        // Cập nhật DB
+        await sequelize.query(
+            'UPDATE user_profiles SET equipped_badge_id = ? WHERE user_id = ?',
+            { replacements: [badgeId, userId], type: QueryTypes.UPDATE }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Đã trang bị danh hiệu thành công' });
+    } catch (error) {
+        console.error('Equip Badge Error:', error);
+        res.status(500).json({ message: 'Lỗi khi trang bị danh hiệu' });
+    }
+};
+
+/**
+ * POST /api/badges/feature
+ * Ghim tối đa 3 thẻ lên Profile Header.
+ */
+exports.featureBadges = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { badgeIds } = req.body; // Array of badge IDs
+
+        if (!Array.isArray(badgeIds) || badgeIds.length > 3) {
+            return res.status(400).json({ message: 'Chỉ được ghim tối đa 3 thành tựu' });
+        }
+
+        if (badgeIds.length > 0) {
+            // Kiểm tra xem user đã mở khóa tất cả thẻ này chưa
+            const userBadges = await sequelize.query(
+                'SELECT badge_id FROM user_badges WHERE user_id = ? AND badge_id IN (?)',
+                { replacements: [userId, badgeIds], type: QueryTypes.SELECT }
+            );
+
+            const unlockedIds = userBadges.map(b => b.badge_id);
+            const allUnlocked = badgeIds.every(id => unlockedIds.includes(id));
+
+            if (!allUnlocked) {
+                return res.status(403).json({ message: 'Bạn chỉ có thể ghim các thành tựu đã đạt được!' });
+            }
+        }
+
+        // Cập nhật DB (lưu dưới dạng chuỗi JSON)
+        await sequelize.query(
+            'UPDATE user_profiles SET featured_badges = ? WHERE user_id = ?',
+            { replacements: [JSON.stringify(badgeIds), userId], type: QueryTypes.UPDATE }
+        );
+
+        res.status(200).json({ status: 'success', message: 'Đã cập nhật thành tựu trưng bày' });
+    } catch (error) {
+        console.error('Feature Badges Error:', error);
+        res.status(500).json({ message: 'Lỗi khi ghim thành tựu' });
+    }
+};

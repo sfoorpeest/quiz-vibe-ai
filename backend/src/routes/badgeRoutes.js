@@ -12,4 +12,10 @@ router.get('/user-stats', auth, badgeController.getUserStats);
 // 3. Lấy thẻ mới nhận gần đây (cho notification)
 router.get('/recent', auth, badgeController.getRecentBadges);
 
+// 4. Trang bị 1 thẻ đại diện cho Bảng xếp hạng
+router.post('/equip', auth, badgeController.equipBadge);
+
+// 5. Ghim tối đa 3 thẻ lên Profile Header
+router.post('/feature', auth, badgeController.featureBadges);
+
 module.exports = router;
