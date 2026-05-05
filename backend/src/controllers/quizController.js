@@ -315,6 +315,7 @@ exports.getLeaderboard = async (req, res) => {
                     u.id as user_id,
                     u.name, 
                     MAX(up.avatar_url) as avatar_url,
+                    MAX(up.updated_at) as avatar_updated_at,
                     MAX(up.equipped_badge_id) as equipped_badge_id,
                     MAX(up.featured_badges) as featured_badges,
                     MAX(r.score) as high_score,

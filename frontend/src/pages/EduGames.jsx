@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axiosClient';
+import UserAvatar from '../components/UserAvatar';
 
 // ═══════════════════════════════════════════════════════════
 // CẤU HÌNH GAME MODES
@@ -254,7 +255,6 @@ export default function EduGames() {
                 ) : (
                   leaderboard.map((player) => {
                     const badge = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : '';
-                    const avatarUrl = player.avatar_url ? `${serverUrl}${player.avatar_url}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`;
 
                     // Equipped badge glow ring styles
                     const badgeTierGlow = {
@@ -277,7 +277,15 @@ export default function EduGames() {
                           {badge || `#${player.rank}`}
                         </span>
                         <div className="relative shrink-0">
-                          <img src={avatarUrl} className="w-8 h-8 rounded-full border-2 border-slate-700 shadow-sm object-cover" alt={player.name} />
+                          <UserAvatar 
+                            user={{ 
+                              name: player.name, 
+                              avatar: player.avatar_url,
+                              avatarUpdatedAt: player.avatar_updated_at 
+                            }} 
+                            size="sm" 
+                            className="w-8 h-8 border-slate-700 shadow-sm" 
+                          />
                           {/* Equipped Badge Icon with Glow Ring */}
                           {(player.equipped_badge_icon || player.equipped_badge_tier) && (
                             <div

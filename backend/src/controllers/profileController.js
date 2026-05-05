@@ -147,7 +147,8 @@ exports.getProfile = async (req, res) => {
             equippedBadgeId: profile.equipped_badge_id || null,
             equippedBadgeTier: profile.equipped_badge_tier || null,
             equippedBadgeIcon: profile.equipped_badge_icon || null,
-            highestFeaturedTier: highestFeaturedTier
+            highestFeaturedTier: highestFeaturedTier,
+            avatarUpdatedAt: profile.updated_at
         });
     } catch (error) {
         console.error('Profile getProfile Error:', error);
@@ -222,7 +223,7 @@ exports.updateProfile = async (req, res) => {
                 u.id, u.name, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
                 up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
-                up.featured_badges, up.equipped_badge_id
+                up.featured_badges, up.equipped_badge_id, up.updated_at AS avatarUpdatedAt
             FROM users u
             LEFT JOIN user_profiles up ON u.id = up.user_id
             WHERE u.id = :userId
@@ -339,7 +340,7 @@ exports.uploadAvatar = async (req, res) => {
                 u.id, u.name, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
                 up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
-                up.featured_badges, up.equipped_badge_id
+                up.featured_badges, up.equipped_badge_id, up.updated_at AS avatarUpdatedAt
             FROM users u
             JOIN user_profiles up ON u.id = up.user_id
             WHERE u.id = :userId
