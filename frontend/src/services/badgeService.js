@@ -1,4 +1,5 @@
 import api from '../api/axiosClient';
+import { unwrapData } from '../utils/apiHelper';
 
 /**
  * Badge Service — API client cho hệ thống Thẻ Thành Tích
@@ -9,7 +10,7 @@ export const badgeService = {
    */
   getAllBadges: async () => {
     const res = await api.get('/api/badges');
-    return res.data?.data || res.data;
+    return unwrapData(res, 'Get all badges');
   },
 
   /**
@@ -17,7 +18,7 @@ export const badgeService = {
    */
   getUserStats: async () => {
     const res = await api.get('/api/badges/user-stats');
-    return res.data?.data || res.data;
+    return unwrapData(res, 'Get user stats');
   },
 
   /**
@@ -25,7 +26,7 @@ export const badgeService = {
    */
   getRecentBadges: async () => {
     const res = await api.get('/api/badges/recent');
-    return res.data?.data || res.data;
+    return unwrapData(res, 'Get recent badges');
   },
 
   /**
@@ -34,7 +35,7 @@ export const badgeService = {
    */
   equipBadge: async (badgeId) => {
     const res = await api.post('/api/badges/equip', { badgeId });
-    return res.data;
+    return unwrapData(res, 'Equip badge');
   },
 
   /**
@@ -43,6 +44,6 @@ export const badgeService = {
    */
   featureBadges: async (badgeIds) => {
     const res = await api.post('/api/badges/feature', { badgeIds });
-    return res.data;
+    return unwrapData(res, 'Feature badges');
   },
 };
