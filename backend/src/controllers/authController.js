@@ -178,7 +178,9 @@ exports.forgotPassword = async (req, res) => {
         try {
             await sendResetEmail(email, resetLink);
         } catch (mailError) {
-            console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+            if (process.env.NODE_ENV !== "production") {
+                console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+            }
         }
 
         res.json({ success: true, message: "Yêu cầu đã được xử lý. Vui lòng kiểm tra hộp thư Email của bạn để nhận đường dẫn đặt lại mật khẩu.", data: null, errorCode: null });
