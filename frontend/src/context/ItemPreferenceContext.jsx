@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { itemActionService } from '../services/itemActionService';
-import { materialService } from '../services/materialService';
 
 const ItemPreferenceContext = createContext(null);
 
@@ -102,15 +101,6 @@ export const ItemPreferenceProvider = ({ children }) => {
     });
   }, []);
 
-  const syncLegacyMaterial = useCallback(async (action, itemId) => {
-    const materialId = Number(itemId);
-    if (!Number.isInteger(materialId) || materialId <= 0) return;
-    if (action === 'save') await materialService.saveMaterial(materialId);
-    if (action === 'unsave') await materialService.unsaveMaterial(materialId);
-    if (action === 'favorite') await materialService.favoriteMaterial(materialId);
-    if (action === 'unfavorite') await materialService.unfavoriteMaterial(materialId);
-  }, []);
-
   const toggleSaved = useCallback(async (type, itemId) => {
     const id = normalizeId(itemId);
     const prev = getState(type, id);
@@ -121,10 +111,8 @@ export const ItemPreferenceProvider = ({ children }) => {
     try {
       if (nextValue) {
         await itemActionService.save({ type, itemId: id });
-        if (type === 'material') await syncLegacyMaterial('save', id);
       } else {
         await itemActionService.unsave({ type, itemId: id });
-        if (type === 'material') await syncLegacyMaterial('unsave', id);
       }
     } catch (error) {
       applyState(type, id, { isSaved: prev.isSaved, isFavorite: prev.isFavorite });
@@ -132,7 +120,7 @@ export const ItemPreferenceProvider = ({ children }) => {
     } finally {
       setPendingFlag(type, id, 'save', false);
     }
-  }, [applyState, getState, setPendingFlag, syncLegacyMaterial]);
+  }, [applyState, getState, setPendingFlag]);
 
   const toggleFavorite = useCallback(async (type, itemId) => {
     const id = normalizeId(itemId);
@@ -144,10 +132,8 @@ export const ItemPreferenceProvider = ({ children }) => {
     try {
       if (nextValue) {
         await itemActionService.favorite({ type, itemId: id });
-        if (type === 'material') await syncLegacyMaterial('favorite', id);
       } else {
         await itemActionService.unfavorite({ type, itemId: id });
-        if (type === 'material') await syncLegacyMaterial('unfavorite', id);
       }
     } catch (error) {
       applyState(type, id, { isSaved: prev.isSaved, isFavorite: prev.isFavorite });
@@ -155,7 +141,7 @@ export const ItemPreferenceProvider = ({ children }) => {
     } finally {
       setPendingFlag(type, id, 'favorite', false);
     }
-  }, [applyState, getState, setPendingFlag, syncLegacyMaterial]);
+  }, [applyState, getState, setPendingFlag]);
 
   useEffect(() => {
     let mounted = true;
