@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const fs = require('fs').promises;
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { onlineUsers } = require('../socket/socket');
@@ -179,8 +180,7 @@ exports.uploadFile = async (req, res) => {
         if (currentUserRole === 1) {
             // Xóa file đã lưu tạm (nếu multer đã lưu)
             if (req.file) {
-                const fs = require('fs');
-                fs.unlinkSync(req.file.path);
+                try { await fs.unlink(req.file.path); } catch (_) {}
             }
             return res.status(403).json({ success: false, message: "Học sinh không có quyền upload tài liệu. Bạn chỉ có thể chuyển tiếp tài liệu đã nhận.", data: null, errorCode: "UPLOAD_FORBIDDEN" });
         }
