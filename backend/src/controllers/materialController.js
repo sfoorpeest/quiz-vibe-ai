@@ -1,4 +1,6 @@
 const materialService = require('../services/materialService');
+const { sequelize } = require('../config/database');
+const { QueryTypes } = require('sequelize');
 
 const sendError = (res, statusCode, message, error) => res.status(statusCode).json({
     success: false,
@@ -83,6 +85,14 @@ exports.getMyLessons = async (req, res) => {
         const userId = req.user.id;
         const lessons = await materialService.getMyLessons(userId);
 
+        const [timeTotals] = await sequelize.query(
+            `SELECT COALESCE(SUM(lh.time_spent), 0) AS total_seconds
+             FROM learning_history lh
+             WHERE lh.user_id = ?`,
+            { replacements: [userId], type: QueryTypes.SELECT }
+        );
+        const totalHours = Number((Number(timeTotals?.total_seconds || 0) / 3600).toFixed(1));
+
         // Synchronize with Home page logic: count all materials the user has interacted with (progress > 0)
         const totalLearned = lessons.filter(l => l.progress > 0).length;
 
@@ -90,10 +100,10 @@ exports.getMyLessons = async (req, res) => {
             success: true,
             message: 'Get my lessons successfully',
             data: {
-                data: lessons,
+                lessons,
                 stats: {
                     totalLessons: totalLearned,
-                    totalHours: 45 // Progressing tracking for hours still pending DB update
+                    totalHours
                 }
             },
             errorCode: null
