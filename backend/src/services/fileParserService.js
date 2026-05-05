@@ -2,6 +2,7 @@ const mammoth = require('mammoth');
 const pdf = require('pdf-parse');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { YoutubeTranscript } = require('youtube-transcript');
 
 /**
  * Trích xuất text thuần túy từ Buffer theo từng loại file
@@ -65,6 +66,29 @@ const extractTextFromBuffer = async (buffer, mimetype, originalname) => {
  */
 const extractTextFromUrl = async (url) => {
     try {
+        // --- XỬ LÝ RIÊNG CHO YOUTUBE ---
+        if (/youtube\.com|youtu\.be/i.test(url)) {
+            try {
+                const transcript = await YoutubeTranscript.fetchTranscript(url);
+                const transcriptText = transcript.map(t => t.text).join(' ');
+                
+                // Lấy tiêu đề cơ bản
+                const response = await axios.get(url, {
+                    timeout: 8000,
+                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                });
+                const $ = cheerio.load(response.data);
+                const pageTitle = $('title').text().trim() || 'YouTube Video';
+                const description = $('meta[name="description"]').attr('content') || '';
+                
+                return `[Tiêu đề Video: ${pageTitle}]\n[Mô tả Video]: ${description}\n\n[Nội dung Transcript (Phụ đề) Video]:\n${transcriptText || 'Không lấy được phụ đề cho video này.'}`.substring(0, 10000);
+            } catch (transcriptError) {
+                console.error('YouTube Transcript Error (Video may not have captions):', transcriptError.message);
+                // Fallback xuống scrape web thông thường nếu không lấy được phụ đề
+            }
+        }
+
+        // --- WEB SCRAPING BÌNH THƯỜNG ---
         const response = await axios.get(url, {
             timeout: 12000,
             headers: {
@@ -79,16 +103,20 @@ const extractTextFromUrl = async (url) => {
         // Xóa thẻ không cần thiết
         $('script, style, nav, footer, header, iframe, noscript, .ads, .sidebar, .menu').remove();
 
+        // Lấy tiêu đề trang
+        const pageTitle = $('title').text().trim();
+
         // Lấy text có ý nghĩa từ body (ưu tiên thẻ article, main, section)
-        let text = '';
+        let bodyText = '';
         const mainContent = $('article, main, .content, .post-content, #content');
         if (mainContent.length > 0) {
-            text = mainContent.text();
+            bodyText = mainContent.text();
         } else {
-            text = $('body').text();
+            bodyText = $('body').text();
         }
 
-        return text.replace(/\s+/g, ' ').trim().substring(0, 10000);
+        const finalText = `${pageTitle}\n\n${bodyText}`;
+        return finalText.replace(/\s+/g, ' ').trim().substring(0, 10000);
     } catch (err) {
         console.error('URL Scrape Error:', err.message);
         return null;

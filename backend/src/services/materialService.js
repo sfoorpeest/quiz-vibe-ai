@@ -55,17 +55,13 @@ function toTimeValue(value) {
 
 function computeEffectiveProgress({ readingProgress, readingUpdatedAt, quizStatus, quizAttemptedAt }) {
     const normalizedReading = normalizeReadProgress(readingProgress);
-    const readAt = toTimeValue(readingUpdatedAt);
-    const quizAt = toTimeValue(quizAttemptedAt);
-
-    if (quizStatus === 'FAIL' && (!readAt || quizAt >= readAt)) {
-        return 0;
-    }
-
+    
+    // Nếu đã pass quiz, tặng thêm 10% bonus (max 100%)
     if (quizStatus === 'PASS') {
         return Math.min(100, normalizedReading + 10);
     }
 
+    // Ngay cả khi FAIL, chúng ta vẫn giữ lại tiến độ đọc của người dùng để tránh gây hiểu lầm "mất dữ liệu"
     return normalizedReading;
 }
 

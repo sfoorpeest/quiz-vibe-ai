@@ -4,6 +4,7 @@ const ApiLog = require('../models/ApiLog');
 const aiService = require('../services/aiService');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
+const badgeChecker = require('../services/badgeChecker');
 
 exports.createAiQuiz = async (req, res) => {
     try {
@@ -64,6 +65,31 @@ exports.createAiQuiz = async (req, res) => {
 };
 
 /**
+ * 1.5. Tạo Random Quiz cho Solo Adventure (Sinh tồn vô cực)
+ * Dùng endpoint riêng không lưu vào bảng Quiz gốc để tránh rác DB nếu user chỉ chơi 1-2 câu.
+ */
+exports.generateRandomQuiz = async (req, res) => {
+    try {
+        const { limit = 5 } = req.body;
+        const questionsFromAi = await aiService.generateRandomQuizFromAI(limit);
+
+        const questionsToReturn = questionsFromAi.map(q => ({
+            content: q.question + (q.explanation ? `\n\n[EXPLAIN]${q.explanation}` : ""),
+            options: q.options,
+            correct_answer: q.correct_answer
+        }));
+
+        res.status(200).json({
+            message: "Đã tạo câu hỏi ngẫu nhiên thành công!",
+            data: questionsToReturn
+        });
+    } catch (error) {
+        console.error("Random Quiz Controller Error:", error.message);
+        res.status(500).json({ error: "Lỗi khi sinh câu hỏi ngẫu nhiên." });
+    }
+};
+
+/**
  * 2. Lưu kết quả thi
  */
 exports.saveQuizResult = async (req, res) => {
@@ -75,7 +101,8 @@ exports.saveQuizResult = async (req, res) => {
             total,
             correctCount,
             wrongCount,
-            wrongQuestions
+            wrongQuestions,
+            gameMode
         } = req.body;
         const userId = req.user.id;
 
@@ -95,23 +122,29 @@ exports.saveQuizResult = async (req, res) => {
             ? wrongQuestions
             : [];
 
+        // Lấy score thực tế từ game (ví dụ: điểm Solo Adventure có multiplier), nếu không có thì fallback về số câu đúng
+        const resolvedScore = score !== undefined ? Number(score) : resolvedCorrectCount;
+
         // Lưu vào bảng results
         // Mở rộng cấu trúc: lưu thêm material_id, correct_count, wrong_count, wrong_questions, time_taken
         const timeTaken = Number(req.body.time_taken) || 0;
+        const effectiveGameMode = gameMode || 'PRACTICE';
+
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, game_mode, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
                     quizId || null,
                     materialId || null,
-                    resolvedCorrectCount,
+                    resolvedScore,
                     resolvedCorrectCount,
                     resolvedWrongCount,
                     JSON.stringify(resolvedWrongQuestions),
-                    timeTaken
+                    timeTaken,
+                    effectiveGameMode
                 ],
                 type: QueryTypes.INSERT
             }
@@ -126,9 +159,17 @@ exports.saveQuizResult = async (req, res) => {
             }
         );
 
+        // === BADGE CHECKER: Kiểm tra và cấp thẻ thành tích ===
+        const newBadges = await badgeChecker.processQuizCompletion(userId, {
+            correctCount: resolvedCorrectCount,
+            totalQuestions: Number(total) || resolvedCorrectCount + resolvedWrongCount,
+            timeTaken: timeTaken
+        }, gameMode);
+
         res.status(201).json({
             status: 'success',
-            message: "Đã lưu kết quả thi thành công!"
+            message: "Đã lưu kết quả thi thành công!",
+            newBadges: newBadges || []
         });
     } catch (error) {
         console.error("Save Result Error:", error);
@@ -141,7 +182,7 @@ exports.saveQuizResult = async (req, res) => {
  */
 exports.checkAnswers = async (req, res) => {
     try {
-        const { quizId, materialId, selectedAnswers } = req.body;
+        const { quizId, materialId, selectedAnswers, gameMode } = req.body;
         const userId = req.user.id;
 
         if (!Array.isArray(selectedAnswers) || selectedAnswers.length === 0) {
@@ -182,10 +223,12 @@ exports.checkAnswers = async (req, res) => {
 
         // Lưu mọi lần làm quiz để đánh giá tiến độ nhất quán (đúng hoặc sai)
         const timeTaken = Number(req.body.time_taken) || 0;
+        const effectiveGameMode = gameMode || 'PRACTICE';
+
         await sequelize.query(
             `INSERT INTO results
-                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                (user_id, quiz_id, material_id, score, correct_count, wrong_count, wrong_questions, time_taken, game_mode, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             {
                 replacements: [
                     userId,
@@ -195,7 +238,8 @@ exports.checkAnswers = async (req, res) => {
                     correctCount,
                     wrongAnswers.length,
                     JSON.stringify(wrongAnswers),
-                    timeTaken
+                    timeTaken,
+                    effectiveGameMode
                 ],
                 type: QueryTypes.INSERT
             }
@@ -211,11 +255,20 @@ exports.checkAnswers = async (req, res) => {
             }
         );
 
+        // === BADGE CHECKER: Kiểm tra và cấp thẻ thành tích ===
+        const totalQuestions = questions.length;
+        const timeTaken2 = Number(req.body.time_taken) || 0;
+        const newBadges = await badgeChecker.processQuizCompletion(userId, {
+            correctCount,
+            totalQuestions,
+            timeTaken: timeTaken2
+        }, gameMode);
+
         if (retryRequired) {
-            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount });
+            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount, newBadges: newBadges || [] });
         }
 
-        return res.status(200).json({ retryRequired: false, score: correctCount });
+        return res.status(200).json({ retryRequired: false, score: correctCount, newBadges: newBadges || [] });
     } catch (error) {
         console.error('Check Answers Error:', error);
         return res.status(500).json({ message: 'Lỗi khi kiểm tra đáp án' });
@@ -223,27 +276,106 @@ exports.checkAnswers = async (req, res) => {
 };
 
 /**
- * 4. Lấy bảng xếp hạng (Leaderboard)
+ * 4. Lấy bảng xếp hạng (Leaderboard) - Logic Edu Game
+ * Thứ tự ưu tiên:
+ * 1. Điểm cao nhất (Best Score) - DESC
+ * 2. Số lần làm bài (Attempts) - ASC
+ * 3. Thời gian hoàn thành (Time) - ASC
+ * 4. Thời điểm đạt được (Timestamp) - ASC
  */
 exports.getLeaderboard = async (req, res) => {
     try {
-        // Lấy top 10 người có tổng điểm cao nhất hoặc điểm trung bình
-        const leaderboard = await sequelize.query(`
-            SELECT 
-                u.name, 
-                COUNT(r.id) as quizzes_taken,
-                SUM(r.score) as total_score,
-                MAX(r.score) as high_score
-            FROM results r
-            JOIN users u ON r.user_id = u.id
-            GROUP BY u.id
-            ORDER BY total_score DESC
-            LIMIT 10
-        `, { type: QueryTypes.SELECT });
+        const { quizId, materialId, limit = 10, mode } = req.query;
+        
+        let whereClause = 'WHERE 1=1';
+        const replacements = [];
+
+        if (quizId) {
+            whereClause += ' AND r.quiz_id = ?';
+            replacements.push(quizId);
+        }
+        if (materialId) {
+            whereClause += ' AND r.material_id = ?';
+            replacements.push(materialId);
+        }
+        
+        // Nếu không có filter cụ thể, mặc định lấy các mode game để hiển thị Arena
+        if (!quizId && !materialId) {
+            whereClause += " AND r.game_mode IN ('SOLO', 'LIVE')";
+        } else if (mode) {
+            whereClause += " AND r.game_mode = ?";
+            replacements.push(mode);
+        }
+
+        const currentUserId = req.user.id;
+
+        const query = `
+            WITH UserStats AS (
+                SELECT 
+                    u.id as user_id,
+                    u.name, 
+                    MAX(up.avatar_url) as avatar_url,
+                    MAX(up.updated_at) as avatar_updated_at,
+                    MAX(up.equipped_badge_id) as equipped_badge_id,
+                    MAX(up.featured_badges) as featured_badges,
+                    MAX(r.score) as high_score,
+                    COUNT(r.id) as attempts,
+                    MIN(NULLIF(r.time_taken, 0)) as best_time,
+                    MIN(r.created_at) as achieved_at
+                FROM results r
+                JOIN users u ON r.user_id = u.id
+                LEFT JOIN user_profiles up ON u.id = up.user_id
+                ${whereClause}
+                GROUP BY u.id
+            ),
+            RankedStats AS (
+                SELECT 
+                    US.*,
+                    b_eq.tier as equipped_badge_tier,
+                    b_eq.icon_url as equipped_badge_icon,
+                    b_eq.name as equipped_badge_name,
+                    (
+                        SELECT b_f.tier 
+                        FROM badges b_f 
+                        WHERE US.featured_badges IS NOT NULL 
+                          AND JSON_CONTAINS(US.featured_badges, CAST(b_f.id AS JSON))
+                        ORDER BY FIELD(b_f.tier, 'BRONZE', 'SILVER', 'GOLD', 'DIAMOND') DESC 
+                        LIMIT 1
+                    ) as highest_featured_tier,
+                    RANK() OVER (ORDER BY US.high_score DESC, US.attempts ASC, US.best_time ASC, US.achieved_at ASC) as \`rank\`
+                FROM UserStats US
+                LEFT JOIN badges b_eq ON b_eq.id = US.equipped_badge_id
+            )
+            SELECT * FROM RankedStats
+            WHERE \`rank\` <= ? OR user_id = ?
+            ORDER BY \`rank\` ASC
+        `;
+
+        const leaderboardResults = await sequelize.query(query, { 
+            replacements: [...replacements, parseInt(limit), currentUserId],
+            type: QueryTypes.SELECT 
+        });
+
+        // Tách top list và user info
+        const topList = leaderboardResults.filter(p => p.rank <= parseInt(limit));
+        const currentUserStats = leaderboardResults.find(p => p.user_id === currentUserId);
+
+        const formattedTopList = topList.map(player => ({
+            ...player,
+            high_score: parseFloat(player.high_score || 0),
+            attempts: parseInt(player.attempts || 0),
+            best_time: parseInt(player.best_time || 0)
+        }));
 
         res.status(200).json({
             status: 'success',
-            data: leaderboard
+            data: formattedTopList,
+            currentUser: currentUserStats ? {
+                ...currentUserStats,
+                high_score: parseFloat(currentUserStats.high_score || 0),
+                attempts: parseInt(currentUserStats.attempts || 0),
+                best_time: parseInt(currentUserStats.best_time || 0)
+            } : null
         });
     } catch (error) {
         console.error("Leaderboard Error:", error);

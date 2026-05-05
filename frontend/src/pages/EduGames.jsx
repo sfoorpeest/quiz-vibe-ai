@@ -1,74 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Clock, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axiosClient';
+import UserAvatar from '../components/UserAvatar';
 
 // ═══════════════════════════════════════════════════════════
-// MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
+// CẤU HÌNH GAME MODES
 // ═══════════════════════════════════════════════════════════
-const MOCK_PLAYER_STATS = {
-  rank: 14,
-  totalMatches: 87,
-  winRate: 72,
-  bestScore: 12450,
-  currentStreak: 5,
-};
 
 const GAME_MODES = [
   {
     id: 'live',
-    title: 'Live Challenge',
-    subtitle: 'Đấu trường sinh tồn nhiều người chơi. Cạnh tranh tốc độ và độ chính xác!',
+    title: 'Đấu Trường Trực Tuyến',
+    subtitle: 'Cuộc đua tri thức thời gian thực. Trả lời đúng để bứt phá và về đích đầu tiên!',
     icon: Swords,
     color: 'amber',
     gradient: 'from-amber-500 to-orange-600',
     glow: 'shadow-[0_0_40px_rgba(245,158,11,0.25)]',
     borderColor: 'border-amber-500/30 hover:border-amber-500/60',
-    tag: 'HOT',
+    tag: 'SÔI NỔI',
     tagColor: 'bg-red-500 text-white',
-    playersOnline: 124,
+    playersOnline: 0,
   },
   {
     id: 'solo',
-    title: 'Solo Adventure',
-    subtitle: 'Nhập vai đánh quái, thử thách kỹ năng sinh tồn và phản xạ cực hạn.',
+    title: 'Thử Thách Sinh Tồn',
+    subtitle: 'Chế độ vượt ải đơn độc. Hãy bảo vệ mạng sống của bạn trước những câu hỏi hóc búa!',
     icon: Shield,
     color: 'blue',
     gradient: 'from-blue-500 to-cyan-500',
     glow: 'shadow-[0_0_40px_rgba(59,130,246,0.20)]',
     borderColor: 'border-blue-500/30 hover:border-blue-500/60',
-    tag: 'RPG',
+    tag: 'KỊCH TÍNH',
     tagColor: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
     playersOnline: null,
   },
 ];
 
-const MOCK_LEADERBOARD = [
-  { rank: 1, name: 'Minh Anh', score: 15200, avatar: 'https://i.pravatar.cc/150?u=rank1', badge: '🥇' },
-  { rank: 2, name: 'Hoàng Long', score: 14800, avatar: 'https://i.pravatar.cc/150?u=rank2', badge: '🥈' },
-  { rank: 3, name: 'Thu Hà', score: 13900, avatar: 'https://i.pravatar.cc/150?u=rank3', badge: '🥉' },
-  { rank: 4, name: 'Đức Anh', score: 13100, avatar: 'https://i.pravatar.cc/150?u=rank4', badge: '' },
-  { rank: 5, name: 'Thanh Tâm', score: 12800, avatar: 'https://i.pravatar.cc/150?u=rank5', badge: '' },
-  { rank: 6, name: 'Quốc Bảo', score: 12650, avatar: 'https://i.pravatar.cc/150?u=rank6', badge: '' },
-  { rank: 7, name: 'Lan Phương', score: 12400, avatar: 'https://i.pravatar.cc/150?u=rank7', badge: '' },
-];
+// MOCK_LEADERBOARD has been removed, using real data from DB
 
-const MOCK_STUDY_CARDS = [
-  { id: 1, title: 'BẬC THẦY TOÁN HỌC', icon: '📐', description: 'Đạt 100 điểm tuyệt đối 3 lần liên tiếp trong quiz Toán', rarity: 'Hiếm — 5% học sinh', achieved: true, date: '10/03/2026', stats: { matches: 47, bestScore: 100 } },
-  { id: 2, title: 'TOP 1 TUẦN', icon: '👑', description: 'Xếp hạng #1 trong bảng kiến thức tuần', rarity: 'Cực hiếm — 1% học sinh', achieved: true, date: '05/03/2026', stats: { matches: 87, bestScore: 12450 } },
-  { id: 3, title: 'CHIẾN BINH VẬT LÝ', icon: '⚡', description: 'Giải đúng 50 câu hỏi Vật lý liên tiếp không sai lần nào', rarity: 'Hiếm — 8% học sinh', achieved: false, progress: { current: 32, total: 50 } },
-  { id: 4, title: 'CHUỖI 7 NGÀY', icon: '🔥', description: 'Luyện tập liên tục 7 ngày không gián đoạn', rarity: 'Thường — 25% học sinh', achieved: true, date: '01/03/2026', stats: { matches: 21, bestScore: 95 } },
-  { id: 5, title: 'POLYGLOT', icon: '🌍', description: 'Hoàn thành quiz ở 5 môn học khác nhau trong 1 tuần', rarity: 'Hiếm — 12% học sinh', achieved: false, progress: { current: 3, total: 5 } },
-  { id: 6, title: 'CHỚP NHOÁNG', icon: '⏱️', description: 'Hoàn thành quiz 20 câu dưới 3 phút', rarity: 'Cực hiếm — 2% học sinh', achieved: false, progress: { current: 0, total: 1 } },
-];
+// MOCK_STUDY_CARDS has been removed, using real data from DB
 
 export default function EduGames() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCard, setSelectedCard] = useState(null);
+  
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(true);
+  
+  const [userStats, setUserStats] = useState(null);
+  const [studyCards, setStudyCards] = useState([]);
+  const [onlineCount, setOnlineCount] = useState(0);
+  
+  // State tính toán cho Banner
+  const [playerRank, setPlayerRank] = useState('N/A');
+  const [playerTotalScore, setPlayerTotalScore] = useState(0);
+
+  // Lấy dữ liệu Leaderboard, User Stats và Badges từ server
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 1. Lấy Leaderboard và Rank của tôi
+        const resLeaderboard = await api.get('/api/quiz/leaderboard');
+        if (resLeaderboard.data && resLeaderboard.data.status === 'success') {
+          setLeaderboard(resLeaderboard.data.data);
+          
+          // Sử dụng dữ liệu currentUser từ backend trả về (chính xác hơn vì backend tính rank toàn hệ thống)
+          const myStats = resLeaderboard.data.currentUser;
+          if (myStats) {
+            setPlayerRank(myStats.rank);
+            setPlayerTotalScore(myStats.high_score || 0);
+          }
+        }
+        
+        // 2. Lấy User Stats
+        const resStats = await api.get('/api/badges/user-stats');
+        if (resStats.data && resStats.data.data) {
+          setUserStats(resStats.data.data);
+        }
+        
+        // 3. Lấy Badges (Study Cards)
+        const resBadges = await api.get('/api/badges');
+        if (resBadges.data && resBadges.data.data && resBadges.data.data.all) {
+          setStudyCards(resBadges.data.data.all);
+        }
+
+        // 4. Lấy số lượng người dùng online thực tế qua API (dự phòng)
+        const resOnline = await api.get('/api/stats/online-count');
+        if (resOnline.data && resOnline.data.status === 'success') {
+          // Chỉ set nếu chưa có giá trị từ socket (socket sẽ realtime hơn)
+          setOnlineCount(prev => prev > 0 ? prev : resOnline.data.count);
+        }
+      } catch (error) {
+        console.error("Error fetching EduGames data:", error);
+      } finally {
+        setIsLoadingLeaderboard(false);
+      }
+    };
+    if (user) fetchData();
+  }, [user]);
+
+  // Kết nối socket để lấy số người online cho Live Challenge (Real-time từ L-frontend)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const serverUrl = API_URL.replace('/api', '');
+
+    const socket = io(`${serverUrl}/game`, {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('game:online_count', (count) => {
+      setOnlineCount(count);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const displayGameModes = GAME_MODES.map(mode => {
+    if (mode.id === 'live') {
+      return { ...mode, playersOnline: onlineCount > 0 ? onlineCount : 0 };
+    }
+    return mode;
+  });
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const serverUrl = API_URL.replace('/api', '');
+
+  // Tính Win Rate an toàn
+  const calculateWinRate = () => {
+    if (!userStats || userStats.total_live_plays === 0) return 0;
+    return Math.round((userStats.total_live_wins / userStats.total_live_plays) * 100);
+  };
 
   return (
     <div className="relative min-h-screen font-sans text-slate-50 flex flex-col">
@@ -92,19 +166,19 @@ export default function EduGames() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Crown className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-extrabold text-white">Rank #{MOCK_PLAYER_STATS.rank}</span>
+                <span className="text-sm font-extrabold text-white">Rank #{playerRank}</span>
               </div>
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span className="text-sm font-bold text-slate-200">{MOCK_PLAYER_STATS.bestScore.toLocaleString()} pts</span>
+                <span className="text-sm font-bold text-slate-200">{Number(playerTotalScore).toLocaleString()} pts</span>
               </div>
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Trophy className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-bold text-slate-200">{MOCK_PLAYER_STATS.winRate}% WR</span>
+                <span className="text-sm font-bold text-slate-200">{calculateWinRate()}% WR</span>
               </div>
               <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5">
                 <Flame className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-bold text-amber-300">{MOCK_PLAYER_STATS.currentStreak} streak</span>
+                <span className="text-sm font-bold text-amber-300">{userStats?.current_streak_days || 0} streak</span>
               </div>
             </div>
           </div>
@@ -115,13 +189,13 @@ export default function EduGames() {
 
           {/* LEFT: Game Modes (65%) */}
           <div className="flex-2 space-y-6">
-            {GAME_MODES.map(mode => {
+            {displayGameModes.map(mode => {
               const Icon = mode.icon;
               return (
                 <div
                   key={mode.id}
                   className={`group relative overflow-hidden rounded-3xl bg-slate-900/60 backdrop-blur-2xl border ${mode.borderColor} transition-all duration-500 ${mode.glow} hover:scale-[1.01] cursor-pointer`}
-                  onClick={() => navigate('/quiz/start')}
+                  onClick={() => navigate(mode.id === 'solo' ? '/games/solo' : '/games/waiting')}
                 >
                   {/* Ambient Glow */}
                   <div className={`absolute top-0 right-0 w-96 h-96 bg-linear-to-bl ${mode.gradient} opacity-[0.04] blur-[100px] rounded-full pointer-events-none group-hover:opacity-[0.08] transition-opacity duration-700`}></div>
@@ -140,7 +214,7 @@ export default function EduGames() {
                         <button className={`flex items-center gap-2 bg-linear-to-r ${mode.gradient} text-slate-950 px-6 py-3 rounded-xl font-extrabold transition-all active:scale-95 shadow-lg text-sm`}>
                           <Play className="w-4 h-4 fill-current" /> Vào chơi
                         </button>
-                        {mode.playersOnline && (
+                        {mode.playersOnline !== null && (
                           <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                             {mode.playersOnline} đang online
@@ -169,118 +243,189 @@ export default function EduGames() {
             {/* Leaderboard Widget */}
             <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
               <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2 mb-5">
-                <Trophy className="w-4 h-4 text-amber-400" /> Bảng xếp hạng tuần
+                <Trophy className="w-4 h-4 text-amber-400" /> Bảng xếp hạng toàn cầu
               </h3>
               <div className="space-y-2.5">
-                {MOCK_LEADERBOARD.map((player) => (
-                  <div
-                    key={player.rank}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-slate-800/60 ${
-                      player.rank <= 3 ? 'bg-amber-500/5 border border-amber-500/10' : ''
-                    }`}
-                  >
-                    <span className={`w-7 text-center text-sm font-extrabold ${
-                      player.rank === 1 ? 'text-amber-400' : player.rank === 2 ? 'text-slate-300' : player.rank === 3 ? 'text-amber-600' : 'text-slate-500'
-                    }`}>
-                      {player.badge || `#${player.rank}`}
-                    </span>
-                    <img src={player.avatar} className="w-8 h-8 rounded-full border-2 border-slate-700 shadow-sm" alt={player.name} />
-                    <span className="flex-1 text-sm font-bold text-slate-200 truncate">{player.name}</span>
-                    <span className="text-xs font-bold text-slate-400">{player.score.toLocaleString()}</span>
+                {isLoadingLeaderboard ? (
+                  <div className="flex justify-center p-4">
+                    <div className="w-6 h-6 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
                   </div>
-                ))}
+                ) : leaderboard.length === 0 ? (
+                  <p className="text-center text-slate-500 text-sm py-4">Chưa có dữ liệu xếp hạng.</p>
+                ) : (
+                  leaderboard.map((player) => {
+                    const badge = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : '';
+
+                    // Equipped badge glow ring styles
+                    const badgeTierGlow = {
+                      DIAMOND: 'ring-2 ring-cyan-400/60 shadow-[0_0_8px_rgba(34,211,238,0.4)]',
+                      GOLD: 'ring-2 ring-yellow-400/60 shadow-[0_0_8px_rgba(234,179,8,0.35)]',
+                      SILVER: 'ring-1 ring-slate-300/40 shadow-[0_0_4px_rgba(148,163,184,0.2)]',
+                      BRONZE: 'ring-1 ring-orange-400/40 shadow-[0_0_4px_rgba(251,146,60,0.2)]',
+                    };
+                    
+                    return (
+                      <div
+                        key={player.user_id}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-slate-800/60 ${
+                          player.rank <= 3 ? 'bg-amber-500/5 border border-amber-500/10' : ''
+                        }`}
+                      >
+                        <span className={`w-7 text-center text-sm font-extrabold ${
+                          player.rank === 1 ? 'text-amber-400' : player.rank === 2 ? 'text-slate-300' : player.rank === 3 ? 'text-amber-600' : 'text-slate-500'
+                        }`}>
+                          {badge || `#${player.rank}`}
+                        </span>
+                        <div className="relative shrink-0">
+                          <UserAvatar 
+                            user={{ 
+                              name: player.name, 
+                              avatar: player.avatar_url,
+                              avatarUpdatedAt: player.avatar_updated_at 
+                            }} 
+                            size="sm" 
+                            className="w-8 h-8 border-slate-700 shadow-sm" 
+                          />
+                          {/* Equipped Badge Icon with Glow Ring */}
+                          {(player.equipped_badge_icon || player.equipped_badge_tier) && (
+                            <div
+                              className={`absolute -bottom-1.5 -right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-800 text-[10px] transition-all ${badgeTierGlow[player.equipped_badge_tier?.toUpperCase()] || ''}`}
+                              title={player.equipped_badge_name || 'Thành tựu'}
+                            >
+                              {player.equipped_badge_icon || (
+                                player.equipped_badge_tier?.toUpperCase() === 'DIAMOND' ? '💎' :
+                                player.equipped_badge_tier?.toUpperCase() === 'GOLD' ? '🥇' :
+                                player.equipped_badge_tier?.toUpperCase() === 'SILVER' ? '🥈' : '🥉'
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate">
+                            <span className={
+                              player.highest_featured_tier?.toUpperCase() === 'DIAMOND' ? 'name-gradient-diamond' :
+                              player.highest_featured_tier?.toUpperCase() === 'GOLD' ? 'name-gradient-gold' :
+                              player.highest_featured_tier?.toUpperCase() === 'SILVER' ? 'name-gradient-silver' :
+                              player.highest_featured_tier?.toUpperCase() === 'BRONZE' ? 'name-gradient-bronze' :
+                              'text-slate-200'
+                            }>
+                              {player.name}
+                            </span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
+                              <Target className="w-2.5 h-2.5" /> {player.attempts} lần
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 flex items-center gap-0.5">
+                              <Clock className="w-2.5 h-2.5" /> {player.best_time ? `${player.best_time}s` : '--'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-cyan-400">{Number(player.high_score).toLocaleString()}</span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
             {/* Study Cards / Thẻ Thành Tích */}
-            <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20">
-              <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2 mb-5">
-                <Sparkles className="w-4 h-4 text-purple-400" /> Phiếu học tập
-              </h3>
+            <div className="bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-3xl p-6 shadow-2xl shadow-black/20 flex flex-col">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" /> Thành tựu
+                </h3>
+                <Link to="/profile?tab=badges" className="text-[10px] font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-2 py-1 rounded-md transition-colors border border-blue-500/20 bg-blue-500/5">
+                  Xem tất cả
+                </Link>
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                {MOCK_STUDY_CARDS.map(card => (
-                  <button
-                    key={card.id}
-                    onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
-                    className={`relative group/card rounded-2xl p-4 text-center transition-all duration-300 cursor-pointer border ${
-                      card.achieved
-                        ? 'bg-linear-to-b from-amber-500/5 to-transparent border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]'
-                        : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50 opacity-60 hover:opacity-80'
-                    }`}
-                  >
-                    {/* Lock Overlay if not achieved */}
-                    {!card.achieved && (
-                      <div className="absolute top-2 right-2">
-                        <Lock className="w-3 h-3 text-slate-600" />
-                      </div>
-                    )}
-                    <div className="text-2xl mb-2">{card.icon}</div>
-                    <p className={`text-[10px] font-black uppercase tracking-wider leading-tight ${card.achieved ? 'text-amber-300' : 'text-slate-500'}`}>
-                      {card.title}
-                    </p>
-                    {/* Progress if not achieved */}
-                    {!card.achieved && card.progress && (
-                      <div className="mt-2">
-                        <div className="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
-                          <div className="h-full bg-slate-500 rounded-full" style={{ width: `${(card.progress.current / card.progress.total) * 100}%` }}></div>
+                {[...studyCards]
+                  .sort((a, b) => {
+                    if (a.unlocked && !b.unlocked) return -1;
+                    if (!a.unlocked && b.unlocked) return 1;
+                    if (!a.unlocked && !b.unlocked) {
+                      return (b.progress || 0) - (a.progress || 0);
+                    }
+                    return 0;
+                  })
+                  .slice(0, 6)
+                  .map(card => {
+                  return (
+                    <button
+                      key={card.id}
+                      onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
+                      className={`relative group/card rounded-2xl p-4 text-center transition-all duration-300 cursor-pointer border ${
+                        card.unlocked
+                          ? 'bg-linear-to-b from-amber-500/5 to-transparent border-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)]'
+                          : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50 opacity-60 hover:opacity-80'
+                      }`}
+                    >
+                      {!card.unlocked && (
+                        <div className="absolute top-2 right-2">
+                          <Lock className="w-3 h-3 text-slate-600" />
                         </div>
-                        <p className="text-[9px] text-slate-600 mt-1 font-bold">{card.progress.current}/{card.progress.total}</p>
+                      )}
+                      <div className="text-3xl mb-2 flex justify-center text-amber-400">
+                         {card.unlocked ? (card.icon_url || (card.tier === 'DIAMOND' ? '💎' : card.tier === 'GOLD' ? '🥇' : card.tier === 'SILVER' ? '🥈' : '🥉')) : <Sparkles className="w-8 h-8 text-slate-500" />}
                       </div>
-                    )}
-                  </button>
-                ))}
+                      <p className={`text-[10px] font-black uppercase tracking-wider leading-tight ${card.unlocked ? 'text-amber-300' : 'text-slate-500'}`}>
+                        {card.name}
+                      </p>
+                      {!card.unlocked && (
+                        <div className="mt-2">
+                          <div className="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
+                            <div className="h-full bg-slate-500 rounded-full" style={{ width: `${card.progress || 0}%` }}></div>
+                          </div>
+                          <p className="text-[9px] text-slate-600 mt-1 font-bold">{card.current_value}/{card.condition_value}</p>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
           </div>
         </div>
 
-        {/* ═══ MODAL: Expanded Study Card ═══ */}
-        {selectedCard && (
+        {selectedCard && (() => {
+          return (
           <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedCard(null)}>
             <div
               className={`relative w-full max-w-sm rounded-3xl p-8 text-center animate-in zoom-in-95 duration-300 ${
-                selectedCard.achieved
+                selectedCard.unlocked
                   ? 'bg-linear-to-b from-slate-800 via-slate-900 to-slate-950 border-2 border-amber-500/30 shadow-[0_0_60px_rgba(245,158,11,0.15)]'
                   : 'bg-slate-900 border border-slate-700'
               }`}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Holographic Shimmer */}
-              {selectedCard.achieved && (
+              {selectedCard.unlocked && (
                 <div className="absolute inset-0 rounded-3xl bg-linear-to-tr from-amber-400/5 via-transparent to-purple-400/5 pointer-events-none"></div>
               )}
 
               <div className="relative z-10">
-                <div className="text-5xl mb-4">{selectedCard.icon}</div>
-                <h3 className={`text-lg font-black uppercase tracking-wider mb-2 ${selectedCard.achieved ? 'text-amber-300' : 'text-slate-400'}`}>
-                  {selectedCard.title}
+                <div className="text-6xl mb-4 flex justify-center text-amber-400">
+                  {selectedCard.unlocked ? (selectedCard.icon_url || (selectedCard.tier === 'DIAMOND' ? '💎' : selectedCard.tier === 'GOLD' ? '🥇' : selectedCard.tier === 'SILVER' ? '🥈' : '🥉')) : <Lock className="w-12 h-12 text-slate-500" />}
+                </div>
+                <h3 className={`text-lg font-black uppercase tracking-wider mb-2 ${selectedCard.unlocked ? 'text-amber-300' : 'text-slate-400'}`}>
+                  {selectedCard.name}
                 </h3>
                 <p className="text-sm text-slate-400 mb-4 leading-relaxed">{selectedCard.description}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-widest mb-6 ${selectedCard.achieved ? 'text-purple-400' : 'text-slate-600'}`}>
-                  {selectedCard.rarity}
+                <p className={`text-[10px] font-bold uppercase tracking-widest mb-6 ${selectedCard.unlocked ? 'text-purple-400' : 'text-slate-600'}`}>
+                  {selectedCard.tier}
                 </p>
 
-                {selectedCard.achieved ? (
+                {selectedCard.unlocked ? (
                   <div className="space-y-2 bg-slate-800/50 rounded-2xl p-4 border border-slate-700/30">
-                    <p className="text-xs text-emerald-400 font-bold">✓ Đã nhận — {selectedCard.date}</p>
-                    {selectedCard.stats && (
-                      <div className="flex justify-center gap-6 mt-2">
-                        <div><p className="text-lg font-extrabold text-white">{selectedCard.stats.matches}</p><p className="text-[10px] text-slate-500 font-bold uppercase">Trận</p></div>
-                        <div><p className="text-lg font-extrabold text-white">{selectedCard.stats.bestScore}</p><p className="text-[10px] text-slate-500 font-bold uppercase">Best</p></div>
-                      </div>
-                    )}
+                    <p className="text-xs text-emerald-400 font-bold">✓ Đã nhận — {new Date(selectedCard.unlocked_at).toLocaleDateString()}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {selectedCard.progress && (
-                      <>
-                        <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                          <div className="h-full bg-linear-to-r from-slate-500 to-slate-400 rounded-full transition-all" style={{ width: `${(selectedCard.progress.current / selectedCard.progress.total) * 100}%` }}></div>
-                        </div>
-                        <p className="text-xs text-slate-500 font-bold">{selectedCard.progress.current} / {selectedCard.progress.total}</p>
-                      </>
-                    )}
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="h-full bg-linear-to-r from-slate-500 to-slate-400 rounded-full transition-all" style={{ width: `${selectedCard.progress || 0}%` }}></div>
+                    </div>
+                    <p className="text-xs text-slate-500 font-bold">{selectedCard.current_value} / {selectedCard.condition_value}</p>
                     <p className="text-xs text-slate-500 font-medium flex items-center justify-center gap-1.5">
                       <Lock className="w-3 h-3" /> Tiếp tục luyện tập để mở khóa
                     </p>
@@ -289,7 +434,7 @@ export default function EduGames() {
               </div>
             </div>
           </div>
-        )}
+        );})()}
 
       </div>
 

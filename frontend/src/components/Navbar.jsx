@@ -83,7 +83,15 @@ export default function Navbar() {
                   
                   <div className="hidden sm:flex flex-col items-start leading-tight pr-1">
                     <span className={`text-[13px] font-bold max-w-[100px] truncate ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-                      {user.name || user.fullName || 'Người dùng'}
+                      <span className={
+                        user?.highestFeaturedTier?.toUpperCase() === 'DIAMOND' ? 'name-gradient-diamond' :
+                        user?.highestFeaturedTier?.toUpperCase() === 'GOLD' ? 'name-gradient-gold' :
+                        user?.highestFeaturedTier?.toUpperCase() === 'SILVER' ? 'name-gradient-silver' :
+                        user?.highestFeaturedTier?.toUpperCase() === 'BRONZE' ? 'name-gradient-bronze' :
+                        ''
+                      }>
+                        {user.name || user.fullName || 'Người dùng'}
+                      </span>
                     </span>
                     <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.25 rounded-md mt-0.5 ${
                       user.role_id === 3 ? 'bg-amber-500/20 text-amber-400' : 
@@ -112,8 +120,16 @@ export default function Navbar() {
                           }`}
                         />
                         <div className="overflow-hidden">
-                          <p className="text-base font-extrabold text-white truncate">
-                            {user.name || user.fullName || 'Người dùng'}
+                          <p className="text-base font-extrabold truncate text-white">
+                            <span className={
+                              user?.highestFeaturedTier?.toUpperCase() === 'DIAMOND' ? 'name-gradient-diamond' :
+                              user?.highestFeaturedTier?.toUpperCase() === 'GOLD' ? 'name-gradient-gold' :
+                              user?.highestFeaturedTier?.toUpperCase() === 'SILVER' ? 'name-gradient-silver' :
+                              user?.highestFeaturedTier?.toUpperCase() === 'BRONZE' ? 'name-gradient-bronze' :
+                              ''
+                            }>
+                              {user.name || user.fullName || 'Người dùng'}
+                            </span>
                           </p>
                           <p className="text-xs text-slate-400 font-medium truncate mt-0.5 uppercase tracking-wider">
                             {user.role_id === 3 ? 'Quản trị viên' : user.role_id === 2 ? 'Giáo viên' : 'Học sinh'}

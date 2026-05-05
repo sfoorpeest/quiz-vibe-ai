@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download, Bookmark, Heart } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download, Bookmark, Heart, Video } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -34,6 +34,9 @@ export default function Home() {
   const [creatorFilter, setCreatorFilter] = useState(''); // ID người tạo
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [systemTags, setSystemTags] = useState([]); // Tags từ hệ thống
+  
+  // State lưu thông tin rank và điểm cho widget Edu Game
+  const [leaderboardStats, setLeaderboardStats] = useState({ rank: 'N/A', totalScore: 0 });
 
   // Kéo dữ liệu Dashboard & Học liệu
   useEffect(() => {
@@ -57,6 +60,19 @@ export default function Home() {
         const tagsRes = await api.get('/api/edu/tags');
         if (isMounted && tagsRes.data && tagsRes.data.status === 'success') {
           setSystemTags(tagsRes.data.data);
+        }
+        
+        // Fetch Leaderboard for Edu Game widget
+        try {
+          const lbRes = await api.get('/api/quiz/leaderboard');
+          if (isMounted && lbRes.data && lbRes.data.data) {
+            const myEntry = lbRes.data.data.find(p => p.user_id === user?.id);
+            if (myEntry) {
+              setLeaderboardStats({ rank: myEntry.rank, totalScore: myEntry.high_score || 0 });
+            }
+          }
+        } catch (lbErr) {
+          console.error("Lỗi khi tải Leaderboard:", lbErr);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu Home:", err);
@@ -430,14 +446,35 @@ export default function Home() {
               materials.map((item) => (
                 <div key={item.id} onClick={() => navigate(`/learn/${item.id}`)} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-500/50 transition-all rounded-2xl p-5 group cursor-pointer flex flex-col h-full">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                    </div>
+                    {(() => {
+                      const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                      const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                      return (
+                        <div className={`p-2.5 rounded-lg transition-colors ${
+                          isYT ? 'bg-purple-500/10 group-hover:bg-purple-500/20' : 
+                          isPDF ? 'bg-red-500/10 group-hover:bg-red-500/20' : 
+                          'bg-blue-500/10 group-hover:bg-blue-500/20'
+                        }`}>
+                          {isYT ? (
+                            <Video className="w-5 h-5 text-purple-400" />
+                          ) : (
+                            <FileText className={`w-5 h-5 ${isPDF ? 'text-red-400' : 'text-blue-400'}`} />
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1">
                       <h4 className="text-slate-100 font-bold line-clamp-1 group-hover:text-blue-400 transition-colors">{item.title}</h4>
-                      <p className="text-slate-500 text-xs mt-1 font-medium">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
+                      <p className="text-slate-500 text-[10px] mt-0.5 font-medium">
+                        {new Date(item.created_at).toLocaleDateString('vi-VN')} • {/youtube\.com|youtu\.be/i.test(item.content_url) ? 'VIDEO' : item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'}
+                      </p>
                     </div>
                   </div>
+
+                  {/* Hiển thị Preview Content */}
+                  <p className="text-slate-400 text-xs line-clamp-2 mb-4 font-medium leading-relaxed italic">
+                    "{item.description?.replace(/^\[TAGS:.*?\]/, '').trim() || "Tài liệu học tập mới..."}"
+                  </p>
 
                   {/* Hiển thị Tags từ AI (Trích xuất từ description) */}
                   {(() => {
@@ -512,19 +549,30 @@ export default function Home() {
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg uppercase tracking-wider">Đang xem dở</span>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">{dashboardData.lastMaterial.title}</h2>
+                <h2 className="text-2xl font-bold text-white mb-2 relative z-10 drop-shadow-sm">
+                  {dashboardData.lastMaterial.title.replace(/_/g, ' ')}
+                </h2>
                 <p className="text-blue-200/80 text-sm mb-8 max-w-md relative z-10 line-clamp-2">
-                  {dashboardData.lastMaterial.description || "Hãy tiếp tục hoàn thành bài học này để nắm vững kiến thức nhé!"}
+                  {dashboardData.lastMaterial.description ? dashboardData.lastMaterial.description.replace(/^\[TAGS:.*?\]/, '').trim() : "Hãy tiếp tục hoàn thành bài học này để nắm vững kiến thức nhé!"}
                 </p>
                 
                 <div className="mb-8 relative z-10 max-w-md">
                   <div className="flex justify-between text-sm font-bold text-slate-200 mb-2">
                     <span>Tiến độ học tập</span>
-                    <span>{dashboardData.lastMaterial.progress}%</span>
+                    <div className="flex items-center gap-2">
+                      {dashboardData.lastMaterial.quizStatus === 'FAIL' && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-sm uppercase tracking-wider">Chưa đạt Quiz</span>
+                      )}
+                      <span>{dashboardData.lastMaterial.progress}%</span>
+                    </div>
                   </div>
                   <div className="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden shadow-inner">
                     <div 
-                      className="bg-linear-to-r from-blue-500 to-cyan-400 h-full rounded-full shadow-[0_0_10px_var(--color-blue-500)] transition-all duration-1000" 
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        dashboardData.lastMaterial.quizStatus === 'FAIL' 
+                        ? 'bg-linear-to-r from-amber-500 to-orange-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]' 
+                        : 'bg-linear-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_var(--color-blue-500)]'
+                      }`} 
                       style={{ width: `${dashboardData.lastMaterial.progress}%` }}
                     ></div>
                   </div>
@@ -545,25 +593,25 @@ export default function Home() {
               <h3 className={`text-slate-400 text-sm font-bold uppercase tracking-widest mb-8 ${!dashboardData.lastMaterial ? 'text-left' : 'text-center sm:text-left'}`}>Hồ sơ Của Bạn</h3>
               
               <div className={`space-y-6 ${!dashboardData.lastMaterial ? 'space-y-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl mx-auto w-full' : ''}`}>
-                <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                  <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                <Link to="/my-lessons" className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 hover:border-blue-500/30 transition-all group/stat">
+                  <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover/stat:bg-emerald-500/20 transition-colors">
                     <CheckCircle className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
                     <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.totalLearned}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Khóa/Bài đã học</p>
                   </div>
-                </div>
+                </Link>
                 
-                <div className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
-                  <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                <Link to="/practice" className="flex items-center gap-5 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 hover:bg-slate-800 hover:border-amber-500/30 transition-all group/stat">
+                  <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner group-hover/stat:bg-amber-500/20 transition-colors">
                     <Trophy className="w-7 h-7 text-amber-400" />
                   </div>
                   <div>
                     <p className="text-3xl font-extrabold text-white leading-none">{dashboardData.stats.avgScore}</p>
                     <p className="text-slate-400 text-sm mt-1.5 font-medium">Điểm trung bình Quiz</p>
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -661,22 +709,41 @@ export default function Home() {
                       <SlidersHorizontal className="w-4 h-4" />
                     </button>
                  </div>
-
+ 
                  <div className="space-y-4 relative z-10 overflow-hidden">
                     {materials.length > 0 ? (
                       materials.slice(0, 2).map((item) => (
                         <Link key={item.id} to={`/learn/${item.id}`} className="flex items-center gap-4 group/item cursor-pointer">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.content_url?.endsWith('.pdf') ? 'bg-red-500/10 border-red-500/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                            <FileText className={`w-5 h-5 ${item.content_url?.endsWith('.pdf') ? 'text-red-500 fill-red-500/10' : 'text-blue-500 fill-blue-500/10'}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">{item.title}</h4>
-                            <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                              {item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
-                            </p>
-                          </div>
-                          <div className="text-slate-500 hover:text-white transition-colors">
-                            <ArrowRight className="w-4 h-4" />
+                          {(() => {
+                            const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                            const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                            return (
+                              <>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                                  isYT ? 'bg-purple-500/10 border-purple-500/20' : 
+                                  isPDF ? 'bg-red-500/10 border-red-500/20' : 
+                                  'bg-blue-500/10 border-blue-500/20'
+                                }`}>
+                                  {isYT ? (
+                                    <Video className="w-5 h-5 text-purple-500 fill-purple-500/10" />
+                                  ) : (
+                                    <FileText className={`w-5 h-5 ${isPDF ? 'text-red-500 fill-red-500/10' : 'text-blue-500 fill-blue-500/10'}`} />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">{item.title}</h4>
+                                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 font-medium">
+                                    {item.description?.replace(/^\[TAGS:.*?\]/, '').trim() || "Tài liệu học tập..."}
+                                  </p>
+                                  <p className="text-[9px] text-slate-600 mt-0.5 font-bold uppercase tracking-wider">
+                                    {isYT ? 'YOUTUBE' : isPDF ? 'PDF' : item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                              </>
+                            );
+                          })()}
+                          <div className="text-slate-600 group-hover:text-white transition-colors">
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </div>
                         </Link>
                       ))
@@ -701,10 +768,10 @@ export default function Home() {
                     </p>
                     <div className="flex gap-4">
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Best: 12,450
+                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Pts: {Number(leaderboardStats.totalScore).toLocaleString()}
                        </span>
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #14
+                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #{leaderboardStats.rank}
                        </span>
                     </div>
                  </div>
@@ -822,9 +889,17 @@ export default function Home() {
                 <div key={item.id} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">
                   <div className="flex justify-between items-start mb-5">
                     <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item.id}</span>
-                    <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                    {(() => {
+                      const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                      const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                      if (isYT) return <Video className="w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-colors" />;
+                      if (isPDF) return <FileText className="w-5 h-5 text-slate-500 group-hover:text-red-400 transition-colors" />;
+                      return <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />;
+                    })()}
                   </div>
-                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">{item.title}</h4>
+                  <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">
+                    {item.title.replace(/_/g, ' ')}
+                  </h4>
                   
                   {/* Tách và hiển thị nội dung sạch + Tags */}
                   {(() => {

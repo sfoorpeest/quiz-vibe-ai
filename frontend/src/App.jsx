@@ -20,10 +20,14 @@ import MyLessons from './pages/MyLessons';
 import Practice from './pages/Practice';
 import Materials from './pages/Materials';
 import EduGames from './pages/EduGames';
+import SoloAdventure from './pages/SoloAdventure';
+import WaitingRoom from './pages/WaitingRoom';
+import LiveChallenge from './pages/LiveChallenge';
 import TeacherGroupManagement from './pages/TeacherGroupManagement';
 import WorksheetBuilder from './pages/WorksheetBuilder';
 import WorksheetPublic from './pages/WorksheetPublic';
 import Chat from './pages/Chat';
+import BadgeToast from './components/BadgeToast';
 import { Toaster } from 'react-hot-toast';
 
 // Educational App Main Router
@@ -33,6 +37,7 @@ function App() {
       <AuthProvider>
         <ItemPreferenceProvider>
   <Toaster position="top-center" reverseOrder={false} />
+  <BadgeToast />
         <Routes>
           <Route path="/test" element={<div style={{color:'white', padding:'50px'}}>React is Working!</div>} />
           <Route path="/" element={<Home />} />
@@ -129,6 +134,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <EduGames />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/games/solo" 
+            element={
+              <ProtectedRoute>
+                <SoloAdventure />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/games/waiting" 
+            element={
+              <ProtectedRoute>
+                <WaitingRoom />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/games/live" 
+            element={
+              <ProtectedRoute>
+                <LiveChallenge />
               </ProtectedRoute>
             } 
           />

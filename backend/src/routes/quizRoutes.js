@@ -6,6 +6,9 @@ const quizController = require('../controllers/quizController');
 // 1. Tạo Quiz từ topic bằng AI
 router.post('/generate', auth, quizController.createAiQuiz);
 
+// 1.5. Tạo Quiz ngẫu nhiên (Solo Adventure Vô Cực)
+router.post('/generate-random', auth, quizController.generateRandomQuiz);
+
 // 2. Lưu kết quả làm bài
 router.post('/submit', auth, quizController.saveQuizResult);
 
