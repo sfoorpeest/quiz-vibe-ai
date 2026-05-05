@@ -42,18 +42,20 @@ exports.getDashboardStats = async (req, res) => {
         `, { type: QueryTypes.SELECT });
 
         res.json({
-            status: 'success',
+            success: true,
+            message: 'Lấy thống kê hệ thống thành công',
             data: {
                 users: userStats[0],
                 quizzes: quizStats[0],
                 materials: materialStats[0],
                 today_sessions: todayStats[0]?.today_sessions || 0,
                 yesterday_sessions: yesterdayStats[0]?.yesterday_sessions || 0,
-            }
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('getDashboardStats error:', error);
-        res.status(500).json({ message: 'Lỗi lấy thống kê hệ thống', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy thống kê hệ thống', data: null, errorCode: 'GET_DASHBOARD_STATS_FAILED' });
     }
 };
 
@@ -80,10 +82,10 @@ exports.getAllUsers = async (req, res) => {
             ORDER BY u.created_at DESC
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: users });
+        res.json({ success: true, message: 'Lấy danh sách người dùng thành công', data: users, errorCode: null });
     } catch (error) {
         console.error('getAllUsers error:', error);
-        res.status(500).json({ message: 'Lỗi lấy danh sách người dùng', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy danh sách người dùng', data: null, errorCode: 'GET_ALL_USERS_FAILED' });
     }
 };
 
@@ -107,10 +109,10 @@ exports.getTopQuizzes = async (req, res) => {
             LIMIT 5
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: topQuizzes });
+        res.json({ success: true, message: 'Lấy top quiz thành công', data: topQuizzes, errorCode: null });
     } catch (error) {
         console.error('getTopQuizzes error:', error);
-        res.status(500).json({ message: 'Lỗi lấy top quiz', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy top quiz', data: null, errorCode: 'GET_TOP_QUIZZES_FAILED' });
     }
 };
 
@@ -132,10 +134,10 @@ exports.getSubjectStats = async (req, res) => {
             LIMIT 5
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: stats });
+        res.json({ success: true, message: 'Lấy thống kê chủ đề thành công', data: stats, errorCode: null });
     } catch (error) {
         console.error('getSubjectStats error:', error);
-        res.status(500).json({ message: 'Lỗi lấy thống kê chủ đề', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy thống kê chủ đề', data: null, errorCode: 'GET_SUBJECT_STATS_FAILED' });
     }
 };
 
@@ -188,10 +190,10 @@ exports.getRecentActivity = async (req, res) => {
             LIMIT 15
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: activities });
+        res.json({ success: true, message: 'Lấy hoạt động gần đây thành công', data: activities, errorCode: null });
     } catch (error) {
         console.error('getRecentActivity error:', error);
-        res.status(500).json({ message: 'Lỗi lấy hoạt động gần đây', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy hoạt động gần đây', data: null, errorCode: 'GET_RECENT_ACTIVITY_FAILED' });
     }
 };
 
@@ -223,10 +225,10 @@ exports.getAllQuizzesAdmin = async (req, res) => {
             ORDER BY q.created_at DESC
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: quizzes });
+        res.json({ success: true, message: 'Lấy danh sách quiz thành công', data: quizzes, errorCode: null });
     } catch (error) {
         console.error('getAllQuizzesAdmin error:', error);
-        res.status(500).json({ message: 'Lỗi lấy danh sách quiz', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy danh sách quiz', data: null, errorCode: 'GET_ALL_QUIZZES_FAILED' });
     }
 };
 
@@ -255,10 +257,10 @@ exports.getAllMaterialsAdmin = async (req, res) => {
             ORDER BY m.created_at DESC
         `, { type: QueryTypes.SELECT });
 
-        res.json({ status: 'success', data: materials });
+        res.json({ success: true, message: 'Lấy danh sách học liệu thành công', data: materials, errorCode: null });
     } catch (error) {
         console.error('getAllMaterialsAdmin error:', error);
-        res.status(500).json({ message: 'Lỗi lấy danh sách học liệu', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy danh sách học liệu', data: null, errorCode: 'GET_ALL_MATERIALS_FAILED' });
     }
 };
 
@@ -273,10 +275,10 @@ exports.deleteMaterialAdmin = async (req, res) => {
             replacements: [materialId],
             type: QueryTypes.DELETE
         });
-        res.json({ status: 'success', message: 'Đã xoá học liệu' });
+        res.json({ success: true, message: 'Đã xoá học liệu', data: null, errorCode: null });
     } catch (error) {
         console.error('deleteMaterialAdmin error:', error);
-        res.status(500).json({ message: 'Lỗi xoá học liệu', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi xoá học liệu', data: null, errorCode: 'DELETE_MATERIAL_FAILED' });
     }
 };
 
@@ -291,9 +293,9 @@ exports.deleteUser = async (req, res) => {
             replacements: [userId],
             type: QueryTypes.DELETE
         });
-        res.json({ status: 'success', message: 'Đã xoá người dùng' });
+        res.json({ success: true, message: 'Đã xoá người dùng', data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi xoá người dùng', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi xoá người dùng', data: null, errorCode: 'DELETE_USER_FAILED' });
     }
 };
 
@@ -312,10 +314,10 @@ exports.getAllGroupsAdmin = async (req, res) => {
             JOIN users u ON g.teacher_id = u.id
             ORDER BY g.created_at DESC
         `, { type: QueryTypes.SELECT });
-        res.json({ status: 'success', data: groups });
+        res.json({ success: true, message: 'Lấy danh sách lớp học thành công', data: groups, errorCode: null });
     } catch (error) {
         console.error('getAllGroupsAdmin error:', error);
-        res.status(500).json({ message: 'Lỗi lấy danh sách lớp học', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi lấy danh sách lớp học', data: null, errorCode: 'GET_ALL_GROUPS_FAILED' });
     }
 };
 
@@ -329,7 +331,7 @@ exports.updateGroupCapacity = async (req, res) => {
         const { capacity } = req.body;
 
         if (!capacity || isNaN(capacity) || capacity <= 0) {
-            return res.status(400).json({ message: 'Sĩ số không hợp lệ' });
+            return res.status(400).json({ success: false, message: 'Sĩ số không hợp lệ', data: null, errorCode: 'INVALID_CAPACITY' });
         }
 
         await sequelize.query('UPDATE \`groups\` SET capacity = ? WHERE id = ?', {
@@ -337,9 +339,9 @@ exports.updateGroupCapacity = async (req, res) => {
             type: QueryTypes.UPDATE
         });
 
-        res.json({ status: 'success', message: 'Đã cập nhật sĩ số lớp học' });
+        res.json({ success: true, message: 'Đã cập nhật sĩ số lớp học', data: null, errorCode: null });
     } catch (error) {
         console.error('updateGroupCapacity error:', error);
-        res.status(500).json({ message: 'Lỗi cập nhật sĩ số', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi cập nhật sĩ số', data: null, errorCode: 'UPDATE_GROUP_CAPACITY_FAILED' });
     }
 };

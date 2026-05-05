@@ -7,7 +7,8 @@ const { getMaterialLearningSnapshot } = require('../services/materialService');
 const sendProfileError = (res, statusCode, message, error) => res.status(statusCode).json({
     success: false,
     message,
-    error: error ? String(error.message || error) : null,
+    data: null,
+    errorCode: error ? String(error.message || error) : 'PROFILE_ERROR',
 });
 
 const ALLOWED_ITEM_TYPES = new Set(['material', 'assignment']);
@@ -107,7 +108,7 @@ exports.getProfile = async (req, res) => {
         `, { replacements: { userId }, type: QueryTypes.SELECT });
 
         if (!profile) {
-            return res.status(404).json({ message: "Không tìm thấy người dùng." });
+            return res.status(404).json({ success: false, message: "Không tìm thấy người dùng.", data: null, errorCode: "USER_NOT_FOUND" });
         }
 
         // Nếu chưa có profile trong user_profiles, tạo mặc định (để các lần sau join có data)
@@ -137,22 +138,27 @@ exports.getProfile = async (req, res) => {
         }
 
         res.json({
-            ...profile,
-            username: profile.name,
-            avatar: profile.avatar || null,
-            notificationEmail: Boolean(profile.notification_email),
-            notificationLearning: Boolean(profile.notification_learning),
-            isProfilePrivate: Boolean(profile.is_profile_private),
-            featuredBadges: featuredIds,
-            equippedBadgeId: profile.equipped_badge_id || null,
-            equippedBadgeTier: profile.equipped_badge_tier || null,
-            equippedBadgeIcon: profile.equipped_badge_icon || null,
-            highestFeaturedTier: highestFeaturedTier,
-            avatarUpdatedAt: profile.updated_at
+            success: true,
+            message: "Lấy thông tin hồ sơ thành công.",
+            data: {
+                ...profile,
+                username: profile.name,
+                avatar: profile.avatar || null,
+                notificationEmail: Boolean(profile.notification_email),
+                notificationLearning: Boolean(profile.notification_learning),
+                isProfilePrivate: Boolean(profile.is_profile_private),
+                featuredBadges: featuredIds,
+                equippedBadgeId: profile.equipped_badge_id || null,
+                equippedBadgeTier: profile.equipped_badge_tier || null,
+                equippedBadgeIcon: profile.equipped_badge_icon || null,
+                highestFeaturedTier: highestFeaturedTier,
+                avatarUpdatedAt: profile.updated_at
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('Profile getProfile Error:', error);
-        res.status(500).json({ message: "Lỗi máy chủ.", error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ.", data: null, errorCode: "GET_PROFILE_FAILED" });
     }
 };
 
@@ -230,19 +236,24 @@ exports.updateProfile = async (req, res) => {
         `, { replacements: { userId }, type: QueryTypes.SELECT });
 
         res.json({
-            ...updated,
-            username: updated.name,
-            avatar: updated.avatar || null,
-            notificationEmail: Boolean(updated.notification_email),
-            notificationLearning: Boolean(updated.notification_learning),
-            isProfilePrivate: Boolean(updated.is_profile_private),
-            featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
-            equippedBadgeId: updated.equipped_badge_id || null
+            success: true,
+            message: "Cập nhật hồ sơ thành công.",
+            data: {
+                ...updated,
+                username: updated.name,
+                avatar: updated.avatar || null,
+                notificationEmail: Boolean(updated.notification_email),
+                notificationLearning: Boolean(updated.notification_learning),
+                isProfilePrivate: Boolean(updated.is_profile_private),
+                featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+                equippedBadgeId: updated.equipped_badge_id || null
+            },
+            errorCode: null
         });
     } catch (error) {
         await t.rollback();
         console.error('Profile updateProfile Error:', error);
-        res.status(500).json({ message: "Lỗi máy chủ.", error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ.", data: null, errorCode: "UPDATE_PROFILE_FAILED" });
     }
 };
 
@@ -347,18 +358,23 @@ exports.uploadAvatar = async (req, res) => {
         `, { replacements: { userId }, type: QueryTypes.SELECT });
 
         res.json({
-            ...updated,
-            username: updated.name,
-            avatar: updated.avatar || null,
-            notificationEmail: Boolean(updated.notification_email),
-            notificationLearning: Boolean(updated.notification_learning),
-            isProfilePrivate: Boolean(updated.is_profile_private),
-            featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
-            equippedBadgeId: updated.equipped_badge_id || null
+            success: true,
+            message: "Upload avatar thành công.",
+            data: {
+                ...updated,
+                username: updated.name,
+                avatar: updated.avatar || null,
+                notificationEmail: Boolean(updated.notification_email),
+                notificationLearning: Boolean(updated.notification_learning),
+                isProfilePrivate: Boolean(updated.is_profile_private),
+                featuredBadges: typeof updated.featured_badges === 'string' ? JSON.parse(updated.featured_badges) : (updated.featured_badges || []),
+                equippedBadgeId: updated.equipped_badge_id || null
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('Profile uploadAvatar Error:', error);
-        res.status(500).json({ success: false, message: 'Lỗi máy chủ.', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ.', data: null, errorCode: 'UPLOAD_AVATAR_FAILED' });
     }
 };
 
@@ -415,10 +431,10 @@ exports.getActivity = async (req, res) => {
             type: QueryTypes.SELECT
         });
 
-        res.json(activities);
+        res.json({ success: true, message: 'Lấy lịch sử hoạt động thành công.', data: activities, errorCode: null });
     } catch (error) {
         console.error('Profile getActivity Error:', error);
-        res.json([]);
+        res.json({ success: false, message: 'Không thể lấy lịch sử hoạt động.', data: [], errorCode: 'GET_ACTIVITY_FAILED' });
     }
 };
 
@@ -429,7 +445,7 @@ exports.getDashboardSummary = async (req, res) => {
         const user = await User.findByPk(userId);
 
         if (!user) {
-            return res.status(404).json({ message: "Không tìm thấy người dùng." });
+            return res.status(404).json({ success: false, message: "Không tìm thấy người dùng.", data: null, errorCode: "USER_NOT_FOUND" });
         }
 
         let stats = {};
@@ -564,10 +580,10 @@ exports.getDashboardSummary = async (req, res) => {
             }
         } catch (e) { }
 
-        res.json({ stats, lastMaterial });
+        res.json({ success: true, message: 'Lấy tổng quan thành công.', data: { stats, lastMaterial }, errorCode: null });
     } catch (error) {
         console.error('Profile getDashboardSummary Error:', error);
-        res.json({ stats: {}, lastMaterial: null });
+        res.json({ success: false, message: 'Không thể lấy tổng quan.', data: { stats: {}, lastMaterial: null }, errorCode: 'GET_DASHBOARD_SUMMARY_FAILED' });
     }
 };
 
@@ -578,14 +594,14 @@ exports.saveItem = async (req, res) => {
         const itemId = normalizeItemId(req.body?.itemId);
 
         if (!itemType || !itemId) {
-            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+            return res.status(400).json({ success: false, message: 'type và itemId là bắt buộc.', data: null, errorCode: 'VALIDATION_ERROR' });
         }
 
         const data = await upsertUserItemAction(userId, itemType, itemId, { isSaved: true });
-        return res.status(200).json({ status: 'success', data });
+        return res.status(200).json({ success: true, message: 'Lưu mục thành công.', data, errorCode: null });
     } catch (error) {
         console.error('Profile saveItem Error:', error);
-        return res.status(500).json({ message: 'Không thể lưu mục.' });
+        return res.status(500).json({ success: false, message: 'Không thể lưu mục.', data: null, errorCode: 'SAVE_ITEM_FAILED' });
     }
 };
 
@@ -596,14 +612,14 @@ exports.unsaveItem = async (req, res) => {
         const itemId = normalizeItemId(req.body?.itemId);
 
         if (!itemType || !itemId) {
-            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+            return res.status(400).json({ success: false, message: 'type và itemId là bắt buộc.', data: null, errorCode: 'VALIDATION_ERROR' });
         }
 
         const data = await upsertUserItemAction(userId, itemType, itemId, { isSaved: false });
-        return res.status(200).json({ status: 'success', data });
+        return res.status(200).json({ success: true, message: 'Bỏ lưu mục thành công.', data, errorCode: null });
     } catch (error) {
         console.error('Profile unsaveItem Error:', error);
-        return res.status(500).json({ message: 'Không thể bỏ lưu mục.' });
+        return res.status(500).json({ success: false, message: 'Không thể bỏ lưu mục.', data: null, errorCode: 'UNSAVE_ITEM_FAILED' });
     }
 };
 
@@ -614,14 +630,14 @@ exports.favoriteItem = async (req, res) => {
         const itemId = normalizeItemId(req.body?.itemId);
 
         if (!itemType || !itemId) {
-            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+            return res.status(400).json({ success: false, message: 'type và itemId là bắt buộc.', data: null, errorCode: 'VALIDATION_ERROR' });
         }
 
         const data = await upsertUserItemAction(userId, itemType, itemId, { isFavorite: true });
-        return res.status(200).json({ status: 'success', data });
+        return res.status(200).json({ success: true, message: 'Thêm yêu thích thành công.', data, errorCode: null });
     } catch (error) {
         console.error('Profile favoriteItem Error:', error);
-        return res.status(500).json({ message: 'Không thể thêm yêu thích.' });
+        return res.status(500).json({ success: false, message: 'Không thể thêm yêu thích.', data: null, errorCode: 'FAVORITE_ITEM_FAILED' });
     }
 };
 
@@ -632,14 +648,14 @@ exports.unfavoriteItem = async (req, res) => {
         const itemId = normalizeItemId(req.body?.itemId);
 
         if (!itemType || !itemId) {
-            return res.status(400).json({ message: 'type và itemId là bắt buộc.' });
+            return res.status(400).json({ success: false, message: 'type và itemId là bắt buộc.', data: null, errorCode: 'VALIDATION_ERROR' });
         }
 
         const data = await upsertUserItemAction(userId, itemType, itemId, { isFavorite: false });
-        return res.status(200).json({ status: 'success', data });
+        return res.status(200).json({ success: true, message: 'Bỏ yêu thích thành công.', data, errorCode: null });
     } catch (error) {
         console.error('Profile unfavoriteItem Error:', error);
-        return res.status(500).json({ message: 'Không thể bỏ yêu thích.' });
+        return res.status(500).json({ success: false, message: 'Không thể bỏ yêu thích.', data: null, errorCode: 'UNFAVORITE_ITEM_FAILED' });
     }
 };
 
@@ -664,10 +680,10 @@ exports.getSavedItems = async (req, res) => {
                 type: QueryTypes.SELECT
             }
         );
-        return res.status(200).json({ data: rows });
+        return res.status(200).json({ success: true, message: 'Lấy danh sách đã lưu thành công.', data: rows, errorCode: null });
     } catch (error) {
         console.error('Profile getSavedItems Error:', error);
-        return res.status(500).json({ message: 'Không thể tải danh sách đã lưu.' });
+        return res.status(500).json({ success: false, message: 'Không thể tải danh sách đã lưu.', data: null, errorCode: 'GET_SAVED_ITEMS_FAILED' });
     }
 };
 
@@ -692,10 +708,10 @@ exports.getFavoriteItems = async (req, res) => {
                 type: QueryTypes.SELECT
             }
         );
-        return res.status(200).json({ data: rows });
+        return res.status(200).json({ success: true, message: 'Lấy danh sách yêu thích thành công.', data: rows, errorCode: null });
     } catch (error) {
         console.error('Profile getFavoriteItems Error:', error);
-        return res.status(500).json({ message: 'Không thể tải danh sách yêu thích.' });
+        return res.status(500).json({ success: false, message: 'Không thể tải danh sách yêu thích.', data: null, errorCode: 'GET_FAVORITE_ITEMS_FAILED' });
     }
 };
 
@@ -708,7 +724,7 @@ exports.getItemStates = async (req, res) => {
             : [];
 
         if (!itemType || itemIds.length === 0) {
-            return res.status(200).json({ data: [] });
+            return res.status(200).json({ success: true, message: 'Không có dữ liệu trạng thái mục.', data: [], errorCode: null });
         }
 
         const placeholders = itemIds.map(() => '?').join(', ');
@@ -729,10 +745,10 @@ exports.getItemStates = async (req, res) => {
             }
         );
 
-        return res.status(200).json({ data: rows });
+        return res.status(200).json({ success: true, message: 'Lấy trạng thái mục thành công.', data: rows, errorCode: null });
     } catch (error) {
         console.error('Profile getItemStates Error:', error);
-        return res.status(500).json({ message: 'Không thể tải trạng thái mục.' });
+        return res.status(500).json({ success: false, message: 'Không thể tải trạng thái mục.', data: null, errorCode: 'GET_ITEM_STATES_FAILED' });
     }
 };
 

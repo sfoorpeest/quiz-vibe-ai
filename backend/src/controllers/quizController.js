@@ -43,10 +43,14 @@ exports.createAiQuiz = async (req, res) => {
         });
 
         res.status(201).json({
+            success: true,
             message: "Đã tạo và lưu Quiz thành công với dữ liệu AI thật!",
-            quizId: newQuiz.id,
-            totalQuestions: questionsToSave.length,
-            data: questionsToSave // Trả về để FE có thể hiển thị ngay
+            data: {
+                quizId: newQuiz.id,
+                totalQuestions: questionsToSave.length,
+                data: questionsToSave // Trả về để FE có thể hiển thị ngay
+            },
+            errorCode: null
         });
 
     } catch (error) {
@@ -60,7 +64,7 @@ exports.createAiQuiz = async (req, res) => {
             });
         }
         console.error("Controller Error:", error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi khi tạo quiz AI", data: null, errorCode: "CREATE_AI_QUIZ_FAILED" });
     }
 };
 
@@ -80,12 +84,14 @@ exports.generateRandomQuiz = async (req, res) => {
         }));
 
         res.status(200).json({
+            success: true,
             message: "Đã tạo câu hỏi ngẫu nhiên thành công!",
-            data: questionsToReturn
+            data: questionsToReturn,
+            errorCode: null
         });
     } catch (error) {
         console.error("Random Quiz Controller Error:", error.message);
-        res.status(500).json({ error: "Lỗi khi sinh câu hỏi ngẫu nhiên." });
+        res.status(500).json({ success: false, message: "Lỗi khi sinh câu hỏi ngẫu nhiên.", data: null, errorCode: "GENERATE_RANDOM_QUIZ_FAILED" });
     }
 };
 
@@ -167,13 +173,14 @@ exports.saveQuizResult = async (req, res) => {
         }, gameMode);
 
         res.status(201).json({
-            status: 'success',
+            success: true,
             message: "Đã lưu kết quả thi thành công!",
-            newBadges: newBadges || []
+            data: { newBadges: newBadges || [] },
+            errorCode: null
         });
     } catch (error) {
         console.error("Save Result Error:", error);
-        res.status(500).json({ message: "Lỗi khi lưu kết quả thi" });
+        res.status(500).json({ success: false, message: "Lỗi khi lưu kết quả thi", data: null, errorCode: "SAVE_QUIZ_RESULT_FAILED" });
     }
 };
 
@@ -186,7 +193,7 @@ exports.checkAnswers = async (req, res) => {
         const userId = req.user.id;
 
         if (!Array.isArray(selectedAnswers) || selectedAnswers.length === 0) {
-            return res.status(400).json({ message: 'selectedAnswers là bắt buộc' });
+            return res.status(400).json({ success: false, message: 'selectedAnswers là bắt buộc', data: null, errorCode: 'SELECTED_ANSWERS_REQUIRED' });
         }
 
         // Lấy các câu hỏi theo thứ tự tạo
@@ -265,13 +272,23 @@ exports.checkAnswers = async (req, res) => {
         }, gameMode);
 
         if (retryRequired) {
-            return res.status(200).json({ retryRequired: true, wrongAnswers, score: correctCount, newBadges: newBadges || [] });
+            return res.status(200).json({
+                success: true,
+                message: 'Kiểm tra đáp án thành công',
+                data: { retryRequired: true, wrongAnswers, score: correctCount, newBadges: newBadges || [] },
+                errorCode: null
+            });
         }
 
-        return res.status(200).json({ retryRequired: false, score: correctCount, newBadges: newBadges || [] });
+        return res.status(200).json({
+            success: true,
+            message: 'Kiểm tra đáp án thành công',
+            data: { retryRequired: false, score: correctCount, newBadges: newBadges || [] },
+            errorCode: null
+        });
     } catch (error) {
         console.error('Check Answers Error:', error);
-        return res.status(500).json({ message: 'Lỗi khi kiểm tra đáp án' });
+        return res.status(500).json({ success: false, message: 'Lỗi khi kiểm tra đáp án', data: null, errorCode: 'CHECK_ANSWERS_FAILED' });
     }
 };
 
@@ -368,18 +385,22 @@ exports.getLeaderboard = async (req, res) => {
         }));
 
         res.status(200).json({
-            status: 'success',
-            data: formattedTopList,
-            currentUser: currentUserStats ? {
-                ...currentUserStats,
-                high_score: parseFloat(currentUserStats.high_score || 0),
-                attempts: parseInt(currentUserStats.attempts || 0),
-                best_time: parseInt(currentUserStats.best_time || 0)
-            } : null
+            success: true,
+            message: 'Lấy bảng xếp hạng thành công',
+            data: {
+                leaderboard: formattedTopList,
+                currentUser: currentUserStats ? {
+                    ...currentUserStats,
+                    high_score: parseFloat(currentUserStats.high_score || 0),
+                    attempts: parseInt(currentUserStats.attempts || 0),
+                    best_time: parseInt(currentUserStats.best_time || 0)
+                } : null
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error("Leaderboard Error:", error);
-        res.status(500).json({ message: "Lỗi khi tải bảng xếp hạng" });
+        res.status(500).json({ success: false, message: "Lỗi khi tải bảng xếp hạng", data: null, errorCode: "GET_LEADERBOARD_FAILED" });
     }
 };
 
@@ -412,8 +433,10 @@ exports.getRecommendation = async (req, res) => {
 
         if (!latestResult) {
             return res.status(200).json({
+                success: true,
                 message: 'Chưa có dữ liệu quiz để đưa ra gợi ý.',
-                suggestedLessons: []
+                data: { suggestedLessons: [] },
+                errorCode: null
             });
         }
 
@@ -453,12 +476,14 @@ exports.getRecommendation = async (req, res) => {
         ] : [];
 
         return res.status(200).json({
+            success: true,
             message,
-            suggestedLessons
+            data: { suggestedLessons },
+            errorCode: null
         });
     } catch (error) {
         console.error('Recommendation Error:', error);
-        return res.status(500).json({ message: 'Lỗi khi tạo gợi ý học tập', suggestedLessons: [] });
+        return res.status(500).json({ success: false, message: 'Lỗi khi tạo gợi ý học tập', data: { suggestedLessons: [] }, errorCode: 'GET_RECOMMENDATION_FAILED' });
     }
 };
 
@@ -489,9 +514,9 @@ exports.getQuizHistory = async (req, res) => {
             }
         );
 
-        return res.status(200).json({ data: rows });
+        return res.status(200).json({ success: true, message: 'Lấy lịch sử quiz thành công', data: rows, errorCode: null });
     } catch (error) {
         console.error('Quiz History Error:', error);
-        return res.status(500).json({ message: 'Lỗi khi tải lịch sử quiz' });
+        return res.status(500).json({ success: false, message: 'Lỗi khi tải lịch sử quiz', data: null, errorCode: 'GET_QUIZ_HISTORY_FAILED' });
     }
 };

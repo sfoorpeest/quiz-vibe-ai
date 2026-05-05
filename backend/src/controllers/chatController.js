@@ -32,7 +32,7 @@ exports.getChatHistory = async (req, res) => {
         const otherUserId = req.params.userId;
 
         if (!otherUserId) {
-            return res.status(400).json({ message: "Thiếu thông tin người nhận (userId)" });
+            return res.status(400).json({ success: false, message: "Thiếu thông tin người nhận (userId)", data: null, errorCode: "MISSING_USER_ID" });
         }
 
         const messages = await Message.findAll({
@@ -52,14 +52,11 @@ exports.getChatHistory = async (req, res) => {
             ]
         });
 
-        res.status(200).json({
-            success: true,
-            data: messages
-        });
+        res.status(200).json({ success: true, message: "Lấy lịch sử chat thành công", data: messages, errorCode: null });
 
     } catch (error) {
         console.error("❌ Get Chat History Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi lấy lịch sử chat" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi lấy lịch sử chat", data: null, errorCode: "GET_CHAT_HISTORY_FAILED" });
     }
 };
 
@@ -95,7 +92,7 @@ exports.getContacts = async (req, res) => {
         });
 
         if (userIds.size === 0) {
-            return res.status(200).json({ success: true, data: [] });
+            return res.status(200).json({ success: true, message: "Lấy danh bạ thành công", data: [], errorCode: null });
         }
 
         const contacts = await User.findAll({
@@ -103,11 +100,11 @@ exports.getContacts = async (req, res) => {
             attributes: ['id', 'name', 'email', 'role_id']
         });
 
-        res.status(200).json({ success: true, data: contacts });
+        res.status(200).json({ success: true, message: "Lấy danh bạ thành công", data: contacts, errorCode: null });
 
     } catch (error) {
         console.error("❌ Get Contacts Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi lấy danh bạ" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi lấy danh bạ", data: null, errorCode: "GET_CONTACTS_FAILED" });
     }
 };
 
@@ -123,7 +120,7 @@ exports.searchUsers = async (req, res) => {
         const currentUserId = req.user.id;
 
         if (!q || q.trim() === '') {
-            return res.status(200).json({ success: true, data: [] });
+            return res.status(200).json({ success: true, message: "Tìm kiếm thành công", data: [], errorCode: null });
         }
 
         const users = await User.findAll({
@@ -142,11 +139,11 @@ exports.searchUsers = async (req, res) => {
             attributes: ['id', 'name', 'email', 'role_id']
         });
 
-        res.status(200).json({ success: true, data: users });
+        res.status(200).json({ success: true, message: "Tìm kiếm người dùng thành công", data: users, errorCode: null });
 
     } catch (error) {
         console.error("❌ Search Users Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi tìm kiếm người dùng" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi tìm kiếm người dùng", data: null, errorCode: "SEARCH_USERS_FAILED" });
     }
 };
 
@@ -185,20 +182,18 @@ exports.uploadFile = async (req, res) => {
                 const fs = require('fs');
                 fs.unlinkSync(req.file.path);
             }
-            return res.status(403).json({
-                message: "Học sinh không có quyền upload tài liệu. Bạn chỉ có thể chuyển tiếp tài liệu đã nhận."
-            });
+            return res.status(403).json({ success: false, message: "Học sinh không có quyền upload tài liệu. Bạn chỉ có thể chuyển tiếp tài liệu đã nhận.", data: null, errorCode: "UPLOAD_FORBIDDEN" });
         }
 
         // --- Kiểm tra file có tồn tại không ---
         if (!req.file) {
-            return res.status(400).json({ message: "Không tìm thấy file được upload" });
+            return res.status(400).json({ success: false, message: "Không tìm thấy file được upload", data: null, errorCode: "NO_FILE" });
         }
 
         const { receiver_id, content } = req.body;
 
         if (!receiver_id) {
-            return res.status(400).json({ message: "Thiếu receiver_id" });
+            return res.status(400).json({ success: false, message: "Thiếu receiver_id", data: null, errorCode: "MISSING_RECEIVER_ID" });
         }
 
         // --- Tạo đường dẫn tương đối để lưu vào DB ---
@@ -251,14 +246,11 @@ exports.uploadFile = async (req, res) => {
             }
         }
 
-        res.status(201).json({
-            success: true,
-            data: messagePayload
-        });
+        res.status(201).json({ success: true, message: "Upload file thành công", data: messagePayload, errorCode: null });
 
     } catch (error) {
         console.error("❌ Upload File Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi upload file" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi upload file", data: null, errorCode: "UPLOAD_FILE_FAILED" });
     }
 };
 
@@ -303,14 +295,11 @@ exports.markMessagesAsSeen = async (req, res) => {
             }
         }
 
-        res.status(200).json({
-            success: true,
-            message: `Đã đánh dấu ${updatedCount} tin nhắn là đã xem`
-        });
+        res.status(200).json({ success: true, message: `Đã đánh dấu ${updatedCount} tin nhắn là đã xem`, data: null, errorCode: null });
 
     } catch (error) {
         console.error("❌ Mark Seen Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi cập nhật trạng thái tin nhắn" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi cập nhật trạng thái tin nhắn", data: null, errorCode: "MARK_SEEN_FAILED" });
     }
 };
 
@@ -338,14 +327,14 @@ exports.forwardMessage = async (req, res) => {
         const { messageId, receiver_id } = req.body;
 
         if (!messageId || !receiver_id) {
-            return res.status(400).json({ message: "Thiếu messageId hoặc receiver_id" });
+            return res.status(400).json({ success: false, message: "Thiếu messageId hoặc receiver_id", data: null, errorCode: "MISSING_PARAMS" });
         }
 
         // --- Tìm tin nhắn gốc ---
         const originalMessage = await Message.findByPk(messageId);
 
         if (!originalMessage) {
-            return res.status(404).json({ message: "Không tìm thấy tin nhắn gốc" });
+            return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn gốc", data: null, errorCode: "MESSAGE_NOT_FOUND" });
         }
 
         // --- Kiểm tra quyền: chỉ sender hoặc receiver của tin nhắn gốc mới được forward ---
@@ -354,9 +343,7 @@ exports.forwardMessage = async (req, res) => {
             originalMessage.receiver_id === currentUserId;
 
         if (!canForward) {
-            return res.status(403).json({
-                message: "Bạn không có quyền chuyển tiếp tin nhắn này"
-            });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền chuyển tiếp tin nhắn này", data: null, errorCode: "FORWARD_FORBIDDEN" });
         }
 
         // --- Kiểm tra tin nhắn có file hoặc material không ---
@@ -364,9 +351,7 @@ exports.forwardMessage = async (req, res) => {
         const hasMaterial = originalMessage.type === 'material' && originalMessage.material_id;
 
         if (!hasFile && !hasMaterial) {
-            return res.status(400).json({
-                message: "Chỉ có thể chuyển tiếp tin nhắn có chứa file hoặc tài liệu"
-            });
+            return res.status(400).json({ success: false, message: "Chỉ có thể chuyển tiếp tin nhắn có chứa file hoặc tài liệu", data: null, errorCode: "NOT_FORWARDABLE" });
         }
 
         // --- Tạo tin nhắn mới (forward) ---
@@ -415,13 +400,10 @@ exports.forwardMessage = async (req, res) => {
             }
         }
 
-        res.status(201).json({
-            success: true,
-            data: messagePayload
-        });
+        res.status(201).json({ success: true, message: "Chuyển tiếp tin nhắn thành công", data: messagePayload, errorCode: null });
 
     } catch (error) {
         console.error("❌ Forward Message Error:", error);
-        res.status(500).json({ message: "Lỗi máy chủ khi chuyển tiếp tin nhắn" });
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi chuyển tiếp tin nhắn", data: null, errorCode: "FORWARD_MESSAGE_FAILED" });
     }
 };
