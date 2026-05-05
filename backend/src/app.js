@@ -24,14 +24,6 @@ const { connectDB } = require('./config/database');
 const app = express();
 const server = http.createServer(app); // Tạo HTTP server từ app Express
 
-// Khởi tạo Socket.IO và lưu instance 'io' vào app để các controller có thể truy cập
-// Workflow: chatController cần io để emit event đến receiver sau khi upload/forward file
-const io = initSocket(server);
-app.set('io', io); // Gắn io vào app để dùng qua req.app.get('io')
-
-// Khởi tạo Game Socket (namespace /game) — tách biệt khỏi Chat
-initGameSocket(io);
-
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
 app.use(cors()); // Cho phép FE truy cập
@@ -57,17 +49,31 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/chat-files', express.static(path.join(__dirname, '../uploads/chat-files')));
 
 // Kết nối Database
-connectDB();
+if (process.env.NODE_ENV !== 'test') {
+    connectDB();
+}
 
 // Route kiểm tra server
 app.get('/', (req, res) => {
     res.json({ message: "Welcome to Education Quiz AI API" });
 });
 
-const PORT = process.env.PORT || 5000;
-// Lắng nghe trên 'server' thay vì 'app' để Socket.IO cũng hoạt động được
-server.listen(PORT, () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    // Khởi tạo Socket.IO và lưu instance 'io' vào app để các controller có thể truy cập
+    // Workflow: chatController cần io để emit event đến receiver sau khi upload/forward file
+    const io = initSocket(server);
+    app.set('io', io); // Gắn io vào app để dùng qua req.app.get('io')
+
+    // Khởi tạo Game Socket (namespace /game) — tách biệt khỏi Chat
+    initGameSocket(io);
+
+    const PORT = process.env.PORT || 5000;
+    // Lắng nghe trên 'server' thay vì 'app' để Socket.IO cũng hoạt động được
+    server.listen(PORT, () => {
+        console.log(`🚀 Server is running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
 // End
-
+
