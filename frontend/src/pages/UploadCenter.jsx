@@ -437,6 +437,42 @@ export default function UploadCenter() {
                    <p className="text-xs text-slate-500 mt-3 font-medium relative z-10">* Hãy chỉnh sửa nếu AI tóm tắt chưa đúng ý Thầy/Cô</p>
                 </div>
 
+                {/* Extracted Content / Video Preview */}
+                <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-700 rounded-3xl p-6 shadow-md">
+                   <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-cyan-500/20 rounded text-cyan-400">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <label className="text-sm font-bold text-slate-200">Nội dung chi tiết (Text/Transcript)</label>
+                      </div>
+                   </div>
+                   
+                   {/* YouTube Preview if applicable */}
+                   {linkInput && /youtube\.com|youtu\.be/i.test(linkInput) && (
+                     <div className="mb-5 aspect-video rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl">
+                       <iframe
+                         src={`https://www.youtube.com/embed/${linkInput.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?#]+)/)?.[1]}?rel=0`}
+                         className="w-full h-full"
+                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                         allowFullScreen
+                         title="YouTube Preview"
+                       />
+                     </div>
+                   )}
+
+                   <textarea
+                      value={previewData.lessonContent}
+                      onChange={(e) => setPreviewData({...previewData, lessonContent: e.target.value})}
+                      rows="8"
+                      className="w-full bg-slate-800/80 border border-slate-700 font-mono text-slate-300 text-xs leading-relaxed rounded-xl px-4 py-4 focus:border-cyan-500 focus:outline-none transition-all resize-y shadow-inner"
+                      placeholder="Nội dung chi tiết sẽ xuất hiện ở đây sau khi AI bóc tách..."
+                   />
+                   <p className="text-xs text-slate-500 mt-3 font-medium">
+                     {file ? "Văn bản trích xuất từ tệp tin" : "Bản ghi phụ đề (Transcript) hoặc nội dung trích xuất từ URL"}
+                   </p>
+                </div>
+
                 {/* Tags Area */}
                 <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-700 rounded-3xl p-6 shadow-md">
                    <div className="flex items-center gap-2 mb-4">

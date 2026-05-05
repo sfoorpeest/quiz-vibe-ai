@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download, Bookmark, Heart } from 'lucide-react';
+import { BookOpen, BrainCircuit, Users, Trophy, ArrowRight, Play, Star, LogOut, User, ChevronDown, Settings, Key, UploadCloud, FileText, CheckCircle, Plus, Search, Clock, ShieldCheck, X, AlertTriangle, Gamepad2, SlidersHorizontal, Download, Bookmark, Heart, Video } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -446,14 +446,35 @@ export default function Home() {
               materials.map((item) => (
                 <div key={item.id} onClick={() => navigate(`/learn/${item.id}`)} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-blue-500/50 transition-all rounded-2xl p-5 group cursor-pointer flex flex-col h-full">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                    </div>
+                    {(() => {
+                      const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                      const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                      return (
+                        <div className={`p-2.5 rounded-lg transition-colors ${
+                          isYT ? 'bg-purple-500/10 group-hover:bg-purple-500/20' : 
+                          isPDF ? 'bg-red-500/10 group-hover:bg-red-500/20' : 
+                          'bg-blue-500/10 group-hover:bg-blue-500/20'
+                        }`}>
+                          {isYT ? (
+                            <Video className="w-5 h-5 text-purple-400" />
+                          ) : (
+                            <FileText className={`w-5 h-5 ${isPDF ? 'text-red-400' : 'text-blue-400'}`} />
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1">
                       <h4 className="text-slate-100 font-bold line-clamp-1 group-hover:text-blue-400 transition-colors">{item.title}</h4>
-                      <p className="text-slate-500 text-xs mt-1 font-medium">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
+                      <p className="text-slate-500 text-[10px] mt-0.5 font-medium">
+                        {new Date(item.created_at).toLocaleDateString('vi-VN')} • {/youtube\.com|youtu\.be/i.test(item.content_url) ? 'VIDEO' : item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'}
+                      </p>
                     </div>
                   </div>
+
+                  {/* Hiển thị Preview Content */}
+                  <p className="text-slate-400 text-xs line-clamp-2 mb-4 font-medium leading-relaxed italic">
+                    "{item.description?.replace(/^\[TAGS:.*?\]/, '').trim() || "Tài liệu học tập mới..."}"
+                  </p>
 
                   {/* Hiển thị Tags từ AI (Trích xuất từ description) */}
                   {(() => {
@@ -688,22 +709,41 @@ export default function Home() {
                       <SlidersHorizontal className="w-4 h-4" />
                     </button>
                  </div>
-
+ 
                  <div className="space-y-4 relative z-10 overflow-hidden">
                     {materials.length > 0 ? (
                       materials.slice(0, 2).map((item) => (
                         <Link key={item.id} to={`/learn/${item.id}`} className="flex items-center gap-4 group/item cursor-pointer">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.content_url?.endsWith('.pdf') ? 'bg-red-500/10 border-red-500/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                            <FileText className={`w-5 h-5 ${item.content_url?.endsWith('.pdf') ? 'text-red-500 fill-red-500/10' : 'text-blue-500 fill-blue-500/10'}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">{item.title}</h4>
-                            <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                              {item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
-                            </p>
-                          </div>
-                          <div className="text-slate-500 hover:text-white transition-colors">
-                            <ArrowRight className="w-4 h-4" />
+                          {(() => {
+                            const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                            const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                            return (
+                              <>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                                  isYT ? 'bg-purple-500/10 border-purple-500/20' : 
+                                  isPDF ? 'bg-red-500/10 border-red-500/20' : 
+                                  'bg-blue-500/10 border-blue-500/20'
+                                }`}>
+                                  {isYT ? (
+                                    <Video className="w-5 h-5 text-purple-500 fill-purple-500/10" />
+                                  ) : (
+                                    <FileText className={`w-5 h-5 ${isPDF ? 'text-red-500 fill-red-500/10' : 'text-blue-500 fill-blue-500/10'}`} />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-xs font-bold text-white truncate group-hover/item:text-emerald-400 transition-colors">{item.title}</h4>
+                                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 font-medium">
+                                    {item.description?.replace(/^\[TAGS:.*?\]/, '').trim() || "Tài liệu học tập..."}
+                                  </p>
+                                  <p className="text-[9px] text-slate-600 mt-0.5 font-bold uppercase tracking-wider">
+                                    {isYT ? 'YOUTUBE' : isPDF ? 'PDF' : item.content_url?.split('.').pop()?.toUpperCase() || 'DOC'} • {new Date(item.created_at).toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                              </>
+                            );
+                          })()}
+                          <div className="text-slate-600 group-hover:text-white transition-colors">
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </div>
                         </Link>
                       ))
@@ -849,7 +889,13 @@ export default function Home() {
                 <div key={item.id} className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 group flex flex-col h-full shadow-lg shadow-black/20">
                   <div className="flex justify-between items-start mb-5">
                     <span className="px-3 py-1 bg-violet-500/10 text-violet-300 text-xs font-bold rounded-md">Chủ đề {item.id}</span>
-                    <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                    {(() => {
+                      const isYT = /youtube\.com|youtu\.be/i.test(item.content_url || '');
+                      const isPDF = item.content_url?.toLowerCase().endsWith('.pdf');
+                      if (isYT) return <Video className="w-5 h-5 text-slate-500 group-hover:text-purple-400 transition-colors" />;
+                      if (isPDF) return <FileText className="w-5 h-5 text-slate-500 group-hover:text-red-400 transition-colors" />;
+                      return <BookOpen className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />;
+                    })()}
                   </div>
                   <h4 className="text-xl font-bold text-slate-100 mb-3 group-hover:text-blue-300 transition-colors">
                     {item.title.replace(/_/g, ' ')}

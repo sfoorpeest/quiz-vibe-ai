@@ -408,7 +408,12 @@ export default function Materials() {
                         <h4 className="text-sm font-bold text-slate-100 group-hover:text-emerald-300 transition-colors truncate">{mat.title}</h4>
                         {isFavorite && <span className="text-rose-400 text-[10px] font-bold">❤</span>}
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 lg:hidden">{mat.type.toUpperCase()} • {mat.created_by}</p>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5 line-clamp-1 italic">
+                        {mat.description?.replace(/^\[TAGS:.*?\]/, '').trim() || "Tài liệu học tập..."}
+                      </p>
+                      <p className="text-[11px] text-slate-600 font-medium mt-0.5 lg:hidden">
+                        {/youtube\.com|youtu\.be/i.test(mat.content_url) ? 'YOUTUBE' : mat.type.toUpperCase()} • {mat.created_by}
+                      </p>
                     </div>
 
                     {/* Type Badge */}

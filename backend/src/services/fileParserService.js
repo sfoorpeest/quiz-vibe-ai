@@ -79,8 +79,9 @@ const extractTextFromUrl = async (url) => {
                 });
                 const $ = cheerio.load(response.data);
                 const pageTitle = $('title').text().trim() || 'YouTube Video';
+                const description = $('meta[name="description"]').attr('content') || '';
                 
-                return `[Tiêu đề Video: ${pageTitle}]\n\n[Nội dung Transcript (Phụ đề) Video]:\n${transcriptText}`.substring(0, 10000);
+                return `[Tiêu đề Video: ${pageTitle}]\n[Mô tả Video]: ${description}\n\n[Nội dung Transcript (Phụ đề) Video]:\n${transcriptText || 'Không lấy được phụ đề cho video này.'}`.substring(0, 10000);
             } catch (transcriptError) {
                 console.error('YouTube Transcript Error (Video may not have captions):', transcriptError.message);
                 // Fallback xuống scrape web thông thường nếu không lấy được phụ đề
