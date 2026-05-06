@@ -310,23 +310,28 @@ exports.getLeaderboard = async (req, res) => {
         const currentUserId = req.user.id;
 
         const query = `
-            WITH UserStats AS (
+            WITH AggregatedResults AS (
                 SELECT 
-                    u.id as user_id,
-                    u.name, 
-                    MAX(up.avatar_url) as avatar_url,
-                    MAX(up.updated_at) as avatar_updated_at,
-                    MAX(up.equipped_badge_id) as equipped_badge_id,
-                    MAX(up.featured_badges) as featured_badges,
+                    r.user_id,
                     MAX(r.score) as high_score,
                     COUNT(r.id) as attempts,
                     MIN(NULLIF(r.time_taken, 0)) as best_time,
                     MIN(r.created_at) as achieved_at
                 FROM results r
-                JOIN users u ON r.user_id = u.id
-                LEFT JOIN user_profiles up ON u.id = up.user_id
                 ${whereClause}
-                GROUP BY u.id
+                GROUP BY r.user_id
+            ),
+            UserStats AS (
+                SELECT 
+                    ar.*,
+                    u.name,
+                    up.avatar_url,
+                    up.updated_at as avatar_updated_at,
+                    up.equipped_badge_id,
+                    up.featured_badges
+                FROM AggregatedResults ar
+                JOIN users u ON ar.user_id = u.id
+                LEFT JOIN user_profiles up ON u.id = up.user_id
             ),
             RankedStats AS (
                 SELECT 

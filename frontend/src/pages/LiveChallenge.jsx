@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Timer, Trophy, Crown, CheckCircle2, XCircle, ChevronRight, User } from 'lucide-react';
+import { Timer, Trophy, Crown, CheckCircle2, XCircle, ChevronRight, User, Brain, Zap, Target, Rocket, Sparkles, Lightbulb } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -23,6 +23,7 @@ export default function LiveChallenge() {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(10);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answerResult, setAnswerResult] = useState(null); // { correctAnswer, standings }
   const [isFinished, setIsFinished] = useState(false);
@@ -42,10 +43,11 @@ export default function LiveChallenge() {
     // ═══ LẮNG NGHE SỰ KIỆN TỪ SERVER ═══
 
     // Câu hỏi mới
-    s.on('game:question', ({ index, total, question, options, timeLeft }) => {
+    s.on('game:question', ({ index, total, question, options, timeLeft: initialTime }) => {
       setQuestionIndex(index);
       setCurrentQuestion({ question, options });
-      setTimeLeft(timeLeft);
+      setTimeLimit(initialTime);
+      setTimeLeft(initialTime);
       setSelectedAnswer(null);
       setAnswerResult(null);
     });
@@ -80,6 +82,9 @@ export default function LiveChallenge() {
     s.on('game:player_left', ({ players: pList }) => {
       setPlayers(pList);
     });
+
+    // Thông báo cho server là client đã sẵn sàng nhận câu hỏi
+    s.emit('game:client_ready', { roomId });
 
     return () => {
       // Chỉ gỡ bỏ các listener khi component unmount
@@ -128,36 +133,48 @@ export default function LiveChallenge() {
 
   if (isFinished) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] text-white flex flex-col items-center justify-center p-6 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.15),transparent_50%)]" />
-        <div className="relative z-10 max-w-lg w-full bg-slate-900/80 backdrop-blur-xl border border-amber-500/20 p-8 rounded-[32px] text-center shadow-2xl">
-          <div className="w-24 h-24 bg-linear-to-br from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(245,158,11,0.4)]">
-            <Trophy className="w-12 h-12 text-white" />
+      <div className="min-h-screen bg-[#06090f] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Multi-layer arena background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.10),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(220,38,38,0.05),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse,transparent_50%,rgba(0,0,0,0.4)_100%)]" />
+        <div className="relative z-10 max-w-md w-full bg-slate-900/60 backdrop-blur-2xl border border-slate-700/15 p-8 md:p-10 rounded-3xl text-center shadow-[0_0_60px_rgba(0,0,0,0.3)] overflow-hidden">
+          {/* Top light reflection */}
+          <div className="absolute -inset-px rounded-3xl bg-linear-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none" />
+
+          <div className="w-24 h-24 bg-linear-to-br from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative">
+            <div className="absolute inset-0 rounded-full border-2 border-white/20" />
+            <Trophy className="w-12 h-12 text-white drop-shadow-md" />
           </div>
-          <h1 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-linear-to-r from-amber-300 to-orange-500">TRẬN ĐẤU KẾT THÚC</h1>
+          <h1 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-linear-to-r from-amber-200 via-amber-400 to-orange-500 tracking-tight">TRẬN ĐẤU KẾT THÚC</h1>
           {winner && (
-            <p className="text-lg text-slate-300 mb-8">
-              Nhà vô địch: <strong className="text-amber-400 text-xl">{winner.name}</strong>
+            <p className="text-base text-slate-400 mb-8 font-medium">
+              Nhà vô địch: <strong className="text-amber-400 text-xl font-black ml-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">{winner.name}</strong>
             </p>
           )}
 
-          <div className="space-y-3 mb-8">
-            {players.map((p, i) => (
-              <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${i === 0 ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-800/50 border border-slate-700/50'}`}>
-                <div className="flex items-center gap-3">
-                  <span className={`w-6 font-black ${i === 0 ? 'text-amber-400' : 'text-slate-500'}`}>#{i + 1}</span>
-                  <span className="font-bold">{p.id === user?.id ? 'Bạn' : p.name}</span>
+          <div className="space-y-3 mb-8 text-left">
+            {players.map((p, i) => {
+              const isWinner = i === 0;
+              const isMe = p.id === user?.id;
+              return (
+                <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border-[1.5px] backdrop-blur-sm transition-all duration-300 ${isWinner ? 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : isMe ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-800/40 border-slate-700/20'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`w-6 text-sm font-black ${isWinner ? 'text-amber-400' : isMe ? 'text-cyan-400' : 'text-slate-500'}`}>#{i + 1}</span>
+                    <span className={`font-bold ${isWinner ? 'text-amber-100' : isMe ? 'text-cyan-100' : 'text-slate-300'}`}>{isMe ? 'Bạn' : p.name}</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-black ${isWinner ? 'text-amber-400' : isMe ? 'text-cyan-400' : 'text-slate-300'}`}>{p.score} <span className="text-xs font-semibold opacity-70">pts</span></span>
+                    <span className="text-[10px] text-slate-500 font-medium">{p.correctCount} câu đúng</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-black text-amber-400">{p.score} pts</span>
-                  <span className="text-[10px] text-slate-500">{p.correctCount} câu đúng</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <button onClick={handleLeave} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold transition-all border border-slate-600">
-            Về Sảnh chờ
+          <button onClick={handleLeave} className="w-full py-4 bg-slate-800/80 hover:bg-slate-700 hover:-translate-y-0.5 rounded-xl font-bold text-slate-300 hover:text-white transition-all border border-slate-700/50 hover:border-slate-600 shadow-lg relative overflow-hidden group">
+            <span className="relative z-10">Về Sảnh chờ</span>
+            <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
           </button>
         </div>
       </div>
@@ -165,152 +182,324 @@ export default function LiveChallenge() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] flex flex-col font-sans text-slate-50">
-      {/* ═══ PHẦN TRÊN: ĐƯỜNG ĐUA ═══ */}
-      <div className="h-[40vh] border-b border-slate-800 bg-[#0f1423] relative overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-linear-to-b from-[#0a0e1a] to-transparent">
-          <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2 rounded-xl backdrop-blur-md border border-slate-700">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ</span>
-            <span className="text-sm font-black text-white">{questionIndex + 1} / {totalQuestions || '?'}</span>
-          </div>
-          <button onClick={handleLeave} className="text-xs font-bold text-slate-400 hover:text-white px-4 py-2 rounded-xl bg-slate-800/80 backdrop-blur-md border border-slate-700 transition-all">
-            Thoát
-          </button>
-        </div>
+    <div 
+      className="min-h-screen text-slate-50 font-sans relative overflow-x-hidden flex flex-col"
+    >
+      {/* ═══ THE ADVANCED ANIMATED BACKGROUND ═══ */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#0a0e14]">
+        {/* Custom CSS Animations embedded for floating effects */}
+        <style>{`
+          @keyframes slideGrid {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+          }
+          @keyframes float-1 {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-25px) rotate(10deg) scale(1.05); }
+          }
+          @keyframes float-2 {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(20px) rotate(-15deg) scale(0.95); }
+          }
+          @keyframes float-3 {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(20px) rotate(20deg); }
+          }
+        `}</style>
 
-        {/* Làn đua (Lanes) */}
-        <div className="flex-1 mt-16 px-8 flex flex-col justify-center gap-2 overflow-y-auto pb-4">
-          {players.map((p, i) => {
-            const isMe = p.id === user?.id;
-            const progress = Math.min(100, Math.max(2, (p.score / maxPossibleScore) * 100)); // Cố định tối thiểu 2% để thấy avatar
-            
-            return (
-              <div key={p.id} className="relative h-12 flex items-center w-full">
-                {/* Lane background */}
-                <div className="absolute inset-0 top-1/2 -translate-y-1/2 h-1.5 bg-slate-800/50 rounded-full overflow-hidden">
-                  {/* Đường kẻ đứt */}
-                  <div className="absolute inset-0 w-full h-full bg-[linear-gradient(90deg,transparent_0%,transparent_50%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.05)_100%)] bg-size-[20px_100%]" />
-                </div>
+        {/* Dynamic Moving Grid Overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.06]" 
+          style={{
+            backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,1) 1px, transparent 0)',
+            backgroundSize: '40px 40px',
+            animation: 'slideGrid 40s linear infinite'
+          }}
+        />
 
-                {/* Avatar di chuyển */}
-                <div 
-                  className="absolute z-10 transition-all duration-1000 ease-out flex items-center gap-3"
-                  style={{ left: `calc(${progress}% - 24px)` }}
-                >
-                  <div className={`relative w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] border-2 ${isMe ? 'border-amber-400' : 'border-slate-700'} bg-linear-to-br ${avatarColors[i % avatarColors.length]}`}>
-                    <User className="w-5 h-5 text-white" />
-                    {isMe && <Crown className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 text-amber-400 drop-shadow-md" />}
-                  </div>
-                  {/* Tên và điểm bay trên đầu avatar */}
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold text-slate-300 border border-slate-700">
-                    {isMe ? 'Bạn' : p.name}: <span className="text-amber-400">{p.score}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Pulsating 4 Corner Orbs for balanced ambient light */}
+        <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/15 rounded-full blur-[120px] animate-[pulse_10s_infinite]" />
+        <div className="absolute top-[-10%] right-[-15%] w-[45%] h-[45%] bg-fuchsia-500/10 rounded-full blur-[120px] animate-[pulse_14s_infinite_reverse]" />
+        <div className="absolute bottom-[-15%] left-[-15%] w-[50%] h-[50%] bg-amber-500/10 rounded-full blur-[120px] animate-[pulse_12s_infinite]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px] animate-[pulse_16s_infinite_reverse]" />
+
+        {/* Floating Edu & Tech Geometric Particles */}
+        <Brain className="absolute top-[15%] left-[8%] text-cyan-500/20 w-12 h-12" style={{ animation: 'float-1 8s ease-in-out infinite' }} />
+        <Target className="absolute top-[18%] right-[15%] text-fuchsia-500/20 w-10 h-10" style={{ animation: 'float-2 10s ease-in-out infinite' }} />
+        <Rocket className="absolute top-[45%] left-[6%] text-amber-500/20 w-14 h-14" style={{ animation: 'float-3 12s ease-in-out infinite' }} />
+        <Lightbulb className="absolute bottom-[25%] right-[12%] text-emerald-500/20 w-12 h-12" style={{ animation: 'float-1 9s ease-in-out infinite' }} />
+        <Sparkles className="absolute bottom-[15%] left-[20%] text-blue-500/20 w-10 h-10" style={{ animation: 'float-2 11s ease-in-out infinite' }} />
         
-        {/* Vạch đích (Finish Line) */}
-        <div className="absolute right-8 top-16 bottom-4 w-4 flex flex-col pointer-events-none">
-           {/* Checkerboard pattern */}
-           {Array.from({ length: 20 }).map((_, i) => (
-             <div key={i} className={`flex-1 w-full ${i % 2 === 0 ? 'bg-white' : 'bg-black'} opacity-20`} />
-           ))}
-        </div>
+        {/* Geometric Decals */}
+        <div className="absolute top-[65%] right-[25%] w-20 h-20 border-2 border-dashed border-rose-500/10 rounded-full" style={{ animation: 'spin 25s linear infinite' }}></div>
+        <div className="absolute top-[30%] left-[30%] w-12 h-12 border-2 border-white/5 rotate-45" style={{ animation: 'float-3 14s ease-in-out infinite' }}></div>
+        <div className="absolute bottom-[40%] right-[35%] w-16 h-16 border border-cyan-400/10 rounded-full" style={{ animation: 'ping 6s cubic-bezier(0, 0, 0.2, 1) infinite' }}></div>
       </div>
 
-      {/* ═══ PHẦN DƯỚI: CÂU HỎI ═══ */}
-      <div className="flex-1 bg-slate-900 flex items-center justify-center p-6 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(59,130,246,0.05),transparent_60%)]" />
+      {/* ═══ Top Navigation Shell ═══ */}
+      <header className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 backdrop-blur-3xl bg-[#0a0e14]/60 border-b border-white/[0.03]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-cyan-400/20 flex items-center justify-center">
+            <span className="font-black text-cyan-400 text-lg">Q</span>
+          </div>
+          <span className="font-space-grotesk text-xl font-bold tracking-widest text-cyan-400">QuizVibe</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={handleLeave} 
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors border border-rose-500/20"
+          >
+            <XCircle className="w-4 h-4" />
+            <span className="text-sm font-bold tracking-widest uppercase">Thoát</span>
+          </button>
+        </div>
+      </header>
 
-        <div className="max-w-4xl w-full relative z-10">
-          {!currentQuestion ? (
-            <div className="text-center p-12 bg-slate-800/30 rounded-[32px] border border-slate-700/50 animate-pulse">
-              <span className="text-xl font-bold text-slate-400">Chuẩn bị vòng đua...</span>
+      {/* ═══ Main Content ═══ */}
+      <main className="flex-1 pt-24 pb-32 px-4 md:px-8 max-w-7xl mx-auto w-full space-y-12">
+        
+        {/* ═══ The Pulse Track Section ═══ */}
+        <section className="relative w-full py-8">
+          <div className="relative bg-[#1b1b20]/40 backdrop-blur-[24px] rounded-xl overflow-hidden p-6 border-t border-white/10 shadow-2xl">
+            <div className="flex justify-between items-end mb-4">
+              <h3 className="font-space-grotesk text-sm tracking-widest uppercase text-slate-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                Live Race Status
+              </h3>
+              <span className="font-space-grotesk text-xs text-cyan-400/80">
+                Thử thách {questionIndex + 1} / {totalQuestions}
+              </span>
             </div>
-          ) : (
-            <>
-              {/* Question Box */}
-              <div className="bg-slate-800/80 backdrop-blur-xl rounded-[32px] border border-slate-700/50 p-8 md:p-10 mb-6 shadow-2xl relative">
-                {/* Timer Circle */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2">
-                  <div className="relative">
-                    <div className={`absolute inset-0 rounded-full blur-lg animate-pulse ${timeLeft <= 3 ? 'bg-red-500/50' : 'bg-blue-500/30'}`} />
-                    <div className={`relative w-16 h-16 rounded-full flex items-center justify-center border-4 ${timeLeft <= 3 ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-blue-500 bg-slate-900 text-blue-400'} shadow-xl`}>
-                      <span className="text-2xl font-black">{timeLeft}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-col md:flex-row gap-6 md:gap-10">
-                  {/* Left: Question Number */}
-                  <div className="hidden md:flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-slate-900/50 border border-slate-700/50 shrink-0">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Câu số</span>
-                    <span className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-br from-blue-400 to-cyan-300">
-                      {questionIndex + 1}
-                    </span>
-                  </div>
-
-                  {/* Right: Question Content */}
-                  <div className="flex-1 flex items-center">
-                    <p className="text-lg md:text-2xl font-bold text-slate-100 leading-relaxed whitespace-pre-wrap">
-                      {currentQuestion.question}
-                    </p>
-                  </div>
-                </div>
+            
+            {/* Race Track Area */}
+            <div className="relative h-24 w-full bg-[#0e0e13]/50 rounded-full flex items-center px-4 overflow-hidden">
+              {/* Track Grid lines */}
+              <div className="absolute inset-0 opacity-10 flex justify-between px-12 pointer-events-none">
+                {[...Array(5)].map((_, i) => <div key={i} className="w-px h-full bg-white" />)}
+              </div>
+              
+              {/* Finish Line (Portal) */}
+              <div className="absolute right-0 top-0 bottom-0 w-24 bg-linear-to-l from-cyan-400/40 to-transparent flex items-center justify-end pr-4 pointer-events-none">
+                <div className="w-2 h-full bg-cyan-400/80 shadow-[0_0_30px_#00f5ff] rounded-full animate-pulse" />
               </div>
 
-              {/* Options Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentQuestion.options.map((option, idx) => {
-                  const isSelected = selectedAnswer === option;
-                  const isCorrect = answerResult?.correctAnswer === option;
-                  const isWrong = answerResult && isSelected && !isCorrect;
-
-                  let btnStyle = 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-blue-500/50 text-slate-300';
+              {/* Competitors */}
+              <div className="relative w-full flex items-center">
+                {players.map((p, i) => {
+                  const isMe = p.id === user?.id;
+                  // Ensure minimum position so they appear on track
+                  const progress = Math.min(94, Math.max(2, (p.score / maxPossibleScore) * 100));
                   
-                  if (isSelected && !answerResult) {
-                    btnStyle = 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] scale-[1.02]';
-                  } else if (answerResult) {
-                    if (isCorrect) {
-                      btnStyle = 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]';
-                    } else if (isWrong) {
-                      btnStyle = 'bg-red-600/20 border-red-500 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)] opacity-50';
-                    } else {
-                      btnStyle = 'bg-slate-800/30 border-slate-700/30 text-slate-500 opacity-50';
-                    }
-                  }
+                  const colors = [
+                    { from: 'from-cyan-400', to: 'to-blue-600', shadow: 'shadow-[0_0_15px_#00f5ff]', text: 'text-cyan-400' },
+                    { from: 'from-fuchsia-400', to: 'to-purple-600', shadow: 'shadow-[0_0_15px_#d946ef]', text: 'text-fuchsia-400' },
+                    { from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-[0_0_15px_#fbbf24]', text: 'text-amber-400' },
+                    { from: 'from-emerald-400', to: 'to-teal-600', shadow: 'shadow-[0_0_15px_#34d399]', text: 'text-emerald-400' },
+                  ];
+                  const theme = isMe ? colors[0] : colors[(i % 3) + 1];
 
                   return (
-                    <button
-                      key={idx}
-                      disabled={!!selectedAnswer || !!answerResult}
-                      onClick={() => handleAnswerSelect(option)}
-                      className={`relative w-full p-5 rounded-2xl border-2 text-left font-semibold transition-all duration-300 flex items-center gap-4 ${btnStyle}`}
+                    <div 
+                      key={p.id} 
+                      className={`absolute flex flex-col items-center transition-all duration-700 ${isMe ? 'z-20' : 'z-10 opacity-70'}`}
+                      style={{ left: `calc(${progress}% - 20px)` }}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-lg ${
-                        isSelected && !answerResult ? 'bg-white/20' : 
-                        isCorrect ? 'bg-emerald-500/20 text-emerald-500' : 
-                        isWrong ? 'bg-red-500/20 text-red-500' : 
-                        'bg-slate-700/50 text-slate-400'
-                      }`}>
-                        {String.fromCharCode(65 + idx)}
+                      <div className={`p-1 rounded-full bg-linear-to-br ${theme.from} ${theme.to} ${theme.shadow}`}>
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#131318] flex items-center justify-center border-2 border-transparent">
+                          <User className={`w-4 h-4 md:w-5 md:h-5 ${theme.text}`} />
+                        </div>
                       </div>
-                      <span className="flex-1 text-base md:text-lg wrap-break-word">{option}</span>
-                      
-                      {/* Icons for Result */}
-                      {answerResult && isCorrect && <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />}
-                      {answerResult && isWrong && <XCircle className="w-6 h-6 text-red-500 shrink-0" />}
-                    </button>
+                      <span className={`mt-1 font-space-grotesk text-[8px] md:text-[10px] font-bold uppercase ${isMe ? 'text-cyan-400' : 'text-slate-400'}`}>
+                        {isMe ? 'Bạn' : p.name.split(' ')[0]} ({p.score})
+                      </span>
+                    </div>
                   );
                 })}
               </div>
-            </>
-          )}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ Main Challenge Arena ═══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Side: Stats & Chrono Ring */}
+          <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
+            <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-8 rounded-xl flex flex-col items-center justify-center text-center shadow-lg">
+              <div className="relative w-40 h-40 mb-6">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle className="text-[#35343a]" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeWidth="8" />
+                  {currentQuestion && (
+                    <circle 
+                      className={`transition-all duration-1000 linear ${timeLeft <= 3 ? 'text-rose-500 shadow-[0_0_20px_#f43f5e]' : timeLeft <= 5 ? 'text-amber-400 shadow-[0_0_20px_#fbbf24]' : 'text-cyan-400 shadow-[0_0_20px_#00f5ff]'}`}
+                      cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeLinecap="round" strokeWidth="8"
+                      style={{
+                        strokeDasharray: 440,
+                        strokeDashoffset: 440 - (440 * (timeLeft / Math.max(timeLimit, 1)))
+                      }}
+                    />
+                  )}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  {!currentQuestion ? (
+                    <div className="flex flex-col items-center animate-pulse">
+                      {timeLeft > 0 ? (
+                        <>
+                          <span className="font-space-grotesk text-4xl font-bold text-cyan-400">{timeLeft}</span>
+                          <span className="font-space-grotesk text-[8px] uppercase tracking-widest text-cyan-400/60 font-bold mt-1">Sắp bắt đầu</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin mb-2" />
+                          <span className="font-space-grotesk text-[10px] uppercase tracking-widest text-cyan-400 font-bold">Đang tải</span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <span className={`font-space-grotesk text-4xl font-bold ${timeLeft <= 3 ? 'text-rose-500 animate-pulse' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.5)]'}`}>
+                        {timeLeft}
+                      </span>
+                      <span className="font-space-grotesk text-[10px] uppercase tracking-tighter text-slate-400 mt-1">Giây</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="font-space-grotesk text-xs uppercase tracking-widest text-slate-400">Điểm của bạn</p>
+                <p className="font-space-grotesk text-2xl font-bold text-fuchsia-400">{user?.score || 0}</p>
+              </div>
+            </div>
+
+            <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-6 rounded-xl space-y-4 shadow-lg">
+              <h4 className="font-space-grotesk text-xs tracking-widest uppercase text-slate-400">Thống Kê Trận</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/70">Người tham gia</span>
+                  <span className="text-cyan-400 font-bold">{players.length} Users</span>
+                </div>
+                <div className="w-full h-1 bg-[#35343a] rounded-full overflow-hidden">
+                  <div className="h-full bg-cyan-400 w-full" />
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/70">Top 1 Điểm</span>
+                  <span className="text-fuchsia-400 font-bold">{players[0]?.score || 0}</span>
+                </div>
+                <div className="w-full h-1 bg-[#35343a] rounded-full overflow-hidden">
+                  <div className="h-full bg-fuchsia-400" style={{ width: players[0] ? `${(players[0].score / maxPossibleScore) * 100}%` : '0%' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Center: The Question Sanctuary */}
+          <div className="lg:col-span-9 space-y-8 order-1 lg:order-2">
+            {!currentQuestion ? (
+               <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-20 rounded-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                 <div className="w-12 h-12 border-[3px] border-white/10 border-t-cyan-400 rounded-full animate-spin" />
+               </div>
+            ) : (
+              <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 space-y-8">
+                {/* Question Card */}
+                <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-10 md:p-16 rounded-xl border-l-4 !border-l-cyan-400 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                  <div className="absolute -top-4 -left-4 bg-cyan-400 text-[#003739] px-6 py-2 rounded-lg font-space-grotesk font-bold text-sm shadow-xl tracking-widest uppercase">
+                    THỬ THÁCH {String(questionIndex + 1).padStart(2, '0')}
+                  </div>
+                  <div className="space-y-6 mt-4">
+                    <h2 className="font-space-grotesk text-2xl md:text-4xl leading-tight text-white font-medium drop-shadow-sm">
+                      {currentQuestion.question}
+                    </h2>
+                    <div className="h-px w-full bg-linear-to-r from-cyan-400/30 to-transparent" />
+                    <p className="text-slate-400 text-sm md:text-base leading-relaxed uppercase tracking-widest font-space-grotesk">
+                      Hãy chọn đáp án chính xác nhất
+                    </p>
+                  </div>
+                </div>
+
+                {/* Answer Interaction Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentQuestion.options.map((option, idx) => {
+                    const isSelected = selectedAnswer === option;
+                    const isCorrect = answerResult?.correctAnswer === option;
+                    const isWrong = answerResult && isSelected && !isCorrect;
+                    const labels = ['A', 'B', 'C', 'D'];
+                    
+                    const themes = [
+                      { color: 'cyan', hex: '#00f5ff', text: 'text-cyan-400', bg: 'bg-cyan-400', border: 'border-cyan-400' },
+                      { color: 'fuchsia', hex: '#d0bcff', text: 'text-fuchsia-400', bg: 'bg-fuchsia-400', border: 'border-fuchsia-400' },
+                      { color: 'amber', hex: '#ffdb3f', text: 'text-amber-400', bg: 'bg-amber-400', border: 'border-amber-400' },
+                      { color: 'emerald', hex: '#34d399', text: 'text-emerald-400', bg: 'bg-emerald-400', border: 'border-emerald-400' }
+                    ];
+                    const theme = themes[idx];
+
+                    // Base Style
+                    let btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent hover:!border-l-${theme.color}-400 hover:bg-white/5`;
+                    let iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold ${theme.text} mr-4 transition-transform group-hover:scale-110`;
+                    let textClass = `${theme.text} font-medium transition-colors text-lg md:text-xl`;
+                    let shadowStyle = {};
+
+                    // Selected State
+                    if (isSelected && !answerResult) {
+                      btnClass = `group relative flex items-center p-6 bg-${theme.color}-400/10 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-${theme.color}-400 border-t border-white/10 scale-[1.02]`;
+                      iconClass = `w-10 h-10 rounded-lg ${theme.bg} flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
+                      textClass = `${theme.text} font-bold text-lg md:text-xl`;
+                      shadowStyle = { boxShadow: `0 0 30px rgba(${theme.hex === '#00f5ff' ? '0,245,255' : theme.hex === '#d0bcff' ? '208,188,255' : theme.hex === '#ffdb3f' ? '255,219,63' : '52,211,153'}, 0.15)` };
+                    } 
+                    // Result State
+                    else if (answerResult) {
+                      if (isCorrect) {
+                        btnClass = `group relative flex items-center p-6 bg-emerald-400/20 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-emerald-400 border-t border-white/10 scale-[1.02]`;
+                        iconClass = `w-10 h-10 rounded-lg bg-emerald-400 flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
+                        textClass = `text-emerald-400 font-bold text-lg md:text-xl`;
+                        shadowStyle = { boxShadow: `0 0 30px rgba(52,211,153, 0.2)` };
+                      } else if (isWrong) {
+                        btnClass = `group relative flex items-center p-6 bg-rose-500/20 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-rose-500 border-t border-white/10 opacity-80`;
+                        iconClass = `w-10 h-10 rounded-lg bg-rose-500 flex items-center justify-center font-space-grotesk font-bold text-white mr-4`;
+                        textClass = `text-rose-400 font-medium text-lg md:text-xl line-through`;
+                      } else {
+                        btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent border-t border-white/5 opacity-50 grayscale`;
+                        iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold text-slate-500 mr-4`;
+                        textClass = `text-slate-500 font-medium text-lg md:text-xl`;
+                      }
+                    }
+
+                    const cleanOptionText = option.replace(/^[A-D][\.\:]\s*/i, '');
+
+                    return (
+                      <button
+                        key={idx}
+                        disabled={!!selectedAnswer || !!answerResult}
+                        onClick={() => handleAnswerSelect(option)}
+                        className={btnClass}
+                        style={shadowStyle}
+                      >
+                        <span className={iconClass}>
+                          {answerResult && isCorrect ? '✓' : answerResult && isWrong ? '✗' : labels[idx]}
+                        </span>
+                        <span className={textClass}>{cleanOptionText}</span>
+                        
+                        {!selectedAnswer && !answerResult && (
+                          <div 
+                            className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" 
+                            style={{ boxShadow: `0 0 30px ${theme.hex}25` }} 
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* ═══ CRITICAL TIME OVERLAY (High Tension) ═══ */}
+      <div 
+        className={`fixed inset-0 pointer-events-none z-[100] transition-all duration-700 ${
+          timeLeft <= 3 && !answerResult ? 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(244,63,94,0.3)_100%)] opacity-100 animate-[pulse_0.5s_infinite]' : 'opacity-0'
+        }`} 
+      />
     </div>
   );
 }

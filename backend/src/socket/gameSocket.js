@@ -30,7 +30,7 @@ const aiService = require('../services/aiService');
  */
 
 const TOTAL_QUESTIONS = 10;
-const TICK_SECONDS = 12;          // Giây cho mỗi câu hỏi
+const TICK_SECONDS = 15;          // Giây cho mỗi câu hỏi
 const MIN_PLAYERS = 2;            // Tối thiểu để bắt đầu
 const MAX_PLAYERS = 8;            // Tối đa mỗi phòng
 const COUNTDOWN_SECONDS = 5;      // Đếm ngược trước khi bắt đầu
