@@ -35,6 +35,47 @@ async function tableExists(tableName) {
     return Number(row?.total || 0) > 0;
 }
 
+function buildMaterialPreferenceSourceSQL(hasLegacyPreferences, hasItemActions) {
+    if (!hasLegacyPreferences && !hasItemActions) {
+        return null;
+    }
+
+    if (hasLegacyPreferences && hasItemActions) {
+        return `(
+            SELECT
+                pref_union.user_id,
+                pref_union.material_id,
+                MAX(pref_union.is_saved) AS is_saved,
+                MAX(pref_union.is_favorite) AS is_favorite,
+                MAX(pref_union.updated_at) AS updated_at
+            FROM (
+                SELECT user_id, material_id, is_saved, is_favorite, updated_at
+                FROM user_material_preferences
+
+                UNION ALL
+
+                SELECT user_id, CAST(item_id AS UNSIGNED) AS material_id, is_saved, is_favorite, updated_at
+                FROM user_item_actions
+                WHERE item_type = 'material'
+            ) pref_union
+            GROUP BY pref_union.user_id, pref_union.material_id
+        )`;
+    }
+
+    if (hasLegacyPreferences) {
+        return `(
+            SELECT user_id, material_id, is_saved, is_favorite, updated_at
+            FROM user_material_preferences
+        )`;
+    }
+
+    return `(
+        SELECT user_id, CAST(item_id AS UNSIGNED) AS material_id, is_saved, is_favorite, updated_at
+        FROM user_item_actions
+        WHERE item_type = 'material'
+    )`;
+}
+
 function normalizeReadProgress(progress) {
     const parsed = Number(progress);
     if (!Number.isFinite(parsed)) {
@@ -275,7 +316,9 @@ async function getMaterialDetailById(id) {
 
 async function getMyLessons(userId) {
     const hasUserMaterials = await tableExists('user_materials');
-    const hasPreferences = await tableExists('user_material_preferences');
+    const hasLegacyPreferences = await tableExists('user_material_preferences');
+    const hasItemActions = await tableExists('user_item_actions');
+    const preferenceSourceSQL = buildMaterialPreferenceSourceSQL(hasLegacyPreferences, hasItemActions);
 
     const assignmentQuery = `
         SELECT
@@ -295,8 +338,8 @@ async function getMyLessons(userId) {
                 m.content,
                 m.created_at,
                 um.assigned_at,
-                ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
-                ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
+                ${preferenceSourceSQL ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+                ${preferenceSourceSQL ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
                 COALESCE((
                     SELECT lh2.progress
                     FROM learning_history lh2
@@ -308,7 +351,7 @@ async function getMyLessons(userId) {
                 ), 0) AS progress
             FROM user_materials um
             INNER JOIN materials m ON m.id = um.material_id
-            ${hasPreferences ? `LEFT JOIN user_material_preferences pref
+            ${preferenceSourceSQL ? `LEFT JOIN ${preferenceSourceSQL} pref
                 ON pref.user_id = um.user_id
                AND pref.material_id = m.id` : ''}
             WHERE um.user_id = ?
@@ -325,12 +368,12 @@ async function getMyLessons(userId) {
             m.content,
             m.created_at,
             lh.created_at as activity_at,
-            ${hasPreferences ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
-            ${hasPreferences ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
+            ${preferenceSourceSQL ? 'COALESCE(pref.is_saved, 0)' : '0'} AS is_saved,
+            ${preferenceSourceSQL ? 'COALESCE(pref.is_favorite, 0)' : '0'} AS is_favorite,
             COALESCE(lh.progress, 0) AS progress
         FROM learning_history lh
         INNER JOIN materials m ON m.id = lh.material_id
-        ${hasPreferences ? `LEFT JOIN user_material_preferences pref
+        ${preferenceSourceSQL ? `LEFT JOIN ${preferenceSourceSQL} pref
             ON pref.user_id = lh.user_id
            AND pref.material_id = m.id` : ''}
         WHERE lh.user_id = ?
@@ -372,8 +415,42 @@ async function getMyLessons(userId) {
         type: QueryTypes.SELECT
     });
 
+    let preferenceRows = [];
+    if (preferenceSourceSQL) {
+        preferenceRows = await sequelize.query(
+            `SELECT DISTINCT
+                m.id,
+                m.title,
+                ${TYPE_CASE_SQL} AS type,
+                m.content_url,
+                m.content,
+                m.created_at,
+                pref.updated_at AS activity_at,
+                COALESCE(pref.is_saved, 0) AS is_saved,
+                COALESCE(pref.is_favorite, 0) AS is_favorite,
+                COALESCE((
+                    SELECT lh2.progress
+                    FROM learning_history lh2
+                    WHERE lh2.user_id = pref.user_id
+                      AND lh2.material_id = m.id
+                      AND lh2.action = 'VIEWED_MATERIAL'
+                    ORDER BY lh2.created_at DESC, lh2.id DESC
+                    LIMIT 1
+                ), 0) AS progress
+             FROM ${preferenceSourceSQL} pref
+             INNER JOIN materials m ON m.id = pref.material_id
+             WHERE pref.user_id = ?
+               AND (COALESCE(pref.is_saved, 0) = 1 OR COALESCE(pref.is_favorite, 0) = 1)
+             ORDER BY pref.updated_at DESC`,
+            {
+                replacements: [userId],
+                type: QueryTypes.SELECT
+            }
+        );
+    }
+
     const mergedById = new Map();
-    [...assignedRows, ...fallbackRows].forEach((row) => {
+    [...assignedRows, ...fallbackRows, ...preferenceRows].forEach((row) => {
         const id = Number(row?.id);
         if (!Number.isInteger(id) || id <= 0) {
             return;
@@ -509,8 +586,11 @@ async function getPopularTags(limitCount = 30) {
 }
 
 async function getPreferredMaterials(userId, preferenceField) {
-    const hasPreferences = await tableExists('user_material_preferences');
-    if (!hasPreferences) {
+    const hasLegacyPreferences = await tableExists('user_material_preferences');
+    const hasItemActions = await tableExists('user_item_actions');
+    const preferenceSourceSQL = buildMaterialPreferenceSourceSQL(hasLegacyPreferences, hasItemActions);
+
+    if (!preferenceSourceSQL) {
         return [];
     }
 
@@ -535,7 +615,7 @@ async function getPreferredMaterials(userId, preferenceField) {
                 ORDER BY lh2.created_at DESC, lh2.id DESC
                 LIMIT 1
             ), 0) AS progress
-         FROM user_material_preferences pref
+            FROM ${preferenceSourceSQL} pref
          INNER JOIN materials m ON m.id = pref.material_id
          WHERE pref.user_id = ?
            AND pref.${field} = 1
@@ -570,14 +650,8 @@ async function materialExists(materialId) {
 }
 
 async function setMaterialPreference(userId, materialId, updates) {
-    const hasPreferences = await tableExists('user_material_preferences');
-    if (!hasPreferences) {
-        return {
-            materialId: Number(materialId),
-            isSaved: Boolean(updates.isSaved),
-            isFavorite: Boolean(updates.isFavorite),
-        };
-    }
+    const hasLegacyPreferences = await tableExists('user_material_preferences');
+    const hasItemActions = await tableExists('user_item_actions');
 
     const normalizedMaterialId = Number(materialId);
     if (!Number.isInteger(normalizedMaterialId) || normalizedMaterialId <= 0) {
@@ -589,16 +663,42 @@ async function setMaterialPreference(userId, materialId, updates) {
         throw new Error('MATERIAL_NOT_FOUND');
     }
 
-    const [existing] = await sequelize.query(
-        `SELECT is_saved, is_favorite
-         FROM user_material_preferences
-         WHERE user_id = ? AND material_id = ?
-         LIMIT 1`,
-        {
-            replacements: [userId, normalizedMaterialId],
-            type: QueryTypes.SELECT
-        }
-    );
+    if (!hasLegacyPreferences && !hasItemActions) {
+        return {
+            materialId: normalizedMaterialId,
+            isSaved: Boolean(updates.isSaved),
+            isFavorite: Boolean(updates.isFavorite),
+        };
+    }
+
+    let existing = null;
+    if (hasLegacyPreferences) {
+        [existing] = await sequelize.query(
+            `SELECT is_saved, is_favorite
+             FROM user_material_preferences
+             WHERE user_id = ? AND material_id = ?
+             LIMIT 1`,
+            {
+                replacements: [userId, normalizedMaterialId],
+                type: QueryTypes.SELECT
+            }
+        );
+    }
+
+    if (!existing && hasItemActions) {
+        [existing] = await sequelize.query(
+            `SELECT is_saved, is_favorite
+             FROM user_item_actions
+             WHERE user_id = ?
+               AND item_type = 'material'
+               AND item_id = ?
+             LIMIT 1`,
+            {
+                replacements: [userId, String(normalizedMaterialId)],
+                type: QueryTypes.SELECT
+            }
+        );
+    }
 
     const nextSaved = typeof updates.isSaved === 'boolean'
         ? updates.isSaved
@@ -607,32 +707,56 @@ async function setMaterialPreference(userId, materialId, updates) {
         ? updates.isFavorite
         : Boolean(existing?.is_favorite);
 
-    await sequelize.query(
-        `INSERT INTO user_material_preferences
-            (user_id, material_id, is_saved, is_favorite, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())
-         ON DUPLICATE KEY UPDATE
-            is_saved = VALUES(is_saved),
-            is_favorite = VALUES(is_favorite),
-            updated_at = NOW()`,
-        {
-            replacements: [
-                userId,
-                normalizedMaterialId,
-                nextSaved ? 1 : 0,
-                nextFavorite ? 1 : 0,
-            ],
-            type: QueryTypes.INSERT
-        }
-    );
+    if (hasLegacyPreferences) {
+        await sequelize.query(
+            `INSERT INTO user_material_preferences
+                (user_id, material_id, is_saved, is_favorite, created_at, updated_at)
+             VALUES (?, ?, ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                is_saved = VALUES(is_saved),
+                is_favorite = VALUES(is_favorite),
+                updated_at = NOW()`,
+            {
+                replacements: [
+                    userId,
+                    normalizedMaterialId,
+                    nextSaved ? 1 : 0,
+                    nextFavorite ? 1 : 0,
+                ],
+                type: QueryTypes.INSERT
+            }
+        );
+    }
 
+    if (hasItemActions) {
+        await sequelize.query(
+            `INSERT INTO user_item_actions
+                (user_id, item_id, item_type, is_saved, is_favorite, created_at, updated_at)
+             VALUES (?, ?, 'material', ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                is_saved = VALUES(is_saved),
+                is_favorite = VALUES(is_favorite),
+                updated_at = NOW()`,
+            {
+                replacements: [
+                    userId,
+                    String(normalizedMaterialId),
+                    nextSaved ? 1 : 0,
+                    nextFavorite ? 1 : 0,
+                ],
+                type: QueryTypes.INSERT
+            }
+        );
+    }
+
+    const preferenceSourceSQL = buildMaterialPreferenceSourceSQL(hasLegacyPreferences, hasItemActions);
     const [snapshot] = await sequelize.query(
         `SELECT
-            material_id,
-            COALESCE(is_saved, 0) AS is_saved,
-            COALESCE(is_favorite, 0) AS is_favorite
-         FROM user_material_preferences
-         WHERE user_id = ? AND material_id = ?
+            pref.material_id,
+            COALESCE(pref.is_saved, 0) AS is_saved,
+            COALESCE(pref.is_favorite, 0) AS is_favorite
+         FROM ${preferenceSourceSQL} pref
+         WHERE pref.user_id = ? AND pref.material_id = ?
          LIMIT 1`,
         {
             replacements: [userId, normalizedMaterialId],

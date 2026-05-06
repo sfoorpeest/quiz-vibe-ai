@@ -40,6 +40,60 @@ const parseFeaturedBadges = (value) => {
     }
 };
 
+const tableExistsCache = new Map();
+
+const tableExists = async (tableName) => {
+    if (tableExistsCache.has(tableName)) {
+        return tableExistsCache.get(tableName);
+    }
+
+    const [row] = await sequelize.query(
+        `SELECT COUNT(*) AS total
+         FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :tableName`,
+        {
+            replacements: { tableName },
+            type: QueryTypes.SELECT
+        }
+    );
+
+    const exists = Number(row?.total || 0) > 0;
+    tableExistsCache.set(tableName, exists);
+    return exists;
+};
+
+const syncMaterialPreferenceMirror = async (userId, itemId, isSaved, isFavorite) => {
+    const hasLegacyPreferences = await tableExists('user_material_preferences');
+    if (!hasLegacyPreferences) {
+        return;
+    }
+
+    const materialId = Number(itemId);
+    if (!Number.isInteger(materialId) || materialId <= 0) {
+        return;
+    }
+
+    await sequelize.query(
+        `INSERT INTO user_material_preferences
+            (user_id, material_id, is_saved, is_favorite, created_at, updated_at)
+         VALUES (:userId, :materialId, :isSaved, :isFavorite, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            is_saved = VALUES(is_saved),
+            is_favorite = VALUES(is_favorite),
+            updated_at = NOW()`,
+        {
+            replacements: {
+                userId,
+                materialId,
+                isSaved: isSaved ? 1 : 0,
+                isFavorite: isFavorite ? 1 : 0,
+            },
+            type: QueryTypes.INSERT
+        }
+    );
+};
+
 const upsertUserItemAction = async (userId, itemType, itemId, updates) => {
     const [existing] = await sequelize.query(
         `SELECT is_saved, is_favorite
@@ -80,6 +134,10 @@ const upsertUserItemAction = async (userId, itemType, itemId, updates) => {
             type: QueryTypes.INSERT
         }
     );
+
+    if (itemType === 'material') {
+        await syncMaterialPreferenceMirror(userId, itemId, nextSaved, nextFavorite);
+    }
 
     return {
         itemId,
