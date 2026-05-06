@@ -144,7 +144,7 @@ export default function LiveChallenge() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse,transparent_50%,rgba(0,0,0,0.4)_100%)]" />
         <div className="relative z-10 max-w-md w-full bg-slate-900/60 backdrop-blur-2xl border border-slate-700/15 p-8 md:p-10 rounded-3xl text-center shadow-[0_0_60px_rgba(0,0,0,0.3)] overflow-hidden">
           {/* Top light reflection */}
-          <div className="absolute -inset-px rounded-3xl bg-linear-to-b from-white/[0.04] via-transparent to-transparent pointer-events-none" />
+          <div className="absolute -inset-px rounded-3xl bg-linear-to-b from-white/4 via-transparent to-transparent pointer-events-none" />
 
           <div className="w-24 h-24 bg-linear-to-br from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(245,158,11,0.3)] relative">
             <div className="absolute inset-0 rounded-full border-2 border-white/20" />
@@ -259,7 +259,7 @@ export default function LiveChallenge() {
       </div>
 
       {/* ═══ Top Navigation Shell ═══ */}
-      <header className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 backdrop-blur-xl bg-transparent border-b border-white/[0.05]">
+      <header className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 backdrop-blur-xl bg-transparent border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-cyan-400/20 flex items-center justify-center">
             <span className="font-black text-cyan-400 text-lg">Q</span>
@@ -282,7 +282,7 @@ export default function LiveChallenge() {
         
         {/* ═══ The Pulse Track Section ═══ */}
         <section className="relative w-full py-8">
-          <div className="relative bg-[#1b1b20]/40 backdrop-blur-[24px] rounded-xl overflow-hidden p-6 border-t border-white/10 shadow-2xl">
+          <div className="relative bg-[#1b1b20]/40 backdrop-blur-xl rounded-xl overflow-hidden p-6 border-t border-white/10 shadow-2xl">
             <div className="flex justify-between items-end mb-4">
               <h3 className="font-space-grotesk text-sm tracking-widest uppercase text-slate-300 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -417,13 +417,13 @@ export default function LiveChallenge() {
           {/* Center: The Question Sanctuary */}
           <div className="lg:col-span-9 space-y-8 order-1 lg:order-2">
             {!currentQuestion ? (
-               <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-20 rounded-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+               <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-20 rounded-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                  <div className="w-12 h-12 border-[3px] border-white/10 border-t-cyan-400 rounded-full animate-spin" />
                </div>
             ) : (
               <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 space-y-8">
                 {/* Question Card */}
-                <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-10 md:p-16 rounded-xl border-l-4 !border-l-cyan-400 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                <div className="bg-zinc-900/40 backdrop-blur-xl border-t border-white/10 p-10 md:p-16 rounded-xl border-l-4 border-l-cyan-400 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
                   <div className="absolute -top-4 -left-4 bg-cyan-400 text-[#003739] px-6 py-2 rounded-lg font-space-grotesk font-bold text-sm shadow-xl tracking-widest uppercase">
                     THỬ THÁCH {String(questionIndex + 1).padStart(2, '0')}
                   </div>
@@ -455,14 +455,14 @@ export default function LiveChallenge() {
                     const theme = themes[idx];
 
                     // Base Style
-                    let btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent hover:!border-l-${theme.color}-400 hover:bg-white/5`;
+                    let btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent hover:!border-l-${theme.color}-400 hover:bg-white/5`;
                     let iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold ${theme.text} mr-4 transition-transform group-hover:scale-110`;
                     let textClass = `${theme.text} font-medium transition-colors text-lg md:text-xl`;
                     let shadowStyle = {};
 
                     // Selected State
                     if (isSelected && !answerResult) {
-                      btnClass = `group relative flex items-center p-6 bg-${theme.color}-400/10 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-${theme.color}-400 border-t border-white/10 scale-[1.02]`;
+                      btnClass = `group relative flex items-center p-6 bg-${theme.color}-400/10 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-${theme.color}-400 border-t border-white/10 scale-[1.02]`;
                       iconClass = `w-10 h-10 rounded-lg ${theme.bg} flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
                       textClass = `${theme.text} font-bold text-lg md:text-xl`;
                       shadowStyle = { boxShadow: `0 0 30px rgba(${theme.hex === '#00f5ff' ? '0,245,255' : theme.hex === '#d0bcff' ? '208,188,255' : theme.hex === '#ffdb3f' ? '255,219,63' : '52,211,153'}, 0.15)` };
@@ -470,16 +470,16 @@ export default function LiveChallenge() {
                     // Result State
                     else if (answerResult) {
                       if (isCorrect) {
-                        btnClass = `group relative flex items-center p-6 bg-emerald-400/20 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-emerald-400 border-t border-white/10 scale-[1.02]`;
+                        btnClass = `group relative flex items-center p-6 bg-emerald-400/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-emerald-400 border-t border-white/10 scale-[1.02]`;
                         iconClass = `w-10 h-10 rounded-lg bg-emerald-400 flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
                         textClass = `text-emerald-400 font-bold text-lg md:text-xl`;
                         shadowStyle = { boxShadow: `0 0 30px rgba(52,211,153, 0.2)` };
                       } else if (isWrong) {
-                        btnClass = `group relative flex items-center p-6 bg-rose-500/20 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-rose-500 border-t border-white/10 opacity-80`;
+                        btnClass = `group relative flex items-center p-6 bg-rose-500/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-rose-500 border-t border-white/10 opacity-80`;
                         iconClass = `w-10 h-10 rounded-lg bg-rose-500 flex items-center justify-center font-space-grotesk font-bold text-white mr-4`;
                         textClass = `text-rose-400 font-medium text-lg md:text-xl line-through`;
                       } else {
-                        btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-[24px] rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent border-t border-white/5 opacity-50 grayscale`;
+                        btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent border-t border-white/5 opacity-50 grayscale`;
                         iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold text-slate-500 mr-4`;
                         textClass = `text-slate-500 font-medium text-lg md:text-xl`;
                       }
@@ -518,7 +518,7 @@ export default function LiveChallenge() {
 
       {/* ═══ CRITICAL TIME OVERLAY (High Tension) ═══ */}
       <div 
-        className={`fixed inset-0 pointer-events-none z-[100] transition-all duration-700 ${
+        className={`fixed inset-0 pointer-events-none z-100 transition-all duration-700 ${
           timeLeft <= 3 && !answerResult ? 'bg-[radial-gradient(circle_at_center,transparent_0%,rgba(244,63,94,0.3)_100%)] opacity-100 animate-[pulse_0.5s_infinite]' : 'opacity-0'
         }`} 
       />
