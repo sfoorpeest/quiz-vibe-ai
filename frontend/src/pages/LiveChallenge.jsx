@@ -32,6 +32,13 @@ export default function LiveChallenge() {
   const [answerResult, setAnswerResult] = useState(null); // { correctAnswer, standings }
   const [isFinished, setIsFinished] = useState(false);
   const [winner, setWinner] = useState(null);
+  const [battleEvents, setBattleEvents] = useState([
+    { id: 1, text: "Hệ thống đã sẵn sàng!", color: "cyan" },
+    { id: 2, text: "Đang chờ các đối thủ...", color: "fuchsia" }
+  ]);
+  
+  // Lấy dữ liệu của chính người chơi hiện tại từ danh sách players
+  const myData = players.find(p => p.id === user?.id) || { score: 0, correctCount: 0 };
 
   // Khởi tạo socket từ window.gameSocket
   useEffect(() => {
@@ -47,25 +54,52 @@ export default function LiveChallenge() {
     // ═══ LẮNG NGHE SỰ KIỆN TỪ SERVER ═══
 
     // Câu hỏi mới
-    s.on('game:question', ({ index, total, question, options, timeLeft: initialTime }) => {
+    s.on('game:question', ({ index, total, question, options, timeLeft: initialTime, players: pList }) => {
       setQuestionIndex(index);
       setCurrentQuestion({ question, options });
       setTimeLimit(initialTime);
       setTimeLeft(initialTime);
       setSelectedAnswer(null);
       setAnswerResult(null);
+      
+      // Đồng bộ danh sách người chơi mới nhất từ Server
+      if (pList) {
+        setPlayers(pList);
+      }
+      
+      // Cập nhật diễn biến
+      const newEvent = { 
+        id: Date.now(), 
+        text: `Thử thách số ${index + 1} bắt đầu!`, 
+        color: "cyan" 
+      };
+      setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
     });
 
     // Cập nhật thời gian
     s.on('game:tick', ({ timeLeft: tl }) => {
       setTimeLeft(tl);
+      if (tl === 3) {
+        const newEvent = { 
+          id: Date.now(), 
+          text: "Căng thẳng! Chỉ còn 3 giây!", 
+          color: "rose" 
+        };
+        setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
+      }
     });
 
     // Kết quả câu trả lời
     s.on('game:answer_result', ({ correctAnswer, standings, questionIndex: qIdx }) => {
       setAnswerResult({ correctAnswer, standings });
-      // Cập nhật luôn players để đường đua di chuyển
       setPlayers(standings);
+      
+      const newEvent = { 
+        id: Date.now(), 
+        text: `Đã có kết quả thử thách số ${qIdx + 1}!`, 
+        color: "emerald" 
+      };
+      setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
     });
 
     // Trận đấu kết thúc
@@ -73,6 +107,13 @@ export default function LiveChallenge() {
       setPlayers(standings);
       setWinner(win);
       setIsFinished(true);
+      
+      const newEvent = { 
+        id: Date.now(), 
+        text: "Trận đấu đã khép lại!", 
+        color: "amber" 
+      };
+      setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
     });
 
     // Nhận huy hiệu mới từ Live Challenge
@@ -85,6 +126,32 @@ export default function LiveChallenge() {
     // Có người rời phòng
     s.on('game:player_left', ({ players: pList }) => {
       setPlayers(pList);
+    });
+
+    // Có người mới gia nhập (khi đang countdown)
+    s.on('game:player_joined', ({ players: pList }) => {
+      setPlayers(pList);
+      // Lấy tên người mới nhất (người cuối cùng trong danh sách)
+      const newPlayer = pList[pList.length - 1];
+      if (newPlayer) {
+        const newEvent = { 
+          id: Date.now() + Math.random(), 
+          text: `Chào mừng ${newPlayer.name} gia nhập!`, 
+          color: "cyan" 
+        };
+        setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
+      }
+    });
+
+    // Thông báo ai đó đã chốt đáp án
+    s.on('game:player_answered', ({ playerId, playerName }) => {
+      const isMe = playerId === user?.id;
+      const newEvent = { 
+        id: Date.now() + Math.random(), 
+        text: isMe ? "Bạn đã khóa câu trả lời!" : `${playerName} đã chốt đáp án!`, 
+        color: isMe ? "cyan" : "fuchsia" 
+      };
+      setBattleEvents(prev => [newEvent, ...prev].slice(0, 5));
     });
 
     // Thông báo cho server là client đã sẵn sàng nhận câu hỏi
@@ -278,10 +345,10 @@ export default function LiveChallenge() {
       </header>
 
       {/* ═══ Main Content ═══ */}
-      <main className="flex-1 pt-24 pb-32 px-4 md:px-8 max-w-7xl mx-auto w-full space-y-12">
+      <main className="flex-1 pt-16 pb-12 px-4 md:px-8 max-w-[1300px] mx-auto w-full space-y-6">
         
         {/* ═══ The Pulse Track Section ═══ */}
-        <section className="relative w-full py-8">
+        <section className="relative w-full py-4">
           <div className="relative bg-[#1b1b20]/40 backdrop-blur-xl rounded-xl overflow-hidden p-6 border-t border-white/10 shadow-2xl">
             <div className="flex justify-between items-end mb-4">
               <h3 className="font-space-grotesk text-sm tracking-widest uppercase text-slate-300 flex items-center gap-2">
@@ -343,21 +410,21 @@ export default function LiveChallenge() {
         </section>
 
         {/* ═══ Main Challenge Arena ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left Side: Stats & Chrono Ring */}
-          <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
-            <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-8 rounded-xl flex flex-col items-center justify-center text-center shadow-lg">
-              <div className="relative w-40 h-40 mb-6">
+          <div className="lg:col-span-3 space-y-4 order-2 lg:order-1">
+            <div className="bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 p-6 rounded-xl flex flex-col items-center justify-center text-center shadow-lg">
+              <div className="relative w-32 h-32 mb-4">
                 <svg className="w-full h-full transform -rotate-90">
-                  <circle className="text-[#35343a]" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeWidth="8" />
+                  <circle className="text-[#35343a]" cx="64" cy="64" fill="transparent" r="56" stroke="currentColor" strokeWidth="6" />
                   {currentQuestion && (
                     <circle 
                       className={`transition-all duration-1000 linear ${timeLeft <= 3 ? 'text-rose-500 shadow-[0_0_20px_#f43f5e]' : timeLeft <= 5 ? 'text-amber-400 shadow-[0_0_20px_#fbbf24]' : 'text-cyan-400 shadow-[0_0_20px_#00f5ff]'}`}
-                      cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeLinecap="round" strokeWidth="8"
+                      cx="64" cy="64" fill="transparent" r="56" stroke="currentColor" strokeLinecap="round" strokeWidth="6"
                       style={{
-                        strokeDasharray: 440,
-                        strokeDashoffset: 440 - (440 * (timeLeft / Math.max(timeLimit, 1)))
+                        strokeDasharray: 352,
+                        strokeDashoffset: 352 - (352 * (timeLeft / Math.max(timeLimit, 1)))
                       }}
                     />
                   )}
@@ -367,33 +434,33 @@ export default function LiveChallenge() {
                     <div className="flex flex-col items-center animate-pulse">
                       {timeLeft > 0 ? (
                         <>
-                          <span className="font-space-grotesk text-4xl font-bold text-cyan-400">{timeLeft}</span>
-                          <span className="font-space-grotesk text-[8px] uppercase tracking-widest text-cyan-400/60 font-bold mt-1">Sắp bắt đầu</span>
+                          <span className="font-space-grotesk text-3xl font-bold text-cyan-400">{timeLeft}</span>
+                          <span className="font-space-grotesk text-[7px] uppercase tracking-widest text-cyan-400/60 font-bold mt-1">Sắp bắt đầu</span>
                         </>
                       ) : (
                         <>
-                          <div className="w-10 h-10 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin mb-2" />
-                          <span className="font-space-grotesk text-[10px] uppercase tracking-widest text-cyan-400 font-bold">Đang tải</span>
+                          <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin mb-1" />
+                          <span className="font-space-grotesk text-[8px] uppercase tracking-widest text-cyan-400 font-bold">Đang tải</span>
                         </>
                       )}
                     </div>
                   ) : (
                     <>
-                      <span className={`font-space-grotesk text-4xl font-bold ${timeLeft <= 3 ? 'text-rose-500 animate-pulse' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.5)]'}`}>
+                      <span className={`font-space-grotesk text-3xl font-bold ${timeLeft <= 3 ? 'text-rose-500 animate-pulse' : 'text-cyan-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.5)]'}`}>
                         {timeLeft}
                       </span>
-                      <span className="font-space-grotesk text-[10px] uppercase tracking-tighter text-slate-400 mt-1">Giây</span>
+                      <span className="font-space-grotesk text-[9px] uppercase tracking-tighter text-slate-400 mt-1">Giây</span>
                     </>
                   )}
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="font-space-grotesk text-xs uppercase tracking-widest text-slate-400">Điểm của bạn</p>
-                <p className="font-space-grotesk text-2xl font-bold text-fuchsia-400">{user?.score || 0}</p>
+                <p className="font-space-grotesk text-[10px] uppercase tracking-widest text-slate-400">Điểm của bạn</p>
+                <p className="font-space-grotesk text-2xl font-bold text-cyan-400 drop-shadow-[0_0_15px_rgba(0,245,255,0.4)]">{myData.score}</p>
               </div>
             </div>
 
-            <div className="bg-[#1b1b20]/40 backdrop-blur-[24px] border-t border-white/10 p-6 rounded-xl space-y-4 shadow-lg">
+            <div className="bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 p-6 rounded-xl space-y-4 shadow-lg">
               <h4 className="font-space-grotesk text-xs tracking-widest uppercase text-slate-400">Thống Kê Trận</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
@@ -415,7 +482,7 @@ export default function LiveChallenge() {
           </div>
 
           {/* Center: The Question Sanctuary */}
-          <div className="lg:col-span-9 space-y-8 order-1 lg:order-2">
+          <div className="lg:col-span-6 space-y-8 order-1 lg:order-2">
             {!currentQuestion ? (
                <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/10 p-20 rounded-xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                  <div className="w-12 h-12 border-[3px] border-white/10 border-t-cyan-400 rounded-full animate-spin" />
@@ -423,16 +490,16 @@ export default function LiveChallenge() {
             ) : (
               <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 space-y-8">
                 {/* Question Card */}
-                <div className="bg-zinc-900/40 backdrop-blur-xl border-t border-white/10 p-10 md:p-16 rounded-xl border-l-4 border-l-cyan-400 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
-                  <div className="absolute -top-4 -left-4 bg-cyan-400 text-[#003739] px-6 py-2 rounded-lg font-space-grotesk font-bold text-sm shadow-xl tracking-widest uppercase">
+                <div className="bg-zinc-900/40 backdrop-blur-xl border-t border-white/10 p-8 md:p-10 rounded-xl border-l-4 border-l-cyan-400 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                  <div className="absolute -top-3 -left-3 bg-cyan-400 text-[#003739] px-4 py-1.5 rounded-lg font-space-grotesk font-bold text-[10px] shadow-xl tracking-widest uppercase">
                     THỬ THÁCH {String(questionIndex + 1).padStart(2, '0')}
                   </div>
-                  <div className="space-y-6 mt-4">
-                    <h2 className="font-space-grotesk text-2xl md:text-4xl leading-tight text-white font-medium drop-shadow-sm">
+                  <div className="space-y-4 mt-2">
+                    <h2 className="font-space-grotesk text-xl md:text-2xl leading-tight text-white font-medium drop-shadow-sm">
                       {currentQuestion.question}
                     </h2>
                     <div className="h-px w-full bg-linear-to-r from-cyan-400/30 to-transparent" />
-                    <p className="text-slate-400 text-sm md:text-base leading-relaxed uppercase tracking-widest font-space-grotesk">
+                    <p className="text-slate-500 text-[10px] md:text-xs leading-relaxed uppercase tracking-widest font-space-grotesk">
                       Hãy chọn đáp án chính xác nhất
                     </p>
                   </div>
@@ -455,33 +522,31 @@ export default function LiveChallenge() {
                     const theme = themes[idx];
 
                     // Base Style
-                    let btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent hover:!border-l-${theme.color}-400 hover:bg-white/5`;
-                    let iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold ${theme.text} mr-4 transition-transform group-hover:scale-110`;
-                    let textClass = `${theme.text} font-medium transition-colors text-lg md:text-xl`;
-                    let shadowStyle = {};
+                    let btnClass = `group relative flex items-center p-4 bg-[#1b1b20]/40 backdrop-blur-xl border border-white/10 rounded-xl transition-all duration-300 text-left hover:bg-white/5`;
+                    let iconClass = `w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold ${theme.text} mr-3 transition-transform group-hover:scale-110 text-sm`;
+                    let textClass = `${theme.text} font-bold transition-colors text-sm md:text-base`;
+                    // Loại bỏ shadowStyle để kích thước không bị cảm giác phình to
 
                     // Selected State
                     if (isSelected && !answerResult) {
-                      btnClass = `group relative flex items-center p-6 bg-${theme.color}-400/10 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-${theme.color}-400 border-t border-white/10 scale-[1.02]`;
-                      iconClass = `w-10 h-10 rounded-lg ${theme.bg} flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
-                      textClass = `${theme.text} font-bold text-lg md:text-xl`;
-                      shadowStyle = { boxShadow: `0 0 30px rgba(${theme.hex === '#00f5ff' ? '0,245,255' : theme.hex === '#d0bcff' ? '208,188,255' : theme.hex === '#ffdb3f' ? '255,219,63' : '52,211,153'}, 0.15)` };
+                      btnClass = `group relative flex items-center p-4 bg-${theme.color}-400/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border border-${theme.color}-400/50`;
+                      iconClass = `w-8 h-8 rounded-lg ${theme.bg} flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-3 text-sm`;
+                      textClass = `${theme.text} font-bold text-sm md:text-base`;
                     } 
                     // Result State
                     else if (answerResult) {
                       if (isCorrect) {
-                        btnClass = `group relative flex items-center p-6 bg-emerald-400/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-emerald-400 border-t border-white/10 scale-[1.02]`;
-                        iconClass = `w-10 h-10 rounded-lg bg-emerald-400 flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-4`;
-                        textClass = `text-emerald-400 font-bold text-lg md:text-xl`;
-                        shadowStyle = { boxShadow: `0 0 30px rgba(52,211,153, 0.2)` };
+                        btnClass = `group relative flex items-center p-4 bg-emerald-400/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]`;
+                        iconClass = `w-8 h-8 rounded-lg bg-emerald-400 flex items-center justify-center font-space-grotesk font-bold text-[#0a0e14] mr-3 text-sm`;
+                        textClass = `text-emerald-400 font-bold text-sm md:text-base`;
                       } else if (isWrong) {
-                        btnClass = `group relative flex items-center p-6 bg-rose-500/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-rose-500 border-t border-white/10 opacity-80`;
-                        iconClass = `w-10 h-10 rounded-lg bg-rose-500 flex items-center justify-center font-space-grotesk font-bold text-white mr-4`;
-                        textClass = `text-rose-400 font-medium text-lg md:text-xl line-through`;
+                        btnClass = `group relative flex items-center p-4 bg-rose-500/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border border-rose-500 opacity-80`;
+                        iconClass = `w-8 h-8 rounded-lg bg-rose-500 flex items-center justify-center font-space-grotesk font-bold text-white mr-3 text-sm`;
+                        textClass = `text-rose-400 font-bold text-sm md:text-base line-through`;
                       } else {
-                        btnClass = `group relative flex items-center p-6 bg-[#1b1b20]/40 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border-l-4 border-l-transparent border-t border-white/5 opacity-50 grayscale`;
-                        iconClass = `w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold text-slate-500 mr-4`;
-                        textClass = `text-slate-500 font-medium text-lg md:text-xl`;
+                        btnClass = `group relative flex items-center p-4 bg-[#1b1b20]/20 backdrop-blur-xl rounded-xl transition-all duration-300 text-left border border-white/5 opacity-40 grayscale`;
+                        iconClass = `w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-space-grotesk font-bold text-slate-500 mr-3 text-sm`;
+                        textClass = `text-slate-500 font-bold text-sm md:text-base`;
                       }
                     }
 
@@ -493,7 +558,6 @@ export default function LiveChallenge() {
                         disabled={!!selectedAnswer || !!answerResult}
                         onClick={() => handleAnswerSelect(option)}
                         className={btnClass}
-                        style={shadowStyle}
                       >
                         <span className={iconClass}>
                           {answerResult && isCorrect ? '✓' : answerResult && isWrong ? '✗' : labels[idx]}
@@ -512,6 +576,88 @@ export default function LiveChallenge() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Right Side: Live Leaderboard (Cột điểm mới) */}
+          <div className="lg:col-span-3 order-3 space-y-6">
+            <div className="bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 rounded-xl overflow-hidden shadow-2xl">
+              <div className="bg-linear-to-r from-cyan-500/20 to-fuchsia-500/20 p-4 border-b border-white/5">
+                <h4 className="font-space-grotesk text-xs tracking-widest uppercase text-white flex items-center gap-2">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  Bảng Xếp Hạng
+                </h4>
+              </div>
+              <div className="p-2 space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar">
+                {players.sort((a, b) => b.score - a.score).map((player, index) => {
+                  const isMe = player.id === user?.id;
+                  const rank = index + 1;
+                  
+                  return (
+                    <div 
+                      key={player.id || index}
+                      className={`flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${
+                        isMe ? 'bg-cyan-500/15 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]' : 'hover:bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold font-space-grotesk ${
+                          rank === 1 ? 'bg-amber-400 text-black' : 
+                          rank === 2 ? 'bg-slate-300 text-black' : 
+                          rank === 3 ? 'bg-orange-400 text-black' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {rank}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-bold truncate max-w-[100px] ${isMe ? 'text-cyan-400' : 'text-slate-200'}`}>
+                            {player.name} {isMe && '(Bạn)'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 uppercase tracking-tighter">
+                            {player.correctCount || 0} câu đúng
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-space-grotesk font-bold ${isMe ? 'text-cyan-400 text-lg' : 'text-white text-base'}`}>
+                          {player.score.toLocaleString()}
+                        </span>
+                        <div className="flex gap-0.5 justify-end mt-1">
+                           {[...Array(5)].map((_, i) => (
+                             <div key={i} className={`w-1.5 h-1 rounded-full ${i < Math.floor((player.score / maxPossibleScore) * 5) ? 'bg-cyan-400' : 'bg-slate-800'}`} />
+                           ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="p-4 bg-slate-900/40 border-t border-white/5 text-center">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Cập nhật thời gian thực</p>
+              </div>
+            </div>
+
+            {/* Battle Feed (Mini) */}
+            <div className="bg-[#1b1b20]/40 backdrop-blur-xl border-t border-white/10 p-4 rounded-xl shadow-lg">
+               <div className="flex items-center gap-2 mb-3">
+                 <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diễn biến trận đấu</span>
+               </div>
+                <div className="space-y-2">
+                   {battleEvents.map(event => (
+                     <div 
+                       key={event.id} 
+                       className={`text-[11px] text-slate-300 border-l-2 pl-2 py-0.5 animate-in slide-in-from-left-2 duration-300 ${
+                         event.color === 'cyan' ? 'border-cyan-400' :
+                         event.color === 'fuchsia' ? 'border-fuchsia-400' :
+                         event.color === 'rose' ? 'border-rose-500' :
+                         event.color === 'emerald' ? 'border-emerald-400' :
+                         event.color === 'amber' ? 'border-amber-400' : 'border-slate-500'
+                       }`}
+                     >
+                       {event.text}
+                     </div>
+                   ))}
+                </div>
+            </div>
           </div>
         </div>
       </main>

@@ -1,99 +1,118 @@
-# QuizVibe AI - Frontend 🚀
+# 🌌 QuizVibe AI - Frontend: The Neon Observatory 🚀
 
-Đây là hệ thống giao diện (Frontend) của nền tảng **QuizVibe AI** - Nền tảng phân tích học liệu và tạo câu hỏi tự động. Tài liệu này được biên soạn dành cho các Tester, Dev mới hoặc người đánh giá dự án để có thể làm quen, cài đặt và kiểm thử ứng dụng một cách nhanh chóng nhất.
+Chào mừng bạn đến với phân hệ giao diện của **QuizVibe AI** - Một hệ sinh thái học tập hiện đại, kết hợp giữa sức mạnh của Trí tuệ nhân tạo (AI) và trải nghiệm trò chơi hóa (Gamification) đỉnh cao.
+
+Dự án này không chỉ đơn thuần là một website, mà là một **"Đài quan sát Neon" (Neon Observatory)** - nơi tri thức được trình diễn dưới dạng các đấu trường kịch tính, giúp người học không còn cảm thấy nhàm chán.
+
+---
+
+## 💎 Tầm Nhìn Thiết Kế (The "Wow" Aesthetics)
+Frontend của QuizVibe AI được xây dựng dựa trên triết lý **Premium & Immersive**:
+- **Glassmorphism:** Toàn bộ giao diện sử dụng các lớp phủ mờ (backdrop-blur) cao cấp, tạo cảm giác chiều sâu và hiện đại.
+- **Neon Observatory Theme:** Tông màu tối (Dark mode) kết hợp với các dải đèn Neon (Cyan, Fuchsia, Amber) tạo sự tập trung tối đa và phong cách Esports.
+- **Dynamic Advanced Background:** Hệ thống nền động với lưới (Grid) chuyển động, các hạt Neon Orbs mờ ảo và hiệu ứng Scanline điện tử.
+- **Micro-animations:** Sử dụng `Framer Motion` để tạo các chuyển động mượt mà khi di chuyển giữa các trang, hover vào các phần tử hoặc khi thông tin mới xuất hiện.
+
+---
 
 ## 🛠 Lộ trình Công nghệ (Tech Stack)
-Dự án được xây dựng bằng thiết kế High-Fidelity (mô phỏng sản phẩm thực tế của doanh nghiệp) với các công nghệ mạnh mẽ nhất:
-- **Framework:** React 19 + Vite 8
-- **Routing:** React Router v7
-- **Styling & UI:** Tailwind CSS v4, Framer Motion (Hiệu ứng siêu mượt)
-- **Icons:** Lucide React
-- **Kế nối HTTP:** Axios (Fetch dữ liệu siêu tốc)
+| Công nghệ | Vai trò |
+| :--- | :--- |
+| **React 19** | Thư viện lõi, quản lý Component và Rendering. |
+| **Vite 6** | Build tool siêu tốc cho trải nghiệm Developer mượt mà. |
+| **Tailwind CSS v4** | Hệ thống Styling tiện ích, tối ưu hiệu năng và linh hoạt cực cao. |
+| **Framer Motion** | Engine chuyển động cho các hiệu ứng Premium. |
+| **Socket.io Client** | Kết nối thời gian thực cho Đấu trường Live Challenge. |
+| **React Router v7** | Quản lý điều hướng và bảo vệ tuyến đường (Private Routes). |
+| **Lucide React** | Hệ thống icon tối giản và hiện đại. |
+| **Axios** | Xử lý request API với Interceptors để quản lý Auth Token. |
+
+---
+
+## 🕹️ Hệ Sinh Thái Chức Năng (Core Ecosystem)
+
+### 1. ⚔️ Đấu Trường Tri Thức (Edu Games)
+Đây là "trái tim" của sự tương tác trong ứng dụng:
+- **Solo Adventure:** Chế độ thám hiểm cá nhân. Người chơi đối mặt với các bộ câu hỏi được AI tạo ra dựa trên học liệu cá nhân hoặc ngẫu nhiên.
+- **Live Challenge (Esports Arena):** Chế độ đấu trực tuyến thời gian thực (Multiplayer). 
+    - Hỗ trợ Handshake đồng bộ hóa để đảm bảo tất cả người chơi bắt đầu cùng lúc.
+    - Bảng xếp hạng trực tiếp cập nhật theo từng giây (Real-time Leaderboard).
+    - Hiệu ứng đếm ngược kịch tính với âm thanh và rung (pending).
+
+### 2. 🧠 Trung Tâm Tải Lên & Phân Tích (AI Upload Center)
+- Hỗ trợ tải lên PDF, Word, TXT hoặc dán URL trang web.
+- Tích hợp OCR và phân tích nội dung tự động thông qua Gemini API.
+- Tự động tạo thẻ (Tags), tóm tắt và **đặc biệt là tạo bộ câu hỏi trắc nghiệm tự động** chỉ trong vài giây.
+
+### 3. 🎖️ Thành Tích & Hồ Sơ (Profile & Gamification)
+- **Hệ thống Huy hiệu (Badges):** Tự động mở khóa các danh hiệu dựa trên hoạt động (Ví dụ: "Học giả Siêu cấp", "Thợ săn Điểm số").
+- **Hệ thống XP & Rank:** Tính toán điểm số và thứ hạng của người chơi trên toàn hệ thống.
+- **Dashboard cá nhân:** Quản lý học liệu đã lưu, lịch sử thi đấu và cài đặt riêng tư.
 
 ---
 
 ## 📂 Kiến trúc Thư mục (Folder Structure)
-Mã nguồn được đặt trong thư mục `src/`, bao gồm các phân khu chính sau:
 
-```
+```bash
 src/
-├── api/             # Cấu hình Axios Client chặn các request/response chung (Kèm Token).
-├── components/      # Các linh kiện tái sử dụng: ProtectedRoute, Background động, Navigation,...
-├── context/         # AuthContext: Quản lý trạng thái đăng nhập toàn cục của user.
-├── pages/           # Giao diện của tất cả các luồng hoạt động chính (Xem chi tiết bên dưới).
-├── services/        # Tập hợp các hàm gọi Backend API (authService,...).
-├── App.jsx          # Cây điều hướng tổng (Router) quản lý toàn bộ các đường dẫn web.
-└── main.jsx         # Điểm khởi chạy của React App.
+├── api/             # Cấu hình Axios & Interceptors (Gắn JWT vào Header).
+├── components/      # Các Component nguyên tử và phức hợp:
+│   ├── ui/          # Các thành phần giao diện nhỏ (Button, Input, Badge).
+│   ├── games/       # Các logic và UI riêng cho Edu Games.
+│   └── shared/      # AdvancedBackground, Navbar, Sidebar dùng chung.
+├── context/         # AuthContext: Quản lý đăng nhập và trạng thái User toàn cục.
+├── hooks/           # Các Custom Hooks để xử lý logic Socket, Timer,...
+├── pages/           # Các trang giao diện chính (Home, Upload, Games, Profile...).
+├── services/        # Các hàm gọi API Backend (auth, quiz, achievement...).
+└── styles/          # Cấu hình CSS toàn cục và các Keyframes cho Animation.
 ```
-
-### 🧩 Các Trang (Pages) Chính
-1. **Public (Bất cứ ai cũng có thể vào):**
-   - Xương sống trang chủ: `Home.jsx`
-   - Đăng nhập & Đăng ký: `Login.jsx`, `Register.jsx`
-   - Khôi phục tài khoản: `ForgotPassword.jsx`, `ResetPassword.jsx`
-3. **Trang chức năng cá nhân (Khu vực Hội viên):**
-   - Hồ sơ cá nhân: `Profile.jsx` (Gồm 4 tab: Tổng quan, Khóa học, Đã lưu, Cài đặt).
-   - Chỉnh sửa thông tin: `ProfileInfo.jsx`, `ProfileBio.jsx`, `ProfileHeader.jsx`.
-   - Lịch sử hoạt động: `ProfileActivity.jsx`.
-   - Cài đặt tài khoản: `ProfileSettings.jsx`.
-   - Trang Liên hệ & Trợ giúp: `ContactPage.jsx` (Gửi mail trực tiếp cho Admin).
-   - Các trang tĩnh: `TermsPage.jsx` (Điều khoản), `PrivacyPage.jsx` (Chính sách bảo mật).
 
 ---
 
-## ⚙️ Hướng dẫn Cài Đặt (Cho Developer & Tester)
+## ⚙️ Hướng dẫn Cài Đặt (Developer Guide)
 
-Để khởi chạy App trên máy tính của bạn, hãy chắc chắn phân hệ Backend đã được khởi động (thường là tại Cổng 5000), sau đó dọn dẹp các đường dẫn chạy lệnh ở Terminal như sau:
+### Yêu cầu hệ thống:
+- **Node.js:** v18.0.0 trở lên.
+- **Backend:** Phải đang chạy (thường là `http://localhost:5000`).
 
-**Bước 1: Chuyển hướng Terminal vào khu vực Frontend**
-```bash
-cd frontend
-```
-
-**Bước 2: Cài đặt toàn bộ thư viện cơ sở**
-*(Lệnh này tự động đọc file package.json và tải xuống react, axios, tailwind, lucide-react...)*
-```bash
-npm install
-```
-
-**Bước 3: Khởi chạy Máy chủ Thử nghiệm (Vite Dev Server)**
-```bash
-npm run dev
-```
-> Trình duyệt sẽ in ra một đường dẫn (thông thường là `http://localhost:5173`). Bạn bấm vào đó (hoặc bôi đen dán lên Chrome) để chiêm ngưỡng sản phẩm.
-
----
-
-## 🧪 Tài liệu Hướng Dẫn Kịch Bản Test (QA / Tester)
-
-Dưới đây là một số luồng nghiệp vụ quan trọng bạn cần kiểm thử (Test Cases):
-
-### 1. Luồng Xác thực (Authentication)
-- **Đăng ký:** Truy cập `/register`. Thử tạo 1 tài khoản với "Mã phân quyền" trống (Sẽ thành Học sinh). Nếu gõ "GV2026_QUIZ_AI" thành Giáo viên, "ADMIN_SUPREME_99" thành Quản trị.
-- **Đăng nhập:** Truy cập `/login` xem có đăng nhập thành công và token được nhét vào LocalStorage không.
-- **Quên mật khẩu:** Ở form Login, chọn "Quên mật khẩu", điền Email. (Theo dõi log Backend để bắt link đổi mk nếu bạn không cắm Email thực). Mở link chuyển sang `/reset-password` và nhập mật khẩu mới.
-  - **Tài khoản Test Email (Dành cho Tester):**
-    - `EMAIL_USER=leminhphan1@gmail.com`
-    - `EMAIL_PASS=orxpfvlnsytgxkig` (Sử dụng mật khẩu ứng dụng này để cấu hình biến môi trường tại Backend `.env` nếu muốn test gửi mail thật).
-
-### 2. Phân Hệ Nạp Dữ Liệu AI (Upload Center)
-- **Truy cập:** `/upload` (Chỉ Teacher/Admin vào được, thử bằng acc Student xem có bị sút ra không).
-- **Tính năng:** Tải lên các file (txt, docx, pdf - được hỗ trợ native OCR qua Gemini) hoặc Paste link URL vào. Bấm Phân tích xem AI có xuất ra thẻ Tag và Tóm tắt chưa.
-- **Save:** Nhấn công khai sẽ lưu gói học liệu mới vào Database. 
-
-### 4. Quản lý Hồ sơ & Cài đặt (Profile Management)
-- **Truy cập:** `/profile`. Thử nghiệm chuyển đổi giữa các Tab (Tổng quan, Khóa học, Đã lưu, Cài đặt).
-- **Cập nhật thông tin:** Thử đổi Tên, Bio, Địa chỉ hoặc Avatar. Kiểm tra xem dữ liệu có được lưu vào Database và cập nhật ngay lên Navbar không.
-- **Tính năng private:** Thử bật/tắt quyền riêng tư hồ sơ hoặc nhận thông báo email tại Tab Cài đặt.
-
-### 5. Luồng Hỗ trợ & Liên hệ (Support & Contact)
-- **Truy cập:** `/contact`.
-- **Gửi yêu cầu:** Nhập nội dung báo lỗi hoặc góp ý.
-- **Kiểm tra Mail:** 
-  - Admin (EMAIL_USER) sẽ nhận được một **Support Ticket** có đầy đủ thông tin người gửi.
-  - Người dùng sẽ nhận được một **Email xác nhận** tự động thông báo hệ thống đã tiếp nhận yêu cầu.
-- **Điều hướng:** Kiểm tra các link dẫn tới Điều khoản & Chính sách trong trang Liên hệ hoặc trang Đăng ký.
+### Các bước cài đặt:
+1. **Di chuyển vào thư mục frontend:**
+   ```bash
+   cd frontend
+   ```
+2. **Cài đặt dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Cấu hình biến môi trường:**
+   Tạo file `.env` (nếu chưa có) và trỏ tới URL của Backend:
+   ```env
+   VITE_API_URL=http://localhost:5000
+   ```
+4. **Chạy ở chế độ phát triển:**
+   ```bash
+   npm run dev
+   ```
+   *Truy cập `http://localhost:5173` để trải nghiệm.*
 
 ---
 
-**✨ Cảm ơn bạn đã tham gia đội ngũ phát triển tài năng của QuizVibe! Happy Coding! ✨**
+## 🧪 Tài liệu Kiểm Thử (Testing Scenarios)
+
+Dành cho Tester để xác nhận hệ thống vận hành đúng:
+
+1. **Test Real-time (Live Challenge):** 
+   - Mở 2 trình duyệt khác nhau, đăng nhập bằng 2 tài khoản.
+   - Cùng tham gia vào Live Challenge.
+   - Kiểm tra xem câu hỏi có hiển thị đồng thời và điểm số có cập nhật chéo cho nhau không.
+2. **Test AI Generation:** 
+   - Tải lên một file PDF nội dung bất kỳ.
+   - Chờ AI phân tích và kiểm tra xem danh sách câu hỏi tạo ra có bám sát nội dung file không.
+3. **Test Responsive:** 
+   - Sử dụng DevTools để chuyển sang chế độ Mobile.
+   - Kiểm tra xem các thẻ câu hỏi và bảng xếp hạng có hiển thị gọn gàng không.
+
+---
+
+**✨ QuizVibe AI - Nâng tầm tri thức, chinh phục thử thách! ✨**
+*(Dự án được phát triển với niềm đam mê mãnh liệt dành cho công nghệ và giáo dục).*

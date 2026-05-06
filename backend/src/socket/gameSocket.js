@@ -33,7 +33,7 @@ const TOTAL_QUESTIONS = 10;
 const TICK_SECONDS = 15;          // Giây cho mỗi câu hỏi
 const MIN_PLAYERS = 2;            // Tối thiểu để bắt đầu
 const MAX_PLAYERS = 8;            // Tối đa mỗi phòng
-const COUNTDOWN_SECONDS = 5;      // Đếm ngược trước khi bắt đầu
+const COUNTDOWN_SECONDS = 10;     // Đếm ngược trước khi bắt đầu (đủ thời gian cho nhiều người cùng vào)
 const CORRECT_POINTS = 100;       // Điểm cơ bản khi đúng
 const SPEED_BONUS_MAX = 50;       // Điểm bonus tối đa theo tốc độ
 
@@ -56,7 +56,8 @@ function generateRoomId() {
  */
 function findAvailableRoom() {
     for (const [roomId, room] of rooms) {
-        if (room.state === 'waiting' && room.players.size < MAX_PLAYERS) {
+        // Cho phép vào phòng khi đang 'waiting' HOẶC đang 'countdown'
+        if ((room.state === 'waiting' || room.state === 'countdown') && room.players.size < MAX_PLAYERS) {
             return roomId;
         }
     }
@@ -124,12 +125,20 @@ function sendNextQuestion(io, roomId) {
         try { options = JSON.parse(options); } catch { options = []; }
     }
 
+    const playersList = Array.from(room.players.values()).map(p => ({
+        id: p.userId,
+        name: p.name,
+        score: p.score,
+        correctCount: p.correctCount
+    }));
+
     io.to(roomId).emit('game:question', {
         index: qIndex,
         total: room.questions.length,
         question: questionText,
         options: options,
-        timeLeft: TICK_SECONDS
+        timeLeft: TICK_SECONDS,
+        players: playersList
     });
 
     // Bắt đầu đếm ngược
@@ -329,6 +338,11 @@ function initGameSocket(io) {
             gameNs.to(roomId).emit('game:player_joined', { players: playersList, roomId });
             socket.emit('game:waiting', { roomId, players: playersList });
 
+            // Nếu người chơi vào lúc phòng đang countdown, thông báo cho họ biết
+            if (room.state === 'countdown' && room.currentCountdown !== undefined) {
+                socket.emit('game:countdown', { seconds: room.currentCountdown });
+            }
+
             // Nếu đủ người → bắt đầu countdown
             if (room.players.size >= MIN_PLAYERS && room.state === 'waiting') {
                 room.state = 'countdown';
@@ -336,11 +350,13 @@ function initGameSocket(io) {
                 // Countdown 5 giây
                 let countdown = COUNTDOWN_SECONDS;
                 const countdownTimer = setInterval(async () => {
+                    room.currentCountdown = countdown; // Lưu lại để người vào sau biết
                     gameNs.to(roomId).emit('game:countdown', { seconds: countdown });
                     countdown--;
 
                     if (countdown < 0) {
                         clearInterval(countdownTimer);
+                        delete room.currentCountdown;
 
                         // Tải câu hỏi từ AI
                         try {
@@ -412,7 +428,16 @@ function initGameSocket(io) {
             if (questionIndex !== room.currentQuestion) return;
             if (room.answeredThisRound.has(socket.id)) return; // Đã trả lời rồi
 
+            const player = room.players.get(socket.id);
+            if (!player) return;
+
             room.answeredThisRound.add(socket.id);
+
+            // Thông báo cho cả phòng biết ai vừa chốt đáp án
+            gameNs.to(roomId).emit('game:player_answered', { 
+                playerId: player.userId, 
+                playerName: player.name 
+            });
 
             const q = room.questions[questionIndex];
             const isCorrect = answer === q.correct_answer;
@@ -421,11 +446,8 @@ function initGameSocket(io) {
             const points = calculatePoints(isCorrect, timeLeft);
 
             // Cập nhật điểm
-            const player = room.players.get(socket.id);
-            if (player) {
-                player.score += points;
-                if (isCorrect) player.correctCount++;
-            }
+            player.score += points;
+            if (isCorrect) player.correctCount++;
 
             // Nếu tất cả đã trả lời → kết thúc câu sớm
             if (room.answeredThisRound.size >= room.players.size) {
