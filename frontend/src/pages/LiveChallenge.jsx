@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Timer, Trophy, Crown, CheckCircle2, XCircle, ChevronRight, User, Brain, Zap, Target, Rocket, Sparkles, Lightbulb } from 'lucide-react';
+import { 
+  Users, User, Trophy, Star, Target, Zap, Clock, Shield, 
+  MessageSquare, Send, Sparkles, Brain, Rocket, Lightbulb, 
+  XCircle, Crown, Swords, BrainCircuit, Compass, CheckCircle2, ChevronRight 
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -187,57 +191,75 @@ export default function LiveChallenge() {
     >
       {/* ═══ THE ADVANCED ANIMATED BACKGROUND ═══ */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#0a0e14]">
-        {/* Custom CSS Animations embedded for floating effects */}
         <style>{`
           @keyframes slideGrid {
-            0% { background-position: 0 0; }
-            100% { background-position: 40px 40px; }
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
           }
           @keyframes float-1 {
-            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-            50% { transform: translateY(-25px) rotate(10deg) scale(1.05); }
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(15px, -20px) rotate(8deg); }
+            66% { transform: translate(-15px, 20px) rotate(-8deg); }
           }
           @keyframes float-2 {
-            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-            50% { transform: translateY(20px) rotate(-15deg) scale(0.95); }
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-20px, -15px) rotate(-12deg); }
           }
           @keyframes float-3 {
-            0%, 100% { transform: translateX(0) rotate(0deg); }
-            50% { transform: translateX(20px) rotate(20deg); }
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, 25px) scale(1.15); }
+          }
+          @keyframes pulse-neon {
+            0%, 100% { opacity: 0.4; transform: scale(1); filter: blur(120px); }
+            50% { opacity: 0.7; transform: scale(1.2); filter: blur(150px); }
+          }
+          @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
           }
         `}</style>
 
-        {/* Dynamic Moving Grid Overlay */}
+        {/* Moving Grid */}
         <div 
-          className="absolute inset-0 opacity-[0.06]" 
+          className="absolute inset-0 opacity-[0.15]" 
           style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,1) 1px, transparent 0)',
-            backgroundSize: '40px 40px',
-            animation: 'slideGrid 40s linear infinite'
-          }}
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+            backgroundSize: '50px 50px',
+            animation: 'slideGrid 20s linear infinite'
+          }} 
         />
 
-        {/* Pulsating 4 Corner Orbs for balanced ambient light */}
-        <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/15 rounded-full blur-[120px] animate-[pulse_10s_infinite]" />
-        <div className="absolute top-[-10%] right-[-15%] w-[45%] h-[45%] bg-fuchsia-500/10 rounded-full blur-[120px] animate-[pulse_14s_infinite_reverse]" />
-        <div className="absolute bottom-[-15%] left-[-15%] w-[50%] h-[50%] bg-amber-500/10 rounded-full blur-[120px] animate-[pulse_12s_infinite]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px] animate-[pulse_16s_infinite_reverse]" />
+        {/* Scanline */}
+        <div className="absolute inset-0 w-full h-[2px] bg-linear-to-r from-transparent via-cyan-500/10 to-transparent opacity-20" style={{ animation: 'scanline 10s linear infinite' }} />
 
-        {/* Floating Edu & Tech Geometric Particles */}
-        <Brain className="absolute top-[15%] left-[8%] text-cyan-500/20 w-12 h-12" style={{ animation: 'float-1 8s ease-in-out infinite' }} />
-        <Target className="absolute top-[18%] right-[15%] text-fuchsia-500/20 w-10 h-10" style={{ animation: 'float-2 10s ease-in-out infinite' }} />
-        <Rocket className="absolute top-[45%] left-[6%] text-amber-500/20 w-14 h-14" style={{ animation: 'float-3 12s ease-in-out infinite' }} />
-        <Lightbulb className="absolute bottom-[25%] right-[12%] text-emerald-500/20 w-12 h-12" style={{ animation: 'float-1 9s ease-in-out infinite' }} />
-        <Sparkles className="absolute bottom-[15%] left-[20%] text-blue-500/20 w-10 h-10" style={{ animation: 'float-2 11s ease-in-out infinite' }} />
+        {/* Massive Neon Orbs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-cyan-600/20 rounded-full blur-[120px] animate-[pulse-neon_12s_infinite]" />
+        <div className="absolute top-[-5%] right-[-15%] w-[55%] h-[55%] bg-fuchsia-600/15 rounded-full blur-[130px] animate-[pulse-neon_15s_infinite_reverse]" />
+        <div className="absolute bottom-[-15%] left-[-15%] w-[65%] h-[65%] bg-blue-600/15 rounded-full blur-[140px] animate-[pulse-neon_18s_infinite]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-600/15 rounded-full blur-[120px] animate-[pulse-neon_14s_infinite_reverse]" />
+        <div className="absolute top-[30%] left-[25%] w-[40%] h-[40%] bg-amber-500/10 rounded-full blur-[150px] animate-[pulse-neon_20s_infinite]" />
+
+        {/* Floating Icons */}
+        <Brain className="absolute top-[12%] left-[10%] text-cyan-400/25 w-16 h-16" style={{ animation: 'float-1 10s ease-in-out infinite' }} />
+        <Target className="absolute top-[15%] right-[18%] text-fuchsia-400/25 w-14 h-14" style={{ animation: 'float-2 12s ease-in-out infinite' }} />
+        <Rocket className="absolute top-[42%] left-[5%] text-amber-400/25 w-18 h-18" style={{ animation: 'float-3 15s ease-in-out infinite' }} />
+        <Lightbulb className="absolute bottom-[28%] right-[10%] text-emerald-400/25 w-16 h-16" style={{ animation: 'float-1 11s ease-in-out infinite' }} />
+        <Sparkles className="absolute bottom-[18%] left-[22%] text-blue-400/25 w-14 h-14" style={{ animation: 'float-2 13s ease-in-out infinite' }} />
+        <Compass className="absolute top-[60%] right-[30%] text-rose-400/20 w-12 h-12" style={{ animation: 'float-3 14s ease-in-out infinite' }} />
+        <BrainCircuit className="absolute bottom-[45%] left-[35%] text-indigo-400/20 w-14 h-14" style={{ animation: 'float-1 16s ease-in-out infinite' }} />
         
         {/* Geometric Decals */}
-        <div className="absolute top-[65%] right-[25%] w-20 h-20 border-2 border-dashed border-rose-500/10 rounded-full" style={{ animation: 'spin 25s linear infinite' }}></div>
-        <div className="absolute top-[30%] left-[30%] w-12 h-12 border-2 border-white/5 rotate-45" style={{ animation: 'float-3 14s ease-in-out infinite' }}></div>
-        <div className="absolute bottom-[40%] right-[35%] w-16 h-16 border border-cyan-400/10 rounded-full" style={{ animation: 'ping 6s cubic-bezier(0, 0, 0.2, 1) infinite' }}></div>
+        <div className="absolute top-[20%] left-[45%] w-32 h-32 border border-white/5 rounded-full" style={{ animation: 'spin-slow 40s linear infinite' }}></div>
+        <div className="absolute bottom-[35%] left-[10%] w-24 h-24 border border-cyan-400/10 rotate-12" style={{ animation: 'float-2 18s ease-in-out infinite' }}></div>
+        <div className="absolute top-[70%] right-[15%] w-40 h-40 border-2 border-dashed border-fuchsia-500/10 rounded-full" style={{ animation: 'spin-slow 60s linear infinite reverse' }}></div>
       </div>
 
       {/* ═══ Top Navigation Shell ═══ */}
-      <header className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 backdrop-blur-3xl bg-[#0a0e14]/60 border-b border-white/[0.03]">
+      <header className="flex justify-between items-center w-full px-6 py-4 fixed top-0 z-50 backdrop-blur-xl bg-transparent border-b border-white/[0.05]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-cyan-400/20 flex items-center justify-center">
             <span className="font-black text-cyan-400 text-lg">Q</span>

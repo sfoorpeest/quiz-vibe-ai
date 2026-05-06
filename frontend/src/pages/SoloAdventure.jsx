@@ -1,11 +1,84 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Heart, Flame, Zap, Clock, Shield, Skull, ArrowRight, Home, RotateCcw, Trophy, Sparkles, BrainCircuit, Target, Swords } from 'lucide-react';
+import { Heart, Flame, Zap, Clock, Shield, Skull, ArrowRight, Home, RotateCcw, Trophy, Sparkles, BrainCircuit, Target, Swords, Brain, Rocket, Lightbulb, Compass } from 'lucide-react';
 import api from '../api/axiosClient';
 import Footer from '../components/Footer';
 
 const TIME_PER_Q = 20;
 const MAX_LIVES = 3;
+
+/**
+ * AdvancedBackground — Đồng bộ giao diện nền với Live Challenge
+ */
+const AdvancedBackground = () => (
+  <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#0a0e14]">
+    <style>{`
+      @keyframes slideGrid {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(50px); }
+      }
+      @keyframes float-1 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        33% { transform: translate(15px, -20px) rotate(8deg); }
+        66% { transform: translate(-15px, 20px) rotate(-8deg); }
+      }
+      @keyframes float-2 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-20px, -15px) rotate(-12deg); }
+      }
+      @keyframes float-3 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(20px, 25px) scale(1.15); }
+      }
+      @keyframes pulse-neon {
+        0%, 100% { opacity: 0.4; transform: scale(1); filter: blur(120px); }
+        50% { opacity: 0.7; transform: scale(1.2); filter: blur(150px); }
+      }
+      @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes scanline {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100vh); }
+      }
+    `}</style>
+
+    {/* Moving Grid */}
+    <div 
+      className="absolute inset-0 opacity-[0.15]" 
+      style={{
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+        backgroundSize: '50px 50px',
+        animation: 'slideGrid 20s linear infinite'
+      }} 
+    />
+
+    {/* Scanline */}
+    <div className="absolute inset-0 w-full h-[2px] bg-linear-to-r from-transparent via-cyan-500/10 to-transparent opacity-20" style={{ animation: 'scanline 10s linear infinite' }} />
+
+    {/* Massive Neon Orbs */}
+    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-cyan-600/20 rounded-full blur-[120px] animate-[pulse-neon_12s_infinite]" />
+    <div className="absolute top-[-5%] right-[-15%] w-[55%] h-[55%] bg-fuchsia-600/15 rounded-full blur-[130px] animate-[pulse-neon_15s_infinite_reverse]" />
+    <div className="absolute bottom-[-15%] left-[-15%] w-[65%] h-[65%] bg-blue-600/15 rounded-full blur-[140px] animate-[pulse-neon_18s_infinite]" />
+    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-600/15 rounded-full blur-[120px] animate-[pulse-neon_14s_infinite_reverse]" />
+    <div className="absolute top-[30%] left-[25%] w-[40%] h-[40%] bg-amber-500/10 rounded-full blur-[150px] animate-[pulse-neon_20s_infinite]" />
+
+    {/* Floating Icons */}
+    <Brain className="absolute top-[12%] left-[10%] text-cyan-400/25 w-16 h-16" style={{ animation: 'float-1 10s ease-in-out infinite' }} />
+    <Target className="absolute top-[15%] right-[18%] text-fuchsia-400/25 w-14 h-14" style={{ animation: 'float-2 12s ease-in-out infinite' }} />
+    <Rocket className="absolute top-[42%] left-[5%] text-amber-400/25 w-18 h-18" style={{ animation: 'float-3 15s ease-in-out infinite' }} />
+    <Lightbulb className="absolute bottom-[28%] right-[10%] text-emerald-400/25 w-16 h-16" style={{ animation: 'float-1 11s ease-in-out infinite' }} />
+    <Sparkles className="absolute bottom-[18%] left-[22%] text-blue-400/25 w-14 h-14" style={{ animation: 'float-2 13s ease-in-out infinite' }} />
+    <Compass className="absolute top-[60%] right-[30%] text-rose-400/20 w-12 h-12" style={{ animation: 'float-3 14s ease-in-out infinite' }} />
+    <BrainCircuit className="absolute bottom-[45%] left-[35%] text-indigo-400/20 w-14 h-14" style={{ animation: 'float-1 16s ease-in-out infinite' }} />
+    
+    {/* Geometric Decals */}
+    <div className="absolute top-[20%] left-[45%] w-32 h-32 border border-white/5 rounded-full" style={{ animation: 'spin-slow 40s linear infinite' }}></div>
+    <div className="absolute bottom-[35%] left-[10%] w-24 h-24 border border-cyan-400/10 rotate-12" style={{ animation: 'float-2 18s ease-in-out infinite' }}></div>
+    <div className="absolute top-[70%] right-[15%] w-40 h-40 border-2 border-dashed border-fuchsia-500/10 rounded-full" style={{ animation: 'spin-slow 60s linear infinite reverse' }}></div>
+  </div>
+);
 
 const playSound = (type) => {
   try {
@@ -173,15 +246,8 @@ export default function SoloAdventure() {
   // ═══ SETUP VIEW ═══
   if (phase === 'setup') {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-slate-50">
-        {/* Animated BG layers */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.12),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.10),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(59,130,246,0.08),transparent_40%)]" />
-        <div className="absolute top-[15%] left-[20%] w-80 h-80 bg-cyan-500/8 rounded-full blur-[120px] animate-pulse pointer-events-none" />
-        <div className="absolute bottom-[10%] right-[15%] w-96 h-96 bg-violet-600/6 rounded-full blur-[140px] animate-[pulse_4s_ease-in-out_infinite] pointer-events-none" />
-        {/* Grid overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)',backgroundSize:'40px 40px'}} />
+      <div className="min-h-screen font-sans flex items-center justify-center p-4 relative overflow-hidden text-slate-50">
+        <AdvancedBackground />
 
         <div className="relative z-10 w-full max-w-xl bg-slate-900/60 backdrop-blur-2xl border border-cyan-500/10 p-10 rounded-[32px] shadow-[0_0_80px_rgba(6,182,212,0.06),0_30px_60px_rgba(0,0,0,0.4)]">
           {/* Glow ring */}
@@ -238,10 +304,8 @@ export default function SoloAdventure() {
     const pct = totalAnswered > 0 ? Math.round((correctTotal / totalAnswered) * 100) : 0;
     const isWin = lives > 0;
     return (
-      <div className="min-h-screen bg-[#0a0e1a] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-slate-50">
-        <div className={`absolute inset-0 ${isWin ? 'bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.10),transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.10),transparent_50%)]'}`} />
-        <div className={`absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[180px] pointer-events-none ${isWin ? 'bg-cyan-600/8' : 'bg-red-600/8'}`} />
-        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)',backgroundSize:'40px 40px'}} />
+      <div className="min-h-screen font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-slate-50">
+        <AdvancedBackground />
 
         <div className={`relative z-10 w-full max-w-md bg-slate-900/60 backdrop-blur-2xl border ${isWin ? 'border-cyan-500/15' : 'border-red-500/15'} p-10 rounded-[32px] shadow-[0_0_80px_rgba(0,0,0,0.4)] text-center`}>
           <div className={`absolute -inset-px rounded-[32px] bg-linear-to-b ${isWin ? 'from-cyan-500/20 via-transparent to-blue-500/10' : 'from-red-500/20 via-transparent to-orange-500/10'} pointer-events-none`} />
@@ -296,25 +360,12 @@ export default function SoloAdventure() {
   const timerColor = timeRatio <= 0.25 ? 'from-red-500 to-red-600' : timeRatio <= 0.5 ? 'from-amber-500 to-orange-500' : 'from-cyan-500 to-blue-500';
 
   return (
-    <div className={`min-h-screen bg-[#0a0e1a] font-sans flex flex-col relative overflow-hidden text-slate-50 ${shake ? 'animate-[shakeX_0.4s_ease-in-out]' : ''}`}>
-      {/* Multi-layer BG */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(6,182,212,0.12),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.10),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.07),transparent_40%)]" />
-      <div className="absolute inset-0 opacity-[0.025]" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)',backgroundSize:'32px 32px'}} />
-      {/* Floating glow orbs */}
-      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-cyan-500/6 rounded-full blur-[100px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
-      <div className="absolute bottom-[15%] right-[8%] w-80 h-80 bg-violet-600/5 rounded-full blur-[120px] pointer-events-none animate-[pulse_8s_ease-in-out_infinite_2s]" />
-      <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/3 rounded-full blur-[150px] pointer-events-none" />
-      {/* Decorative floating shapes */}
-      <div className="absolute top-[20%] right-[12%] w-20 h-20 border border-cyan-500/8 rounded-2xl rotate-45 pointer-events-none" />
-      <div className="absolute bottom-[25%] left-[8%] w-16 h-16 border border-violet-500/8 rounded-full pointer-events-none" />
-      <div className="absolute top-[60%] right-[5%] w-12 h-12 border border-blue-500/6 rounded-lg rotate-12 pointer-events-none" />
-      <div className="absolute top-[35%] left-[3%] w-8 h-8 bg-cyan-500/4 rounded-full pointer-events-none" />
+    <div className={`min-h-screen font-sans flex flex-col relative overflow-hidden text-slate-50 ${shake ? 'animate-[shakeX_0.4s_ease-in-out]' : ''}`}>
+      <AdvancedBackground />
       {combo >= 3 && <div className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${combo >= 5 ? 'bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,0.10),transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(251,146,60,0.08),transparent_60%)]'}`} />}
 
       {/* Top Bar */}
-      <header className="relative z-20 px-4 py-3 border-b border-slate-700/20 bg-[#0a0e1a]/80 backdrop-blur-2xl">
+      <header className="relative z-20 px-4 py-3 border-b border-white/5 bg-transparent backdrop-blur-xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Lives */}
           <div className="flex items-center gap-1.5">

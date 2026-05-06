@@ -761,18 +761,18 @@ export default function Home() {
                <Link to="/games" className="md:col-span-2 group rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-amber-500/40 hover:bg-slate-800/80 transition-all duration-300 p-8 flex flex-col sm:flex-row justify-between relative overflow-hidden shadow-lg shadow-black/20 hover:shadow-[0_0_30px_rgba(245,158,11,0.1)]">
                  <div className="relative z-10 flex-1 pr-6 flex flex-col justify-center">
                     <div className="flex items-center gap-3 mb-4">
-                      <h3 className="text-2xl font-extrabold text-white">Edu Game</h3>
-                      <span className="px-2 py-0.5 rounded bg-purple-600/20 text-purple-400 border border-purple-500/30 text-[10px] font-bold tracking-widest uppercase">Live Challenge</span>
+                      <h3 className="text-2xl font-extrabold text-white">Đấu trường Tri thức</h3>
+                      <span className="px-2 py-0.5 rounded bg-purple-600/20 text-purple-400 border border-purple-500/30 text-[10px] font-bold tracking-widest uppercase">Thử thách Trực tiếp</span>
                     </div>
                     <p className="text-slate-400 text-sm mb-8 leading-relaxed max-w-sm">
-                      Battle other scholars in real-time knowledge duels and earn unique badges.
+                      So tài cùng các học giả khác trong những trận đấu tri thức thời gian thực và nhận về những huy hiệu độc đáo.
                     </p>
                     <div className="flex gap-4">
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Pts: {Number(leaderboardStats.totalScore).toLocaleString()}
+                         <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Điểm: {Number(leaderboardStats.totalScore).toLocaleString()}
                        </span>
                        <span className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300">
-                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Rank: #{leaderboardStats.rank}
+                         <Trophy className="w-3.5 h-3.5 text-amber-500" /> Hạng: #{leaderboardStats.rank}
                        </span>
                     </div>
                  </div>
