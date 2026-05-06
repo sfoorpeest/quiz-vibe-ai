@@ -8,6 +8,13 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }, []);
+
   // Load token and fetch latest user data from server on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -18,15 +25,20 @@ export const AuthProvider = ({ children }) => {
         setToken(savedToken);
         // Set initial user from local storage to show something immediately
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (parseError) {
+            console.warn('[AUTH_BOOTSTRAP] Invalid user payload in localStorage, resetting auth cache:', parseError.message);
+            localStorage.removeItem('user');
+          }
         }
 
         try {
           // Fetch latest profile from server
           const response = await api.get('/api/profile');
+          const freshUserData = response.data?.data;
           
-          if (response.data) {
-            const freshUserData = response.data;
+          if (freshUserData) {
             setUser(prev => {
               const updated = { ...prev, ...freshUserData };
               localStorage.setItem('user', JSON.stringify(updated));
@@ -44,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initAuth();
-  }, []);
+  }, [logout]);
 
   const login = async (userData, authToken) => {
     setToken(authToken);
@@ -57,21 +69,15 @@ export const AuthProvider = ({ children }) => {
     try {
       // Immediately fetch full profile to get avatar, etc.
       const response = await api.get('/api/profile');
-      if (response.data) {
-        const fullUser = { ...userData, ...response.data };
+      const freshUserData = response.data?.data;
+      if (freshUserData) {
+        const fullUser = { ...userData, ...freshUserData };
         setUser(fullUser);
         localStorage.setItem('user', JSON.stringify(fullUser));
       }
     } catch (error) {
       console.error("Failed to fetch full profile after login:", error);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
   };
 
   const updateUser = useCallback((newUserData) => {

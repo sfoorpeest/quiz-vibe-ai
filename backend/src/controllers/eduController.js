@@ -18,7 +18,7 @@ exports.processMaterialWithAI = async (req, res) => {
         );
         
         if (materials.length === 0) {
-            return res.status(404).json({ message: "Không tìm thấy học liệu này" });
+            return res.status(404).json({ success: false, message: "Không tìm thấy học liệu này", data: null, errorCode: "MATERIAL_NOT_FOUND" });
         }
 
         const material = materials[0];
@@ -40,14 +40,10 @@ exports.processMaterialWithAI = async (req, res) => {
             }
         );
 
-        res.status(200).json({
-            status: 'success',
-            material_title: material.title,
-            ai_analysis: aiResult 
-        });
+        res.status(200).json({ success: true, message: "Phân tích học liệu thành công", data: { material_title: material.title, ai_analysis: aiResult }, errorCode: null });
     } catch (error) {
         console.error("AI Process Error:", error);
-        res.status(500).json({ message: "Lỗi xử lý AI hoặc kết nối Database" });
+        res.status(500).json({ success: false, message: "Lỗi xử lý AI hoặc kết nối Database", data: null, errorCode: "PROCESS_MATERIAL_AI_FAILED" });
     }
 };
 
@@ -76,6 +72,7 @@ exports.analyzeDraftMaterial = async (req, res) => {
         try {
             parsedResult = JSON.parse(aiResultText);
         } catch(e) {
+            console.warn('[AI_FALLBACK] analyzeDraftMaterial JSON parse failed, using fallback summary/tags:', e.message);
             // Fallback nếu JSON parse lỗi
             parsedResult = {
                 summary: "Tài liệu này cung cấp kiến thức nền tảng quan trọng giúp học sinh nắm vững các khái niệm trọng tâm.",
@@ -83,10 +80,10 @@ exports.analyzeDraftMaterial = async (req, res) => {
             };
         }
 
-        res.status(200).json({ status: 'success', data: parsedResult });
+        res.status(200).json({ success: true, message: "Phân tích nháp thành công", data: parsedResult, errorCode: null });
     } catch (error) {
         console.error("AI Draft Analyze Error:", error);
-        res.status(500).json({ message: "AI hiện không thể phân tích tài liệu này." });
+        res.status(500).json({ success: false, message: "AI hiện không thể phân tích tài liệu này.", data: null, errorCode: "ANALYZE_DRAFT_FAILED" });
     }
 };
 
@@ -143,18 +140,11 @@ exports.createMaterial = async (req, res) => {
         // Ghi đè toàn bộ nội dung mới vào file materials.json
         fs.writeFileSync(jsonPath, JSON.stringify(formattedData, null, 4), 'utf8');
 
-        res.status(201).json({
-            status: 'success',
-            message: "Tạo học liệu thành công và đã đồng bộ toàn bộ file JSON",
-            data: { id: resultId, title }
-        });
+        res.status(201).json({ success: true, message: "Tạo học liệu thành công và đã đồng bộ toàn bộ file JSON", data: { id: resultId, title }, errorCode: null });
 
     } catch (error) {
         console.error("Create Material Sync Error:", error);
-        res.status(500).json({ 
-            message: "Lỗi khi tạo học liệu hoặc lỗi đồng bộ file hệ thống", 
-            error: error.message 
-        });
+        res.status(500).json({ success: false, message: "Lỗi khi tạo học liệu hoặc lỗi đồng bộ file hệ thống", data: null, errorCode: "CREATE_MATERIAL_FAILED" });
     }
 };
 
@@ -165,7 +155,7 @@ exports.updateMaterialVisibility = async (req, res) => {
         const userId = req.user.id;
 
         if (!['public', 'private'].includes(visibility)) {
-            return res.status(400).json({ message: "Visibility không hợp lệ" });
+            return res.status(400).json({ success: false, message: "Visibility không hợp lệ", data: null, errorCode: "INVALID_VISIBILITY" });
         }
 
         // Cập nhật DB
@@ -191,10 +181,10 @@ exports.updateMaterialVisibility = async (req, res) => {
         }));
         fs.writeFileSync(jsonPath, JSON.stringify(formattedData, null, 4), 'utf8');
 
-        res.status(200).json({ status: 'success', message: "Cập nhật quyền riêng tư thành công" });
+        res.status(200).json({ success: true, message: "Cập nhật quyền riêng tư thành công", data: null, errorCode: null });
     } catch (error) {
         console.error("Update Visibility Error:", error);
-        res.status(500).json({ message: "Lỗi cập nhật quyền riêng tư" });
+        res.status(500).json({ success: false, message: "Lỗi cập nhật quyền riêng tư", data: null, errorCode: "UPDATE_VISIBILITY_FAILED" });
     }
 };
 
@@ -207,10 +197,10 @@ exports.getTeachers = async (req, res) => {
             'SELECT id, name, email FROM users WHERE role_id IN (2, 3)',
             { type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: teachers });
+        res.status(200).json({ success: true, message: "Lấy danh sách giáo viên thành công", data: teachers, errorCode: null });
     } catch (error) {
         console.error("Get Teachers Error:", error);
-        res.status(500).json({ message: "Lỗi khi lấy danh sách giáo viên" });
+        res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách giáo viên", data: null, errorCode: "GET_TEACHERS_FAILED" });
     }
 };
 
@@ -227,11 +217,11 @@ exports.shareMaterialToTeachers = async (req, res) => {
         );
 
         if (!materials) {
-            return res.status(403).json({ message: "Bạn không có quyền chia sẻ tài liệu này" });
+            return res.status(403).json({ success: false, message: "Bạn không có quyền chia sẻ tài liệu này", data: null, errorCode: "SHARE_FORBIDDEN" });
         }
 
         if (!Array.isArray(teacherIds) || teacherIds.length === 0) {
-            return res.status(400).json({ message: "Danh sách giáo viên không hợp lệ" });
+            return res.status(400).json({ success: false, message: "Danh sách giáo viên không hợp lệ", data: null, errorCode: "INVALID_TEACHER_IDS" });
         }
 
         // Xóa các chia sẻ cũ (hoặc chỉ insert mới tuỳ logic, ở đây insert ignore hoặc xoá rồi insert)
@@ -247,10 +237,10 @@ exports.shareMaterialToTeachers = async (req, res) => {
             );
         }
 
-        res.status(200).json({ status: 'success', message: "Chia sẻ tài liệu thành công" });
+        res.status(200).json({ success: true, message: "Chia sẻ tài liệu thành công", data: null, errorCode: null });
     } catch (error) {
         console.error("Share Material Error:", error);
-        res.status(500).json({ message: "Lỗi khi chia sẻ tài liệu" });
+        res.status(500).json({ success: false, message: "Lỗi khi chia sẻ tài liệu", data: null, errorCode: "SHARE_MATERIAL_FAILED" });
     }
 };
 
@@ -278,10 +268,10 @@ exports.trackProgress = async (req, res) => {
             }
         );
 
-        res.status(201).json({ status: 'success', message: "Đã ghi nhận tiến độ học tập" });
+        res.status(201).json({ success: true, message: "Đã ghi nhận tiến độ học tập", data: null, errorCode: null });
     } catch (error) {
         console.error("Tracking Error:", error);
-        res.status(500).json({ message: "Không thể lưu lịch sử học tập" });
+        res.status(500).json({ success: false, message: "Không thể lưu lịch sử học tập", data: null, errorCode: "TRACK_PROGRESS_FAILED" });
     }
 };
 
@@ -326,10 +316,10 @@ exports.getStudentTimeStats = async (req, res) => {
             type: QueryTypes.SELECT
         });
 
-        res.status(200).json({ status: 'success', data: stats });
+        res.status(200).json({ success: true, message: "Lấy thống kê thời gian học thành công", data: stats, errorCode: null });
     } catch (error) {
         console.error("Get Student Time Stats Error:", error);
-        res.status(500).json({ message: "Không thể lấy thống kê thời gian học" });
+        res.status(500).json({ success: false, message: "Không thể lấy thống kê thời gian học", data: null, errorCode: "GET_STUDENT_TIME_STATS_FAILED" });
     }
 };
 
@@ -359,9 +349,9 @@ exports.getAllMaterials = async (req, res) => {
              ORDER BY materials.created_at DESC`,
             { replacements: [userId, userId, userId], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: rows });
+        res.status(200).json({ success: true, message: "Lấy danh sách học liệu thành công", data: rows, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: "Lỗi khi lấy danh sách học liệu" });
+        res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách học liệu", data: null, errorCode: "GET_ALL_MATERIALS_FAILED" });
     }
 };
 
@@ -430,13 +420,15 @@ exports.searchMaterials = async (req, res) => {
         const rows = await sequelize.query(queryStr, { replacements, type: QueryTypes.SELECT });
 
         res.status(200).json({
-            status: 'success',
+            success: true,
+            message: "Tìm kiếm học liệu thành công",
             data: rows,
-            meta: { query: trimmed, sort, creatorId, tag }
+            meta: { query: trimmed, sort, creatorId, tag },
+            errorCode: null
         });
     } catch (error) {
         console.error("Search Error:", error);
-        res.status(500).json({ message: "Lỗi khi tìm kiếm hoặc lọc học liệu" });
+        res.status(500).json({ success: false, message: "Lỗi khi tìm kiếm hoặc lọc học liệu", data: null, errorCode: "SEARCH_MATERIALS_FAILED" });
     }
 };
 
@@ -453,9 +445,9 @@ exports.getSystemStats = async (req, res) => {
                 (SELECT COUNT(*) FROM users WHERE role_id = 2) as total_teachers
         `, { type: QueryTypes.SELECT });
 
-        res.status(200).json({ status: 'success', data: stats[0] });
+        res.status(200).json({ success: true, message: "Lấy thống kê hệ thống thành công", data: stats[0], errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: "Lỗi khi lấy thống kê hệ thống" });
+        res.status(500).json({ success: false, message: "Lỗi khi lấy thống kê hệ thống", data: null, errorCode: "GET_SYSTEM_STATS_FAILED" });
     }
 };
 
@@ -477,7 +469,7 @@ exports.getAllTags = async (req, res) => {
         );
 
         if (Number(hasTagsColumn?.total || 0) === 0) {
-            return res.status(200).json({ status: 'success', data: [] });
+            return res.status(200).json({ success: true, message: "Lấy danh sách tags thành công", data: [], errorCode: null });
         }
 
         let query = '';
@@ -514,10 +506,10 @@ exports.getAllTags = async (req, res) => {
             }
         });
 
-        res.status(200).json({ status: 'success', data: Array.from(allTags) });
+        res.status(200).json({ success: true, message: "Lấy danh sách tags thành công", data: Array.from(allTags), errorCode: null });
     } catch (error) {
         console.error("Get Tags Error:", error);
-        res.status(200).json({ status: 'success', data: [], success: false, message: 'Lỗi khi lấy danh sách tags', error: error.message });
+        res.status(200).json({ success: false, message: 'Lỗi khi lấy danh sách tags', data: [], errorCode: 'GET_TAGS_FAILED' });
     }
 };
 
@@ -528,16 +520,16 @@ exports.chatWithAI = async (req, res) => {
     try {
         const { context, question } = req.body;
         
-        if (!question) return res.status(400).json({ message: "Vui lòng nhập câu hỏi." });
+        if (!question) return res.status(400).json({ success: false, message: "Vui lòng nhập câu hỏi.", data: null, errorCode: "MISSING_QUESTION" });
 
         const prompt = `Bạn là một gia sư AI tận tâm tên là QuizVibe AI. Dựa vào nội dung tài liệu sau đây, hãy trả lời câu hỏi của học sinh một cách ngắn gọn, súc tích và thân thiện nhất.\nHãy dùng tiếng Việt.\n\nNội dung tài liệu:\n${context || 'Không có tài liệu cụ thể.'}\n\nCâu hỏi: ${question}`;
         
         const aiResponse = await aiService.generateContent(prompt);
 
-        res.status(200).json({ status: 'success', answer: aiResponse });
+        res.status(200).json({ success: true, message: "AI trả lời thành công", data: { answer: aiResponse }, errorCode: null });
     } catch (error) {
         console.error("AI Chat Error:", error);
-        res.status(500).json({ message: "AI đang bận, vui lòng thử lại sau." });
+        res.status(500).json({ success: false, message: "AI đang bận, vui lòng thử lại sau.", data: null, errorCode: "CHAT_AI_FAILED" });
     }
 };
 
@@ -570,7 +562,7 @@ exports.extractFileContent = async (req, res) => {
                 fileDataForGemini = { buffer, mimeType: mimetype };
                 extractedText = "Tài liệu này là một dạng PDF hình ảnh. Vui lòng phân tích dựa trên tệp đính kèm.";
             } else if (!extractedText || extractedText.trim().length < 50) {
-                return res.status(415).json({ message: `Không thể trích xuất nội dung từ file "${originalname}". File có thể bị lỗi hoặc định dạng không được hỗ trợ.` });
+                return res.status(415).json({ success: false, message: `Không thể trích xuất nội dung từ file "${originalname}". File có thể bị lỗi hoặc định dạng không được hỗ trợ.`, data: null, errorCode: "UNSUPPORTED_FILE" });
             }
         } else if (req.body.url) {
             const { url } = req.body;
@@ -592,10 +584,10 @@ exports.extractFileContent = async (req, res) => {
             if (sourceTitle.length > 50) sourceTitle = sourceTitle.substring(0, 50);
 
             if (!extractedText || extractedText.length < 50) {
-                return res.status(422).json({ message: 'Không thể trích xuất nội dung từ URL này.' });
+                return res.status(422).json({ success: false, message: 'Không thể trích xuất nội dung từ URL này.', data: null, errorCode: "EXTRACT_URL_FAILED" });
             }
         } else {
-            return res.status(400).json({ message: 'Vui lòng gửi file hoặc URL.' });
+            return res.status(400).json({ success: false, message: 'Vui lòng gửi file hoặc URL.', data: null, errorCode: "MISSING_FILE_OR_URL" });
         }
 
         // Bước 1: Sinh bản nháp (Summary & Tags) dựa trên nội dung thực tế
@@ -638,6 +630,7 @@ exports.extractFileContent = async (req, res) => {
                 );
             }
         } catch (e) {
+            console.warn('[AI_FALLBACK] extractFileContent draft JSON parse failed, using fallback summary/tags:', e.message);
             console.error("JSON Parse Error for Draft:", aiDraftText);
             sourceTitle = sourceTitle.replace(/_/g, ' ').trim();
             parsedDraft = { 
@@ -658,17 +651,19 @@ exports.extractFileContent = async (req, res) => {
         const lessonContent = await aiService.generateContent(lessonPrompt, fileDataForGemini);
 
         return res.status(200).json({
-            status: 'success',
+            success: true,
+            message: "Trích xuất và phân tích tài liệu thành công",
             data: {
                 title: sourceTitle,
                 summary: parsedDraft.summary,
                 tags: parsedDraft.tags,
                 lessonContent
-            }
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('Extract Error:', error);
-        res.status(500).json({ message: 'Lỗi khi xử lý tài liệu.' });
+        res.status(500).json({ success: false, message: 'Lỗi khi xử lý tài liệu.', data: null, errorCode: "EXTRACT_FILE_FAILED" });
     }
 };
 
@@ -682,14 +677,18 @@ exports.getMaterialProgress = async (req, res) => {
         const snapshot = await getMaterialLearningSnapshot(userId, material_id);
 
         res.status(200).json({
-            status: 'success',
-            progress: snapshot.progress,
-            readingProgress: snapshot.readingProgress,
-            quizStatus: snapshot.quizStatus,
-            lastScore: snapshot.lastScore
+            success: true,
+            message: "Lấy tiến độ học tập thành công",
+            data: {
+                progress: snapshot.progress,
+                readingProgress: snapshot.readingProgress,
+                quizStatus: snapshot.quizStatus,
+                lastScore: snapshot.lastScore
+            },
+            errorCode: null
         });
     } catch (error) {
-        res.status(500).json({ message: 'Không thể tải tiến độ học tập.' });
+        res.status(500).json({ success: false, message: 'Không thể tải tiến độ học tập.', data: null, errorCode: "GET_MATERIAL_PROGRESS_FAILED" });
     }
 };
 
@@ -714,14 +713,16 @@ exports.getUserDashboard = async (req, res) => {
             );
 
             return res.status(200).json({
-                status: 'success',
+                success: true,
+                message: "Lấy dữ liệu dashboard thành công",
                 data: {
                     stats: {
                         totalMaterials: matResult[0]?.count || 0,
                         totalQuizzes: quizResult[0]?.count || 0,
                         totalInteractions: interactResult[0]?.count || 0
                     }
-                }
+                },
+                errorCode: null
             });
         }
 
@@ -784,7 +785,8 @@ exports.getUserDashboard = async (req, res) => {
         const totalQuizzesResult = await sequelize.query('SELECT COUNT(*) as count FROM results WHERE user_id = ?', { replacements: [userId], type: QueryTypes.SELECT });
 
         res.status(200).json({
-            status: 'success',
+            success: true,
+            message: "Lấy dữ liệu dashboard thành công",
             data: {
                 lastMaterial,
                 stats: {
@@ -792,11 +794,12 @@ exports.getUserDashboard = async (req, res) => {
                     avgScore: avgScoreResult[0]?.avg_score ? parseFloat(avgScoreResult[0].avg_score).toFixed(1) : 0,
                     totalQuizzes: totalQuizzesResult[0]?.count || 0
                 }
-            }
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('Dashboard Error:', error);
-        res.status(500).json({ message: 'Không thể tải dữ liệu Dashboard.' });
+        res.status(500).json({ success: false, message: 'Không thể tải dữ liệu Dashboard.', data: null, errorCode: "GET_USER_DASHBOARD_FAILED" });
     }
 };
 
@@ -807,9 +810,9 @@ exports.deleteMaterialByAdmin = async (req, res) => {
     try {
         const materialId = req.params.id;
         await sequelize.query('DELETE FROM materials WHERE id = ?', { replacements: [materialId], type: QueryTypes.DELETE });
-        res.status(200).json({ status: 'success', message: "Admin đã xóa học liệu thành công" });
+        res.status(200).json({ success: true, message: "Admin đã xóa học liệu thành công", data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: "Lỗi khi xóa học liệu" });
+        res.status(500).json({ success: false, message: "Lỗi khi xóa học liệu", data: null, errorCode: "DELETE_MATERIAL_FAILED" });
     }
 };
 
@@ -827,10 +830,10 @@ exports.createGroup = async (req, res) => {
             { replacements: [name, description, color || '#06b6d4', teacherId], type: QueryTypes.INSERT }
         );
 
-        res.status(201).json({ status: 'success', data: { id: groupId, name, color: color || '#06b6d4' } });
+        res.status(201).json({ success: true, message: "Tạo lớp học thành công", data: { id: groupId, name, color: color || '#06b6d4' }, errorCode: null });
     } catch (error) {
         console.error('Create Group Error:', error);
-        res.status(500).json({ message: 'Không thể tạo lớp học' });
+        res.status(500).json({ success: false, message: 'Không thể tạo lớp học', data: null, errorCode: "CREATE_GROUP_FAILED" });
     }
 };
 
@@ -848,7 +851,7 @@ exports.updateGroup = async (req, res) => {
         });
 
         if (!group) {
-            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy nhóm hoặc bạn không có quyền', data: null, errorCode: "GROUP_NOT_FOUND" });
         }
 
         await sequelize.query(
@@ -856,10 +859,10 @@ exports.updateGroup = async (req, res) => {
             { replacements: [name, description, color, id], type: QueryTypes.UPDATE }
         );
 
-        res.status(200).json({ status: 'success', message: 'Cập nhật nhóm thành công' });
+        res.status(200).json({ success: true, message: 'Cập nhật nhóm thành công', data: null, errorCode: null });
     } catch (error) {
         console.error('Update Group Error:', error);
-        res.status(500).json({ message: 'Không thể cập nhật nhóm' });
+        res.status(500).json({ success: false, message: 'Không thể cập nhật nhóm', data: null, errorCode: "UPDATE_GROUP_FAILED" });
     }
 };
 
@@ -876,9 +879,9 @@ exports.getTeacherGroups = async (req, res) => {
              ORDER BY g.created_at DESC`,
             { replacements: [teacherId], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: groups });
+        res.status(200).json({ success: true, message: "Lấy danh sách lớp học thành công", data: groups, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách lớp học' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách lớp học', data: null, errorCode: "GET_TEACHER_GROUPS_FAILED" });
     }
 };
 
@@ -895,10 +898,10 @@ exports.getStudentGroups = async (req, res) => {
              ORDER BY gm.joined_at DESC`,
             { replacements: [studentId], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: groups });
+        res.status(200).json({ success: true, message: "Lấy danh sách lớp học thành công", data: groups, errorCode: null });
     } catch (error) {
         console.error('Get Student Groups Error:', error);
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách lớp học của học sinh' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách lớp học của học sinh', data: null, errorCode: "GET_STUDENT_GROUPS_FAILED" });
     }
 };
 
@@ -908,7 +911,7 @@ exports.addGroupMembers = async (req, res) => {
         const { group_id, user_ids } = req.body; // user_ids là mảng [1, 2, 3]
 
         if (!Array.isArray(user_ids) || user_ids.length === 0) {
-            return res.status(400).json({ message: 'Danh sách học sinh không hợp lệ' });
+            return res.status(400).json({ success: false, message: 'Danh sách học sinh không hợp lệ', data: null, errorCode: "INVALID_MEMBER_IDS" });
         }
 
         const [groupRows] = await sequelize.query(
@@ -917,7 +920,7 @@ exports.addGroupMembers = async (req, res) => {
         );
 
         if (!groupRows) {
-            return res.status(404).json({ message: 'Lớp học không tồn tại' });
+            return res.status(404).json({ success: false, message: 'Lớp học không tồn tại', data: null, errorCode: "GROUP_NOT_FOUND" });
         }
 
         const [{ currentCount }] = await sequelize.query(
@@ -926,7 +929,7 @@ exports.addGroupMembers = async (req, res) => {
         );
 
         if (currentCount + user_ids.length > groupRows.capacity) {
-            return res.status(400).json({ message: `Không thể thêm. Lớp học đã đạt tối đa ${groupRows.capacity} học sinh` });
+            return res.status(400).json({ success: false, message: `Không thể thêm. Lớp học đã đạt tối đa ${groupRows.capacity} học sinh`, data: null, errorCode: "GROUP_CAPACITY_EXCEEDED" });
         }
 
         const values = user_ids.map(uid => `(${group_id}, ${uid})`).join(',');
@@ -935,10 +938,10 @@ exports.addGroupMembers = async (req, res) => {
             { type: QueryTypes.INSERT }
         );
 
-        res.status(200).json({ status: 'success', message: 'Đã thêm học sinh vào lớp' });
+        res.status(200).json({ success: true, message: 'Đã thêm học sinh vào lớp', data: null, errorCode: null });
     } catch (error) {
         console.error("Add Group Members Error:", error);
-        res.status(500).json({ message: 'Không thể thêm học sinh' });
+        res.status(500).json({ success: false, message: 'Không thể thêm học sinh', data: null, errorCode: "ADD_MEMBERS_FAILED" });
     }
 };
 
@@ -955,7 +958,7 @@ exports.removeGroupMember = async (req, res) => {
         });
 
         if (!group || group.length === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy nhóm hoặc bạn không có quyền', data: null, errorCode: "GROUP_NOT_FOUND" });
         }
 
         await sequelize.query('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', {
@@ -963,10 +966,10 @@ exports.removeGroupMember = async (req, res) => {
             type: QueryTypes.DELETE
         });
 
-        res.status(200).json({ status: 'success', message: 'Đã xóa học sinh khỏi lớp' });
+        res.status(200).json({ success: true, message: 'Đã xóa học sinh khỏi lớp', data: null, errorCode: null });
     } catch (error) {
         console.error('Remove Member Error:', error);
-        res.status(500).json({ message: 'Không thể xóa học sinh' });
+        res.status(500).json({ success: false, message: 'Không thể xóa học sinh', data: null, errorCode: "REMOVE_MEMBER_FAILED" });
     }
 };
 
@@ -980,9 +983,9 @@ exports.assignMaterialToGroup = async (req, res) => {
             { replacements: [group_id, material_id], type: QueryTypes.INSERT }
         );
 
-        res.status(200).json({ status: 'success', message: 'Đã giao bài cho lớp' });
+        res.status(200).json({ success: true, message: 'Đã giao bài cho lớp', data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Không thể giao bài học' });
+        res.status(500).json({ success: false, message: 'Không thể giao bài học', data: null, errorCode: "ASSIGN_MATERIAL_FAILED" });
     }
 };
 
@@ -993,7 +996,7 @@ exports.getGroupDetails = async (req, res) => {
         // Lấy thông tin cơ bản của lớp
         const group = await sequelize.query('SELECT * FROM `groups` WHERE id = ?', { replacements: [id], type: QueryTypes.SELECT });
         
-        if (!group[0]) return res.status(404).json({ message: 'Không tìm thấy lớp' });
+        if (!group[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy lớp', data: null, errorCode: "GROUP_NOT_FOUND" });
 
         // Lấy danh sách học sinh thuộc lớp
         const students = await sequelize.query(
@@ -1015,15 +1018,13 @@ exports.getGroupDetails = async (req, res) => {
         );
 
         res.status(200).json({
-            status: 'success',
-            data: {
-                ...group[0],
-                students,
-                materials
-            }
+            success: true,
+            message: "Lấy chi tiết lớp học thành công",
+            data: { ...group[0], students, materials },
+            errorCode: null
         });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy chi tiết lớp học' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy chi tiết lớp học', data: null, errorCode: "GET_GROUP_DETAILS_FAILED" });
     }
 };
 
@@ -1040,7 +1041,7 @@ exports.deleteGroup = async (req, res) => {
         });
 
         if (!group || group.length === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy nhóm hoặc bạn không có quyền xóa' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy nhóm hoặc bạn không có quyền xóa', data: null, errorCode: "GROUP_NOT_FOUND" });
         }
 
         await sequelize.query('DELETE FROM `groups` WHERE id = ?', { 
@@ -1048,10 +1049,10 @@ exports.deleteGroup = async (req, res) => {
             type: QueryTypes.DELETE 
         });
 
-        res.status(200).json({ status: 'success', message: 'Đã xóa nhóm thành công' });
+        res.status(200).json({ success: true, message: 'Đã xóa nhóm thành công', data: null, errorCode: null });
     } catch (error) {
         console.error('Delete Group Error:', error);
-        res.status(500).json({ message: 'Lỗi khi xóa nhóm học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi xóa nhóm học tập', data: null, errorCode: "DELETE_GROUP_FAILED" });
     }
 };
 
@@ -1066,10 +1067,10 @@ exports.getStudentsForTeacher = async (req, res) => {
              WHERE u.role_id = 1`,
             { type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: students });
+        res.status(200).json({ success: true, message: "Lấy danh sách học sinh thành công", data: students, errorCode: null });
     } catch (error) {
         console.error('Get Students Error:', error);
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách học sinh' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách học sinh', data: null, errorCode: "GET_STUDENTS_FAILED" });
     }
 };
 
@@ -1081,9 +1082,9 @@ exports.getAllWorksheetsForTeacher = async (req, res) => {
             'SELECT * FROM worksheets WHERE created_by = ? ORDER BY created_at DESC',
             { replacements: [teacherId], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: worksheets });
+        res.status(200).json({ success: true, message: "Lấy danh sách phiếu học tập thành công", data: worksheets, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách phiếu học tập', data: null, errorCode: "GET_WORKSHEETS_FAILED" });
     }
 };
 
@@ -1101,7 +1102,7 @@ exports.generateWorksheetWithAI = async (req, res) => {
             { replacements: [material_id], type: QueryTypes.SELECT }
         );
 
-        if (!material[0]) return res.status(404).json({ message: 'Không tìm thấy học liệu' });
+        if (!material[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy học liệu', data: null, errorCode: "MATERIAL_NOT_FOUND" });
 
         // Prompt yêu cầu AI đóng vai giáo viên để tạo câu hỏi tự luận
         const prompt = `Bạn là một giáo viên chuyên nghiệp. Dựa vào nội dung tài liệu sau, hãy tạo một "Phiếu học tập" gồm 5 câu hỏi tự luận giúp học sinh đào sâu kiến thức.
@@ -1124,7 +1125,13 @@ exports.generateWorksheetWithAI = async (req, res) => {
             throw new Error("AI không trả về định dạng JSON hợp lệ.");
         }
         
-        const parsedContent = JSON.parse(jsonMatch[0]);
+        let parsedContent;
+        try {
+            parsedContent = JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+            console.warn('[AI_FALLBACK] generateWorksheetWithAI JSON parse failed:', parseError.message);
+            throw parseError;
+        }
 
         // Lưu thông tin phiếu học tập đã sinh vào Database
         const [worksheetId] = await sequelize.query(
@@ -1136,12 +1143,14 @@ exports.generateWorksheetWithAI = async (req, res) => {
         );
 
         res.status(201).json({
-            status: 'success',
-            data: { id: worksheetId, title: title || parsedContent.title, questions: parsedContent.questions }
+            success: true,
+            message: "Phiếu học tập đã được tạo thành công",
+            data: { id: worksheetId, title: title || parsedContent.title, questions: parsedContent.questions },
+            errorCode: null
         });
     } catch (error) {
         console.error('Generate Worksheet Error:', error);
-        res.status(500).json({ message: 'AI hiện không thể sinh phiếu học tập' });
+        res.status(500).json({ success: false, message: 'AI hiện không thể sinh phiếu học tập', data: null, errorCode: "GENERATE_WORKSHEET_FAILED" });
     }
 };
 
@@ -1159,9 +1168,9 @@ exports.submitWorksheet = async (req, res) => {
             }
         );
 
-        res.status(200).json({ status: 'success', message: 'Đã nộp phiếu học tập thành công' });
+        res.status(200).json({ success: true, message: 'Đã nộp phiếu học tập thành công', data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Không thể nộp bài' });
+        res.status(500).json({ success: false, message: 'Không thể nộp bài', data: null, errorCode: "SUBMIT_WORKSHEET_FAILED" });
     }
 };
 
@@ -1180,9 +1189,9 @@ exports.getWorksheetsForStudent = async (req, res) => {
              ORDER BY w.created_at DESC`,
             { replacements: [userId], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: worksheets });
+        res.status(200).json({ success: true, message: "Lấy danh sách phiếu học tập thành công", data: worksheets, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách phiếu học tập', data: null, errorCode: "GET_WORKSHEETS_FAILED" });
     }
 };
 
@@ -1195,11 +1204,11 @@ exports.getWorksheetById = async (req, res) => {
             { replacements: [id], type: QueryTypes.SELECT }
         );
 
-        if (!worksheet[0]) return res.status(404).json({ message: 'Không tìm thấy phiếu học tập' });
+        if (!worksheet[0]) return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu học tập', data: null, errorCode: "WORKSHEET_NOT_FOUND" });
 
-        res.status(200).json({ status: 'success', data: worksheet[0] });
+        res.status(200).json({ success: true, message: "Lấy phiếu học tập thành công", data: worksheet[0], errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy thông tin phiếu học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy thông tin phiếu học tập', data: null, errorCode: "GET_WORKSHEET_FAILED" });
     }
 };
 
@@ -1216,7 +1225,7 @@ exports.deleteWorksheet = async (req, res) => {
         );
 
         if (!worksheet[0]) {
-            return res.status(404).json({ message: 'Không tìm thấy phiếu học tập hoặc bạn không có quyền xóa' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu học tập hoặc bạn không có quyền xóa', data: null, errorCode: "WORKSHEET_NOT_FOUND" });
         }
 
         await sequelize.query('DELETE FROM worksheets WHERE id = ?', {
@@ -1224,10 +1233,10 @@ exports.deleteWorksheet = async (req, res) => {
             type: QueryTypes.DELETE
         });
 
-        res.status(200).json({ status: 'success', message: 'Đã xóa phiếu học tập thành công' });
+        res.status(200).json({ success: true, message: 'Đã xóa phiếu học tập thành công', data: null, errorCode: null });
     } catch (error) {
         console.error('Delete Worksheet Error:', error);
-        res.status(500).json({ message: 'Lỗi khi xóa phiếu học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi xóa phiếu học tập', data: null, errorCode: "DELETE_WORKSHEET_FAILED" });
     }
 };
 
@@ -1239,8 +1248,8 @@ exports.getWorksheetsByMaterial = async (req, res) => {
             'SELECT * FROM worksheets WHERE material_id = ? ORDER BY created_at DESC',
             { replacements: [material_id], type: QueryTypes.SELECT }
         );
-        res.status(200).json({ status: 'success', data: worksheets });
+        res.status(200).json({ success: true, message: "Lấy danh sách phiếu học tập thành công", data: worksheets, errorCode: null });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi khi lấy danh sách phiếu học tập' });
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách phiếu học tập', data: null, errorCode: "GET_WORKSHEETS_FAILED" });
     }
 };

@@ -136,7 +136,7 @@ function normalizePagination(page, limit) {
     return { page: normalizedPage, limit: normalizedLimit, offset: (normalizedPage - 1) * normalizedLimit };
 }
 
-async function listMaterials({ search, type, subject, grade, page, limit }) {
+async function listMaterials({ search, type, subject, grade, tag, page, limit }) {
     const { page: normalizedPage, limit: normalizedLimit, offset } = normalizePagination(page, limit);
 
     const whereClauses = ['1=1'];
@@ -198,6 +198,11 @@ async function listMaterials({ search, type, subject, grade, page, limit }) {
             whereClauses.push('(title LIKE ? OR description LIKE ?)');
             replacements.push(`%${grade}%`, `%${grade}%`);
         }
+    }
+
+    if (tag && String(tag).trim()) {
+        whereClauses.push('tags LIKE ?');
+        replacements.push(`%${String(tag).trim()}%`);
     }
 
     const whereSQL = whereClauses.join(' AND ');

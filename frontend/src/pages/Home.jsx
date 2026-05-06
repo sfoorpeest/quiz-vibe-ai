@@ -46,7 +46,7 @@ export default function Home() {
       if (!user?.id) return;
       try {
         const statsRes = await api.get('/api/edu/dashboard/stats');
-        if (isMounted && statsRes.data && statsRes.data.status === 'success') {
+        if (isMounted && statsRes.data?.success) {
           setDashboardData(statsRes.data.data);
         }
         
@@ -58,15 +58,16 @@ export default function Home() {
         }
 
         const tagsRes = await api.get('/api/edu/tags');
-        if (isMounted && tagsRes.data && tagsRes.data.status === 'success') {
+        if (isMounted && tagsRes.data?.success) {
           setSystemTags(tagsRes.data.data);
         }
         
         // Fetch Leaderboard for Edu Game widget
         try {
           const lbRes = await api.get('/api/quiz/leaderboard');
-          if (isMounted && lbRes.data && lbRes.data.data) {
-            const myEntry = lbRes.data.data.find(p => p.user_id === user?.id);
+          if (isMounted && lbRes.data?.success && lbRes.data?.data) {
+            const leaderboardRows = lbRes.data.data.leaderboard || [];
+            const myEntry = lbRes.data.data.currentUser || leaderboardRows.find(p => p.user_id === user?.id);
             if (myEntry) {
               setLeaderboardStats({ rank: myEntry.rank, totalScore: myEntry.high_score || 0 });
             }

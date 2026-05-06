@@ -68,11 +68,11 @@ export default function EduGames() {
       try {
         // 1. Lấy Leaderboard và Rank của tôi
         const resLeaderboard = await api.get('/api/quiz/leaderboard');
-        if (resLeaderboard.data && resLeaderboard.data.status === 'success') {
-          setLeaderboard(resLeaderboard.data.data);
+        if (resLeaderboard.data?.success && resLeaderboard.data?.data) {
+          setLeaderboard(resLeaderboard.data.data.leaderboard || []);
           
           // Sử dụng dữ liệu currentUser từ backend trả về (chính xác hơn vì backend tính rank toàn hệ thống)
-          const myStats = resLeaderboard.data.currentUser;
+          const myStats = resLeaderboard.data.data.currentUser;
           if (myStats) {
             setPlayerRank(myStats.rank);
             setPlayerTotalScore(myStats.high_score || 0);

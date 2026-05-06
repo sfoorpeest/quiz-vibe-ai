@@ -136,13 +136,13 @@ export default function LearningView() {
             // Fetch progress thực tế từ database
             try {
               const progressRes = await api.get(`/api/edu/learning/progress/${id}`);
-              if (progressRes.data && progressRes.data.status === 'success') {
-                const savedProgress = progressRes.data.progress || 0;
-                const savedReadingProgress = progressRes.data.readingProgress || 0;
+              if (progressRes.data?.success && progressRes.data?.data) {
+                const savedProgress = progressRes.data.data.progress || 0;
+                const savedReadingProgress = progressRes.data.data.readingProgress || 0;
                 setMaxProgress(savedProgress);
                 setLastSavedProgress(savedReadingProgress);
                 setReadingProgress(0); // Bắt đầu ở đầu trang nhưng progress bar đã đạt mốc cũ
-                setQuizProgressStatus(progressRes.data.quizStatus || null);
+                setQuizProgressStatus(progressRes.data.data.quizStatus || null);
               }
             } catch (pErr) {
               console.error("Lỗi khi tải tiến độ cũ:", pErr);
@@ -624,10 +624,11 @@ export default function LearningView() {
         question: newUserMsg.text
       });
 
-      if (response.data && response.data.answer) {
+      const aiAnswer = response.data?.data?.answer;
+      if (aiAnswer) {
         setChatHistory(prev => [
           ...prev,
-          { sender: 'ai', text: response.data.answer }
+          { sender: 'ai', text: aiAnswer }
         ]);
       }
     } catch (error) {
@@ -716,8 +717,8 @@ export default function LearningView() {
                     onClick={async () => {
                       try {
                         setIsLoading(true);
-                        const res = await eduService.getGroups();
-                        setTeacherGroups(res.data || []);
+                        const groups = await eduService.getGroups();
+                        setTeacherGroups(groups);
                         setShowAssignModal(true);
                       } catch (err) {
                         toast.error('Không thể tải danh sách lớp');
@@ -734,9 +735,9 @@ export default function LearningView() {
                     onClick={async () => {
                     try {
                       setIsLoading(true);
-                      const res = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
+                      const worksheet = await eduService.generateWorksheet(id, `Phiếu học tập: ${material.title}`);
                       toast.success('Đã sinh phiếu học tập bằng AI!');
-                      navigate(`/teacher/worksheets?id=${res.data.id}`);
+                      navigate(`/teacher/worksheets?id=${worksheet.id}`);
                     } catch (error) {
                       toast.error('AI không thể sinh phiếu lúc này');
                     } finally {
@@ -753,9 +754,9 @@ export default function LearningView() {
                     onClick={async () => {
                       try {
                         setIsLoading(true);
-                        const res = await eduService.getTeachers();
+                        const teachers = await eduService.getTeachers();
                         // Lọc bỏ chính mình
-                        setTeachersList((res.data || []).filter(t => t.id !== user.id));
+                        setTeachersList(teachers.filter(t => t.id !== user.id));
                         setSelectedTeachers([]);
                         setShowShareModal(true);
                       } catch (err) {

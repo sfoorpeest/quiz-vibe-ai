@@ -11,7 +11,7 @@ exports.register = async (req, res) => {
         const { name, email, password, secretCode } = req.body;
 
         const userExists = await User.findOne({ where: { email } });
-        if (userExists) return res.status(400).json({ message: "Email đã tồn tại" });
+        if (userExists) return res.status(400).json({ success: false, message: "Email đã tồn tại", data: null, errorCode: "EMAIL_EXISTS" });
 
         let assignedRoleId = 1; // Mặc định là Student
 
@@ -22,7 +22,10 @@ exports.register = async (req, res) => {
                 assignedRoleId = 2;
             } else {
                 return res.status(401).json({
-                    message: "Mã xác thực Admin không đúng. Vui lòng nhập đúng mã để đăng ký."
+                    success: false,
+                    message: "Mã xác thực Admin không đúng. Vui lòng nhập đúng mã để đăng ký.",
+                    data: null,
+                    errorCode: "INVALID_SECRET_CODE"
                 });
             }
         }
@@ -40,21 +43,23 @@ exports.register = async (req, res) => {
         console.log(`✅ User registered: ${newUser.email} (Role ID: ${assignedRoleId})`);
 
         res.status(201).json({
-            status: 'success',
+            success: true,
             message: "Đăng ký thành công!",
             data: {
                 id: newUser.id,
                 name: newUser.name,
                 email: newUser.email,
                 role_id: assignedRoleId
-            }
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error("❌ Registration Error Details:", error);
         res.status(500).json({ 
-            status: 'error',
+            success: false,
             message: "Lỗi hệ thống khi đăng ký. Vui lòng kiểm tra console backend.",
-            error: error.message 
+            data: null,
+            errorCode: "REGISTER_FAILED"
         });
     }
 };
@@ -63,12 +68,17 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ success: false, message: "Missing credentials", data: null, errorCode: "MISSING_CREDENTIALS" });
+        }
+
         const user = await User.findOne({ where: { email } });
 
-        if (!user) return res.status(404).json({ message: "Tài khoản không tồn tại" });
+        if (!user) return res.status(401).json({ success: false, message: "Invalid credentials", data: null, errorCode: "INVALID_CREDENTIALS" });
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(401).json({ message: "Vui lòng cung cấp đầy đủ Email và Mật khẩu" });
+        if (!isMatch) return res.status(401).json({ success: false, message: "Invalid credentials", data: null, errorCode: "INVALID_CREDENTIALS" });
 
         const token = jwt.sign(
             { id: user.id, role_id: user.role_id },
@@ -77,17 +87,21 @@ exports.login = async (req, res) => {
         );
 
         res.json({
+            success: true,
             message: "Đăng nhập thành công!",
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role_id: user.role_id
-            }
+            data: {
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role_id: user.role_id
+                }
+            },
+            errorCode: null
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi đăng nhập.", data: null, errorCode: "LOGIN_FAILED" });
     }
 };
 
@@ -100,13 +114,13 @@ exports.changePassword = async (req, res) => {
         // 1. Tìm user trong DB theo ID
         const user = await User.findByPk(userId);
         if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
+            return res.status(404).json({ success: false, message: "Người dùng không tồn tại", data: null, errorCode: "USER_NOT_FOUND" });
         }
 
         // 2. Kiểm tra mật khẩu cũ
         const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
         if (!isMatch) {
-            return res.status(400).json({ message: "Mật khẩu cũ không chính xác" });
+            return res.status(400).json({ success: false, message: "Mật khẩu cũ không chính xác", data: null, errorCode: "WRONG_OLD_PASSWORD" });
         }
 
         // 3. Mã hóa mật khẩu mới
@@ -117,9 +131,9 @@ exports.changePassword = async (req, res) => {
         user.password_hash = hashedNewPassword;
         await user.save();
 
-        res.json({ message: "Đổi mật khẩu thành công!" });
+        res.json({ success: true, message: "Đổi mật khẩu thành công!", data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi đổi mật khẩu.", data: null, errorCode: "CHANGE_PASSWORD_FAILED" });
     }
 };
 
@@ -130,7 +144,7 @@ exports.forgotPassword = async (req, res) => {
         const user = await User.findOne({ where: { email } });
 
         if (!user) {
-            return res.status(404).json({ message: "Email không tồn tại trong hệ thống." });
+            return res.status(404).json({ success: false, message: "Email không tồn tại trong hệ thống.", data: null, errorCode: "EMAIL_NOT_FOUND" });
         }
 
         // Tạo token ngẫu nhiên và hết hạn sau 15 phút
@@ -153,21 +167,25 @@ exports.forgotPassword = async (req, res) => {
         // ⚠️ QUAN TRỌNG: KHI DEPLOY LÊN PRODUCTION ĐỂ NGƯỜI DÙNG THỰC SỬ DỤNG, 
         // BẮT BUỘC PHẢI COMMENT HOẶC XÓA ĐOẠN CONSOLE.LOG NÀY ĐỂ BẢO MẬT TOKEN!
         // =========================================================================
-        console.log("\n==========================================");
-        console.log("🔑 [DEV MODE] LINK ĐẶT LẠI MẬT KHẨU:");
-        console.log(resetLink);
-        console.log("==========================================\n");
+        if (process.env.NODE_ENV !== "production") {
+            console.log("\n==========================================");
+            console.log("🔑 [DEV MODE] LINK ĐẶT LẠI MẬT KHẨU:");
+            console.log(resetLink);
+            console.log("==========================================\n");
+        }
 
         // Cố gắng gửi mail. Nếu dùng email giả, có thể báo lỗi nhưng luồng vẫn đi tiếp
         try {
             await sendResetEmail(email, resetLink);
         } catch (mailError) {
-            console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+            if (process.env.NODE_ENV !== "production") {
+                console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+            }
         }
 
-        res.json({ message: "Yêu cầu đã được xử lý. Vui lòng kiểm tra hộp thư Email của bạn để nhận đường dẫn đặt lại mật khẩu." });
+        res.json({ success: true, message: "Yêu cầu đã được xử lý. Vui lòng kiểm tra hộp thư Email của bạn để nhận đường dẫn đặt lại mật khẩu.", data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi xử lý yêu cầu đặt lại mật khẩu.", data: null, errorCode: "FORGOT_PASSWORD_FAILED" });
     }
 };
 
@@ -185,7 +203,7 @@ exports.resetPassword = async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn." });
+            return res.status(400).json({ success: false, message: "Token không hợp lệ hoặc đã hết hạn.", data: null, errorCode: "INVALID_RESET_TOKEN" });
         }
 
         // Mã hóa mật khẩu mới
@@ -198,9 +216,9 @@ exports.resetPassword = async (req, res) => {
         user.resetTokenExpires = null;
         await user.save();
 
-        res.json({ message: "Mật khẩu đã được cập nhật thành công!" });
+        res.json({ success: true, message: "Mật khẩu đã được cập nhật thành công!", data: null, errorCode: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi đặt lại mật khẩu.", data: null, errorCode: "RESET_PASSWORD_FAILED" });
     }
 };
 
@@ -213,11 +231,11 @@ exports.getMe = async (req, res) => {
         });
         
         if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
+            return res.status(404).json({ success: false, message: "Người dùng không tồn tại", data: null, errorCode: "USER_NOT_FOUND" });
         }
-        res.json({ status: 'success', data: user });
+        res.json({ success: true, message: "Lấy thông tin thành công.", data: user, errorCode: null });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi lấy thông tin.", data: null, errorCode: "GET_ME_FAILED" });
     }
 };
 
@@ -229,7 +247,7 @@ exports.updateProfile = async (req, res) => {
         
         const user = await User.findByPk(userId);
         if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
+            return res.status(404).json({ success: false, message: "Người dùng không tồn tại", data: null, errorCode: "USER_NOT_FOUND" });
         }
         
         if (name) {
@@ -238,11 +256,12 @@ exports.updateProfile = async (req, res) => {
         
         await user.save();
         res.json({ 
-            status: 'success', 
-            message: "Cập nhật hồ sơ thành công", 
-            data: { id: user.id, name: user.name, email: user.email, role_id: user.role_id } 
+            success: true,
+            message: "Cập nhật hồ sơ thành công",
+            data: { id: user.id, name: user.name, email: user.email, role_id: user.role_id },
+            errorCode: null
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: "Lỗi hệ thống khi cập nhật hồ sơ.", data: null, errorCode: "UPDATE_PROFILE_FAILED" });
     }
 };

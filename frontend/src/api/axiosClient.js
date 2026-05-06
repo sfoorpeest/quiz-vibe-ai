@@ -16,4 +16,29 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const requestUrl = error?.config?.url || '';
+    const hasToken = Boolean(localStorage.getItem('token'));
+    const isAuthEndpoint = /\/api\/auth\/(login|register|forgot-password|reset-password)/.test(requestUrl);
+
+    if (status === 401 && hasToken && !isAuthEndpoint) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const isPublicAuthPage = currentPath === '/login' || currentPath === '/register' || currentPath === '/forgot-password';
+        if (!isPublicAuthPage) {
+          window.location.replace('/login');
+        }
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default api;

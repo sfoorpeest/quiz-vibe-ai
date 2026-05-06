@@ -1,4 +1,5 @@
 import axiosClient from '../api/axiosClient';
+import { unwrapData } from '../utils/apiHelper';
 
 /**
  * Service: chatService
@@ -15,7 +16,7 @@ import axiosClient from '../api/axiosClient';
 export const getContacts = async () => {
     try {
         const response = await axiosClient.get('/api/chat/contacts');
-        return response.data.data;
+        return unwrapData(response, 'Get contacts');
     } catch (error) {
         console.error('Error fetching contacts:', error);
         throw error;
@@ -31,7 +32,7 @@ export const getContacts = async () => {
 export const getChatHistory = async (userId) => {
     try {
         const response = await axiosClient.get(`/api/chat/history/${userId}`);
-        return response.data.data;
+        return unwrapData(response, 'Get chat history');
     } catch (error) {
         console.error('Error fetching chat history:', error);
         throw error;
@@ -47,7 +48,7 @@ export const getChatHistory = async (userId) => {
 export const searchUsers = async (query) => {
     try {
         const response = await axiosClient.get(`/api/chat/search?q=${encodeURIComponent(query)}`);
-        return response.data.data;
+        return unwrapData(response, 'Search users');
     } catch (error) {
         console.error('Error searching users:', error);
         throw error;
@@ -71,7 +72,7 @@ export const uploadFileMessage = async (formData) => {
             // Để browser tự set Content-Type với boundary khi upload multipart/form-data
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return response.data.data;
+        return unwrapData(response, 'Upload file message');
     } catch (error) {
         console.error('Error uploading file:', error);
         throw error;
@@ -93,7 +94,7 @@ export const forwardMessage = async (messageId, receiverId) => {
             messageId,
             receiver_id: receiverId
         });
-        return response.data.data;
+        return unwrapData(response, 'Forward message');
     } catch (error) {
         console.error('Error forwarding message:', error);
         throw error;

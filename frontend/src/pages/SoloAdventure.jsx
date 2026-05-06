@@ -157,8 +157,9 @@ export default function SoloAdventure() {
           time_taken: timeTaken,
           gameMode: 'SOLO'
         });
-        if (res.data?.newBadges?.length > 0) {
-          window.dispatchEvent(new CustomEvent('badge:unlocked', { detail: { badges: res.data.newBadges } }));
+        const submitPayload = res.data?.data;
+        if (submitPayload?.newBadges?.length > 0) {
+          window.dispatchEvent(new CustomEvent('badge:unlocked', { detail: { badges: submitPayload.newBadges } }));
         }
       } catch (e) { console.error('Submit error:', e); }
     };

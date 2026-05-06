@@ -58,7 +58,7 @@ export default function WorksheetBuilder() {
       ]);
       
       // Transform backend data to frontend structure if needed
-      const transformedWs = (wsRes.data || []).map(ws => {
+      const transformedWs = wsRes.map(ws => {
         let blocks = [];
         try {
           const content = typeof ws.content === 'string' ? JSON.parse(ws.content) : ws.content;
@@ -84,7 +84,7 @@ export default function WorksheetBuilder() {
       });
 
       setWorksheets(transformedWs);
-      setGroups(groupsRes.data || []);
+  setGroups(groupsRes);
 
       if (user && transformedWs.length > 0) {
         try {

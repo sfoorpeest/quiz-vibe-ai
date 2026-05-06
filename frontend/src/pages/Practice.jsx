@@ -6,31 +6,11 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
+import { eduService } from '../services/eduService';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
-// ═══════════════════════════════════════════════════════════
-// MOCK DATA — Sẽ thay bằng API thực khi backend sẵn sàng
-// ═══════════════════════════════════════════════════════════
-const QUICK_CATEGORIES = [
-  { label: 'Toán 12', emoji: '📐' },
-  { label: 'Vật Lý 11', emoji: '⚡' },
-  { label: 'Hóa học 10', emoji: '🧪' },
-  { label: 'Sinh học 12', emoji: '🧬' },
-  { label: 'IELTS Writing', emoji: '✍️' },
-  { label: 'Lịch sử Việt Nam', emoji: '🏛️' },
-  { label: 'Ngữ văn 11', emoji: '📖' },
-  { label: 'Tin học đại cương', emoji: '💻' },
-];
 
-const MOCK_HISTORY = [
-  { id: 1, topic: '20 câu trắc nghiệm Tích phân — Giải tích II', score: 85, total: 20, correct: 17, date: '2 giờ trước', passed: true },
-  { id: 2, topic: 'Từ vựng IELTS chủ đề Education', score: 60, total: 15, correct: 9, date: '1 ngày trước', passed: false },
-  { id: 3, topic: 'Cấu trúc nguyên tử và Bảng tuần hoàn', score: 95, total: 10, correct: 9, date: '3 ngày trước', passed: true },
-  { id: 4, topic: 'Phân tích nhân vật Chí Phèo — Nam Cao', score: 70, total: 10, correct: 7, date: '5 ngày trước', passed: true },
-  { id: 5, topic: 'Dao động cơ và Sóng cơ học', score: 45, total: 20, correct: 9, date: '1 tuần trước', passed: false },
-  { id: 6, topic: 'Cách mạng tháng Tám và Tuyên ngôn Độc lập', score: 90, total: 15, correct: 13, date: '2 tuần trước', passed: true },
-];
 
 export default function Practice() {
   const navigate = useNavigate();
@@ -39,9 +19,11 @@ export default function Practice() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
   React.useEffect(() => {
     fetchHistory();
+    fetchCategories();
   }, []);
 
   const fetchHistory = async () => {
@@ -56,14 +38,34 @@ export default function Practice() {
     }
   };
 
-  const handleGenerate = (e) => {
+  const fetchCategories = async () => {
+    try {
+      const tags = await eduService.getTags();
+      setCategories(tags.slice(0, 8));
+    } catch (error) {
+      setCategories([]);
+    }
+  };
+
+  const handleGenerate = async (e) => {
     e.preventDefault();
-    if (!promptValue.trim()) return;
-    // Mock: Điều hướng tới QuizPage với topic
+    const topic = promptValue.trim();
+    if (!topic) return;
+
     setIsGenerating(true);
-    setTimeout(() => {
-      navigate('/quiz/start', { state: { topic: promptValue } });
-    }, 800);
+    try {
+      const quizData = await eduService.generateQuiz({
+        topic,
+        limit: 5
+      });
+
+      navigate('/quiz/start', { state: { topic, quizData } });
+    } catch (error) {
+      console.error('Failed to generate quiz:', error);
+      alert(error?.response?.data?.message || 'Không thể tạo quiz lúc này. Vui lòng thử lại.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleQuickCategory = (label) => {
@@ -123,14 +125,13 @@ export default function Practice() {
         <div className="max-w-3xl mx-auto mb-16">
           <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 text-center">⚡ Gợi ý luyện tập nhanh</p>
           <div className="flex flex-wrap justify-center gap-2.5">
-            {QUICK_CATEGORIES.map(cat => (
+            {categories.map(tag => (
               <button
-                key={cat.label}
-                onClick={() => handleQuickCategory(cat.label)}
+                key={tag}
+                onClick={() => handleQuickCategory(tag)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 hover:border-purple-500/40 rounded-xl text-sm font-bold text-slate-300 hover:text-purple-300 transition-all hover:bg-slate-800/80 active:scale-95"
               >
-                <span>{cat.emoji}</span>
-                {cat.label}
+                {tag}
               </button>
             ))}
           </div>

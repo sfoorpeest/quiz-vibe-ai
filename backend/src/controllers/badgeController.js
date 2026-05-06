@@ -80,7 +80,8 @@ exports.getAllBadges = async (req, res) => {
         const totalBadges = badges.length;
 
         res.status(200).json({
-            status: 'success',
+            success: true,
+            message: 'Lấy danh sách thẻ thành tích thành công',
             data: {
                 summary: {
                     total: totalBadges,
@@ -89,11 +90,12 @@ exports.getAllBadges = async (req, res) => {
                 },
                 grouped,
                 all: enrichedBadges
-            }
+            },
+            errorCode: null
         });
     } catch (error) {
         console.error('Get All Badges Error:', error);
-        res.status(500).json({ message: 'Lỗi khi tải danh sách thẻ thành tích' });
+        res.status(500).json({ success: false, message: 'Lỗi khi tải danh sách thẻ thành tích', data: null, errorCode: 'GET_ALL_BADGES_FAILED' });
     }
 };
 
@@ -112,7 +114,8 @@ exports.getUserStats = async (req, res) => {
 
         if (!stats) {
             return res.status(200).json({
-                status: 'success',
+                success: true,
+                message: 'Lấy thống kê người dùng thành công',
                 data: {
                     total_quizzes_taken: 0,
                     total_perfect_scores: 0,
@@ -125,17 +128,20 @@ exports.getUserStats = async (req, res) => {
                     total_solo_plays: 0,
                     current_live_win_streak: 0,
                     last_practice_date: null
-                }
+                },
+                errorCode: null
             });
         }
 
         res.status(200).json({
-            status: 'success',
-            data: stats
+            success: true,
+            message: 'Lấy thống kê người dùng thành công',
+            data: stats,
+            errorCode: null
         });
     } catch (error) {
         console.error('Get User Stats Error:', error);
-        res.status(500).json({ message: 'Lỗi khi tải thống kê người dùng' });
+        res.status(500).json({ success: false, message: 'Lỗi khi tải thống kê người dùng', data: null, errorCode: 'GET_USER_STATS_FAILED' });
     }
 };
 
@@ -158,12 +164,14 @@ exports.getRecentBadges = async (req, res) => {
         );
 
         res.status(200).json({
-            status: 'success',
-            data: recentBadges
+            success: true,
+            message: 'Lấy thẻ gần đây thành công',
+            data: recentBadges,
+            errorCode: null
         });
     } catch (error) {
         console.error('Get Recent Badges Error:', error);
-        res.status(500).json({ message: 'Lỗi khi tải thẻ gần đây' });
+        res.status(500).json({ success: false, message: 'Lỗi khi tải thẻ gần đây', data: null, errorCode: 'GET_RECENT_BADGES_FAILED' });
     }
 };
 
@@ -182,7 +190,7 @@ exports.equipBadge = async (req, res) => {
                 'UPDATE user_profiles SET equipped_badge_id = NULL WHERE user_id = ?',
                 { replacements: [userId], type: QueryTypes.UPDATE }
             );
-            return res.status(200).json({ status: 'success', message: 'Đã tháo trang bị danh hiệu' });
+            return res.status(200).json({ success: true, message: 'Đã tháo trang bị danh hiệu', data: null, errorCode: null });
         }
 
         // Kiểm tra xem user đã mở khóa thẻ này chưa
@@ -192,7 +200,7 @@ exports.equipBadge = async (req, res) => {
         );
 
         if (!userBadge) {
-            return res.status(403).json({ message: 'Bạn chưa đạt được thành tựu này!' });
+            return res.status(403).json({ success: false, message: 'Bạn chưa đạt được thành tựu này!', data: null, errorCode: 'BADGE_NOT_UNLOCKED' });
         }
 
         // Cập nhật DB
@@ -201,10 +209,10 @@ exports.equipBadge = async (req, res) => {
             { replacements: [badgeId, userId], type: QueryTypes.UPDATE }
         );
 
-        res.status(200).json({ status: 'success', message: 'Đã trang bị danh hiệu thành công' });
+        res.status(200).json({ success: true, message: 'Đã trang bị danh hiệu thành công', data: null, errorCode: null });
     } catch (error) {
         console.error('Equip Badge Error:', error);
-        res.status(500).json({ message: 'Lỗi khi trang bị danh hiệu' });
+        res.status(500).json({ success: false, message: 'Lỗi khi trang bị danh hiệu', data: null, errorCode: 'EQUIP_BADGE_FAILED' });
     }
 };
 
@@ -218,7 +226,7 @@ exports.featureBadges = async (req, res) => {
         const { badgeIds } = req.body; // Array of badge IDs
 
         if (!Array.isArray(badgeIds) || badgeIds.length > 3) {
-            return res.status(400).json({ message: 'Chỉ được ghim tối đa 3 thành tựu' });
+            return res.status(400).json({ success: false, message: 'Chỉ được ghim tối đa 3 thành tựu', data: null, errorCode: 'INVALID_BADGE_IDS' });
         }
 
         if (badgeIds.length > 0) {
@@ -232,7 +240,7 @@ exports.featureBadges = async (req, res) => {
             const allUnlocked = badgeIds.every(id => unlockedIds.includes(id));
 
             if (!allUnlocked) {
-                return res.status(403).json({ message: 'Bạn chỉ có thể ghim các thành tựu đã đạt được!' });
+                return res.status(403).json({ success: false, message: 'Bạn chỉ có thể ghim các thành tựu đã đạt được!', data: null, errorCode: 'BADGE_NOT_UNLOCKED' });
             }
         }
 
@@ -242,9 +250,9 @@ exports.featureBadges = async (req, res) => {
             { replacements: [JSON.stringify(badgeIds), userId], type: QueryTypes.UPDATE }
         );
 
-        res.status(200).json({ status: 'success', message: 'Đã cập nhật thành tựu trưng bày' });
+        res.status(200).json({ success: true, message: 'Đã cập nhật thành tựu trưng bày', data: null, errorCode: null });
     } catch (error) {
         console.error('Feature Badges Error:', error);
-        res.status(500).json({ message: 'Lỗi khi ghim thành tựu' });
+        res.status(500).json({ success: false, message: 'Lỗi khi ghim thành tựu', data: null, errorCode: 'FEATURE_BADGES_FAILED' });
     }
 };
