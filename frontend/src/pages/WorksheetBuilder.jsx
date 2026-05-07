@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useAuth } from '../context/AuthContext';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { eduService } from '../services/eduService';
 import { toast } from 'react-hot-toast';
-import { itemActionService } from '../services/itemActionService';
 import {
   HeaderBlock,
   TableBlock,
@@ -32,6 +32,7 @@ export default function WorksheetBuilder() {
   const [searchParams] = useSearchParams();
   const filterGroupId = searchParams.get('group'); // Lọc theo nhóm nếu đến từ trang Groups
   const { user } = useAuth();
+  const { ensureStates, getState, toggleSaved, toggleFavorite, isPending, revision } = useItemPreference();
 
   // ─── State ───
   const [worksheets, setWorksheets] = useState([]);
@@ -45,7 +46,6 @@ export default function WorksheetBuilder() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [worksheetFilter, setWorksheetFilter] = useState('all');
-  const [pendingWorksheetActionId, setPendingWorksheetActionId] = useState(null);
 
   // ─── Fetch Data ───
   const fetchData = async () => {
@@ -89,16 +89,7 @@ export default function WorksheetBuilder() {
       if (user && transformedWs.length > 0) {
         try {
           const ids = transformedWs.map((ws) => String(ws.id));
-          const rows = await itemActionService.getStates({ itemIds: ids, type: 'assignment' });
-          const stateById = new Map(rows.map((row) => [String(row.itemId), row]));
-          setWorksheets((prev) => prev.map((ws) => {
-            const state = stateById.get(String(ws.id));
-            return {
-              ...ws,
-              isSaved: Boolean(state?.isSaved),
-              isFavorite: Boolean(state?.isFavorite),
-            };
-          }));
+          await ensureStates('assignment', ids);
         } catch (error) {
           console.error('Không thể tải trạng thái phiếu học tập:', error);
         }
@@ -154,6 +145,9 @@ export default function WorksheetBuilder() {
     () => worksheets.find(w => String(w.id) === String(selectedId)),
     [worksheets, selectedId]
   );
+  const currentWorksheetState = currentWorksheet
+    ? getState('assignment', currentWorksheet.id)
+    : { isSaved: false, isFavorite: false };
 
   const filteredWorksheets = useMemo(() => {
     let list = worksheets;
@@ -171,47 +165,29 @@ export default function WorksheetBuilder() {
     }
 
     if (worksheetFilter === 'saved') {
-      list = list.filter((w) => Boolean(w.isSaved));
+      list = list.filter((w) => getState('assignment', w.id).isSaved);
     }
 
     if (worksheetFilter === 'favorite') {
-      list = list.filter((w) => Boolean(w.isFavorite));
+      list = list.filter((w) => getState('assignment', w.id).isFavorite);
     }
 
     return list;
-  }, [worksheets, searchQuery, filterGroupId, worksheetFilter]);
+  }, [worksheets, searchQuery, filterGroupId, worksheetFilter, getState, revision]);
 
   const toggleWorksheetSaved = async (worksheetId, currentState) => {
-    setPendingWorksheetActionId(worksheetId);
-    setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isSaved: !currentState } : ws));
     try {
-      if (currentState) {
-        await itemActionService.unsave({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
-      } else {
-        await itemActionService.save({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
-      }
+      await toggleSaved('assignment', String(worksheetId));
     } catch (error) {
       console.error('Toggle save worksheet failed:', error);
-      setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isSaved: currentState } : ws));
-    } finally {
-      setPendingWorksheetActionId(null);
     }
   };
 
   const toggleWorksheetFavorite = async (worksheetId, currentState) => {
-    setPendingWorksheetActionId(worksheetId);
-    setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isFavorite: !currentState } : ws));
     try {
-      if (currentState) {
-        await itemActionService.unfavorite({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
-      } else {
-        await itemActionService.favorite({ itemId: String(worksheetId), type: 'assignment', userId: user?.id });
-      }
+      await toggleFavorite('assignment', String(worksheetId));
     } catch (error) {
       console.error('Toggle favorite worksheet failed:', error);
-      setWorksheets((prev) => prev.map((ws) => ws.id === worksheetId ? { ...ws, isFavorite: currentState } : ws));
-    } finally {
-      setPendingWorksheetActionId(null);
     }
   };
 
@@ -445,6 +421,11 @@ export default function WorksheetBuilder() {
                   ))}
                 </div>
                 {filteredWorksheets.map(ws => (
+                  (() => {
+                    const wsState = getState('assignment', ws.id);
+                    const wsIsSaved = wsState.isSaved;
+                    const wsIsFavorite = wsState.isFavorite;
+                    return (
                   <div
                     key={ws.id}
                     onClick={() => { setSelectedId(ws.id); setEditMode(false); }}
@@ -470,27 +451,27 @@ export default function WorksheetBuilder() {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          disabled={pendingWorksheetActionId === ws.id}
+                          disabled={isPending('assignment', ws.id, 'save')}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleWorksheetSaved(ws.id, Boolean(ws.isSaved));
+                            toggleWorksheetSaved(ws.id, wsIsSaved);
                           }}
-                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${ws.isSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-700 text-slate-400 hover:text-amber-300'}`}
-                          title={ws.isSaved ? 'Bỏ lưu' : 'Lưu'}
+                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${wsIsSaved ? 'border-amber-400/50 bg-amber-500/10 text-amber-300' : 'border-slate-700 text-slate-400 hover:text-amber-300'}`}
+                          title={wsIsSaved ? 'Bỏ lưu' : 'Lưu'}
                         >
-                          <Bookmark className={`w-3 h-3 ${ws.isSaved ? 'fill-amber-300' : ''}`} />
+                          <Bookmark className={`w-3 h-3 ${wsIsSaved ? 'fill-amber-300' : ''}`} />
                         </button>
                         <button
                           type="button"
-                          disabled={pendingWorksheetActionId === ws.id}
+                          disabled={isPending('assignment', ws.id, 'favorite')}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleWorksheetFavorite(ws.id, Boolean(ws.isFavorite));
+                            toggleWorksheetFavorite(ws.id, wsIsFavorite);
                           }}
-                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${ws.isFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-700 text-slate-400 hover:text-rose-300'}`}
-                          title={ws.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
+                          className={`h-6 w-6 rounded-md border flex items-center justify-center ${wsIsFavorite ? 'border-rose-400/50 bg-rose-500/10 text-rose-300' : 'border-slate-700 text-slate-400 hover:text-rose-300'}`}
+                          title={wsIsFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
                         >
-                          <Heart className={`w-3 h-3 ${ws.isFavorite ? 'fill-rose-300' : ''}`} />
+                          <Heart className={`w-3 h-3 ${wsIsFavorite ? 'fill-rose-300' : ''}`} />
                         </button>
                         <button
                           type="button"
@@ -516,6 +497,8 @@ export default function WorksheetBuilder() {
                       ))}
                     </div>
                   </div>
+                    );
+                  })()
                 ))}
               </div>
 
@@ -574,22 +557,22 @@ export default function WorksheetBuilder() {
                   <div className="ws-toolbar-left">
                     <button
                       type="button"
-                      disabled={pendingWorksheetActionId === currentWorksheet.id}
-                      onClick={() => toggleWorksheetSaved(currentWorksheet.id, Boolean(currentWorksheet.isSaved))}
-                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheet.isSaved ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' : ''}`}
+                      disabled={isPending('assignment', currentWorksheet.id, 'save')}
+                      onClick={() => toggleWorksheetSaved(currentWorksheet.id, currentWorksheetState.isSaved)}
+                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheetState.isSaved ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' : ''}`}
                     >
-                      <Bookmark className={`w-3.5 h-3.5 ${currentWorksheet.isSaved ? 'fill-amber-300' : ''}`} />
-                      {currentWorksheet.isSaved ? 'Đã lưu' : 'Lưu'}
+                      <Bookmark className={`w-3.5 h-3.5 ${currentWorksheetState.isSaved ? 'fill-amber-300' : ''}`} />
+                      {currentWorksheetState.isSaved ? 'Đã lưu' : 'Lưu'}
                     </button>
 
                     <button
                       type="button"
-                      disabled={pendingWorksheetActionId === currentWorksheet.id}
-                      onClick={() => toggleWorksheetFavorite(currentWorksheet.id, Boolean(currentWorksheet.isFavorite))}
-                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheet.isFavorite ? 'text-rose-300 border-rose-500/30 bg-rose-500/10' : ''}`}
+                      disabled={isPending('assignment', currentWorksheet.id, 'favorite')}
+                      onClick={() => toggleWorksheetFavorite(currentWorksheet.id, currentWorksheetState.isFavorite)}
+                      className={`ws-toolbar-btn ws-toolbar-btn-secondary ${currentWorksheetState.isFavorite ? 'text-rose-300 border-rose-500/30 bg-rose-500/10' : ''}`}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${currentWorksheet.isFavorite ? 'fill-rose-300' : ''}`} />
-                      {currentWorksheet.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
+                      <Heart className={`w-3.5 h-3.5 ${currentWorksheetState.isFavorite ? 'fill-rose-300' : ''}`} />
+                      {currentWorksheetState.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
                     </button>
 
                     <button

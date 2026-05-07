@@ -14,14 +14,12 @@ import {
 } from '../components/worksheet/WorksheetBlocks';
 import '../components/worksheet/worksheet.css';
 import { useAuth } from '../context/AuthContext';
-import { itemActionService } from '../services/itemActionService';
+import { useItemPreference } from '../context/ItemPreferenceContext';
 
 export default function WorksheetPublic() {
   const { id } = useParams();
   const { user } = useAuth();
-  const [isSaved, setIsSaved] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isLoadingAction, setIsLoadingAction] = useState(false);
+  const { ensureStates, getState, toggleSaved: toggleSavedGlobal, toggleFavorite: toggleFavoriteGlobal, isPending } = useItemPreference();
 
   const [worksheet, setWorksheet] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -64,24 +62,16 @@ export default function WorksheetPublic() {
   }, [id]);
 
   useEffect(() => {
-    let mounted = true;
     const loadState = async () => {
       if (!user || !id) return;
       try {
-        const rows = await itemActionService.getStates({ itemIds: [String(id)], type: 'assignment' });
-        const state = rows.find((row) => String(row.itemId) === String(id));
-        if (!mounted) return;
-        setIsSaved(Boolean(state?.isSaved));
-        setIsFavorite(Boolean(state?.isFavorite));
+        await ensureStates('assignment', [String(id)]);
       } catch (error) {
         console.error('Không thể tải trạng thái phiếu chia sẻ:', error);
       }
     };
     loadState();
-    return () => {
-      mounted = false;
-    };
-  }, [user, id]);
+  }, [user, id, ensureStates]);
 
   if (loading) {
     return (
@@ -114,40 +104,25 @@ export default function WorksheetPublic() {
   };
 
   const toggleSaved = async () => {
-    const previous = isSaved;
-    setIsLoadingAction(true);
-    setIsSaved(!previous);
     try {
-      if (previous) {
-        await itemActionService.unsave({ itemId: String(id), type: 'assignment', userId: user?.id });
-      } else {
-        await itemActionService.save({ itemId: String(id), type: 'assignment', userId: user?.id });
-      }
+      await toggleSavedGlobal('assignment', String(id));
     } catch (error) {
       console.error('Toggle save worksheet public failed:', error);
-      setIsSaved(previous);
-    } finally {
-      setIsLoadingAction(false);
     }
   };
 
   const toggleFavorite = async () => {
-    const previous = isFavorite;
-    setIsLoadingAction(true);
-    setIsFavorite(!previous);
     try {
-      if (previous) {
-        await itemActionService.unfavorite({ itemId: String(id), type: 'assignment', userId: user?.id });
-      } else {
-        await itemActionService.favorite({ itemId: String(id), type: 'assignment', userId: user?.id });
-      }
+      await toggleFavoriteGlobal('assignment', String(id));
     } catch (error) {
       console.error('Toggle favorite worksheet public failed:', error);
-      setIsFavorite(previous);
-    } finally {
-      setIsLoadingAction(false);
     }
   };
+
+  const worksheetPreference = getState('assignment', String(id));
+  const isSaved = worksheetPreference.isSaved;
+  const isFavorite = worksheetPreference.isFavorite;
+  const isLoadingAction = isPending('assignment', String(id), 'save') || isPending('assignment', String(id), 'favorite');
 
   const renderBlock = (block) => {
     const props = {

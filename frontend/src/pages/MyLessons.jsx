@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { eduService } from '../services/eduService';
 import { ClipboardList } from 'lucide-react';
 import { useItemPreference } from '../context/ItemPreferenceContext';
+import { profileService } from '../services/profileService';
 
 // ═══════════════════════════════════════════════════════════
 import { materialService } from '../services/materialService';
@@ -23,6 +24,61 @@ const TABS = [
   { key: 'favorite', label: 'Yêu thích', icon: Heart },
 ];
 
+const toLessonItem = (material, fallback = {}) => {
+  const progress = Number.isFinite(Number(material?.progress))
+    ? Number(material.progress)
+    : Number.isFinite(Number(material?.reading_progress))
+      ? Number(material.reading_progress)
+      : 0;
+
+  return {
+    id: material?.id,
+    type: 'lesson',
+    title: material?.title || fallback.title || 'Bài học',
+    author: material?.creator_name || fallback.author || 'Giảng viên',
+    authorAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(material?.creator_name || 'GV')}&background=0D8ABC&color=fff`,
+    progress,
+    status: progress >= 100 ? 'done' : progress > 0 ? 'learning' : 'new',
+    isSaved: Boolean(Number(material?.is_saved || 0) || fallback.isSaved),
+    isFavorite: Boolean(Number(material?.is_favorite || 0) || fallback.isFavorite),
+    updatedAt: new Date(material?.preference_updated_at || material?.created_at || Date.now()).toLocaleDateString('vi-VN')
+  };
+};
+
+const mergeLessons = (baseLessons = [], savedMaterials = [], favoriteMaterials = []) => {
+  const merged = new Map();
+
+  baseLessons.forEach((lesson) => {
+    merged.set(String(lesson.id), lesson);
+  });
+
+  savedMaterials.forEach((material) => {
+    const id = String(material.id);
+    const existing = merged.get(id);
+    merged.set(id, toLessonItem(material, {
+      ...existing,
+      isSaved: true,
+      isFavorite: existing?.isFavorite,
+      title: existing?.title,
+      author: existing?.author,
+    }));
+  });
+
+  favoriteMaterials.forEach((material) => {
+    const id = String(material.id);
+    const existing = merged.get(id);
+    merged.set(id, toLessonItem(material, {
+      ...existing,
+      isSaved: existing?.isSaved,
+      isFavorite: true,
+      title: existing?.title,
+      author: existing?.author,
+    }));
+  });
+
+  return [...merged.values()];
+};
+
 export default function MyLessons() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -32,17 +88,22 @@ export default function MyLessons() {
   const [worksheets, setWorksheets] = useState([]);
   const [myGroups, setMyGroups] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { getState, toggleSaved, toggleFavorite, isPending, seedMaterialStates } = useItemPreference();
+  const { getState, toggleSaved, toggleFavorite, isPending, seedMaterialStates, revision } = useItemPreference();
 
   React.useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [lessonsRes, wsRes, groupsRes] = await Promise.all([
+        const [lessonsRes, wsRes, groupsRes, savedMaterialsRes, favoriteMaterialsRes] = await Promise.all([
           materialService.getMyLessons(),
           eduService.getAssignedWorksheets(),
-          eduService.getStudentGroups()
+          eduService.getStudentGroups(),
+          profileService.getSavedMaterials(),
+          profileService.getFavoriteMaterials()
         ]);
+
+        const savedMaterials = Array.isArray(savedMaterialsRes) ? savedMaterialsRes : [];
+        const favoriteMaterials = Array.isArray(favoriteMaterialsRes) ? favoriteMaterialsRes : [];
 
         const apiLessons = (lessonsRes.lessons || []).map(m => ({
           id: m.id,
@@ -67,9 +128,15 @@ export default function MyLessons() {
           updatedAt: new Date(w.created_at).toLocaleDateString('vi-VN')
         }));
 
-        setLessons(apiLessons);
+        const mergedLessons = mergeLessons(
+          apiLessons,
+          savedMaterials,
+          favoriteMaterials
+        );
+
+        setLessons(mergedLessons);
         setWorksheets(apiWorksheets);
-        seedMaterialStates(apiLessons);
+        seedMaterialStates(mergedLessons);
         setMyGroups(groupsRes);
       } catch (err) {
         console.error("Failed to fetch data:", err);
@@ -81,6 +148,28 @@ export default function MyLessons() {
       fetchData();
     }
   }, [user]);
+
+  React.useEffect(() => {
+    const refreshCollectionRows = async () => {
+      if (!user) return;
+      try {
+        const [savedMaterials, favoriteMaterials] = await Promise.all([
+          profileService.getSavedMaterials(),
+          profileService.getFavoriteMaterials(),
+        ]);
+
+        setLessons((prev) => mergeLessons(
+          prev,
+          Array.isArray(savedMaterials) ? savedMaterials : [],
+          Array.isArray(favoriteMaterials) ? favoriteMaterials : []
+        ));
+      } catch (err) {
+        console.error('Failed to refresh collection rows:', err);
+      }
+    };
+
+    refreshCollectionRows();
+  }, [user, revision]);
 
   // Filter logic
   const filteredItems = activeTab === 'worksheet'
