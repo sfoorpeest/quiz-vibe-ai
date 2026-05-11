@@ -16,7 +16,6 @@ export default function Practice() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [promptValue, setPromptValue] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -47,25 +46,12 @@ export default function Practice() {
     }
   };
 
-  const handleGenerate = async (e) => {
+  const handleGenerate = (e) => {
     e.preventDefault();
     const topic = promptValue.trim();
     if (!topic) return;
 
-    setIsGenerating(true);
-    try {
-      const quizData = await eduService.generateQuiz({
-        topic,
-        limit: 5
-      });
-
-      navigate('/quiz/start', { state: { topic, quizData } });
-    } catch (error) {
-      console.error('Failed to generate quiz:', error);
-      alert(error?.response?.data?.message || 'Không thể tạo quiz lúc này. Vui lòng thử lại.');
-    } finally {
-      setIsGenerating(false);
-    }
+    navigate('/quiz/start', { state: { topic } });
   };
 
   const handleQuickCategory = (label) => {
@@ -104,18 +90,13 @@ export default function Practice() {
                 onChange={(e) => setPromptValue(e.target.value)}
                 placeholder="Bạn muốn luyện tập nội dung gì hôm nay? (VD: 5 câu trắc nghiệm Sinh 12 chương 1)..."
                 className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 px-4 py-5 text-base font-medium focus:outline-none"
-                disabled={isGenerating}
               />
               <button
                 type="submit"
-                disabled={!promptValue.trim() || isGenerating}
+                disabled={!promptValue.trim()}
                 className="mr-3 flex items-center gap-2 bg-linear-to-r from-purple-600 to-violet-600 disabled:from-slate-700 disabled:to-slate-700 text-white px-6 py-3 rounded-xl font-extrabold transition-all hover:from-purple-500 hover:to-violet-500 active:scale-95 shadow-lg shadow-purple-500/20 disabled:shadow-none disabled:text-slate-500"
               >
-                {isGenerating ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Đang tạo...</>
-                ) : (
-                  <><Zap className="w-4 h-4" /> Tạo Quiz</>
-                )}
+                <Zap className="w-4 h-4" /> Tạo Quiz
               </button>
             </div>
           </form>

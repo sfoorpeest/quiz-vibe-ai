@@ -46,6 +46,12 @@ export default function WorksheetBuilder() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [worksheetFilter, setWorksheetFilter] = useState('all');
+  const [showSubmissions, setShowSubmissions] = useState(false);
+  const [submissions, setSubmissions] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [feedback, setFeedback] = useState('');
+  const [score, setScore] = useState('');
 
   // ─── Fetch Data ───
   const fetchData = async () => {
@@ -62,23 +68,30 @@ export default function WorksheetBuilder() {
         let blocks = [];
         try {
           const content = typeof ws.content === 'string' ? JSON.parse(ws.content) : ws.content;
-          blocks = [
-            { id: `blk-h-${ws.id}`, type: 'header', data: { schoolName: '', className: '', studentName: '', phone: '' } },
-            ...(Array.isArray(content) ? content : []).map(q => ({
-              id: `blk-q-${q.id}`,
-              type: 'open_question',
-              data: { question: q.question, lines: 4 }
-            }))
-          ];
+          
+          // Kiểm tra xem content đã là mảng các blocks chưa (có trường 'type')
+          if (Array.isArray(content) && content.length > 0 && content[0].type) {
+            blocks = content;
+          } else {
+            // Nếu là dạng cũ (chỉ có mảng câu hỏi AI sinh), chuyển sang blocks
+            blocks = [
+              { id: `blk-h-${ws.id}`, type: 'header', data: { schoolName: '', className: '', studentName: '', phone: '' } },
+              ...(Array.isArray(content) ? content : []).map((q, idx) => ({
+                id: `blk-q-${ws.id}-${idx}`,
+                type: 'open_question',
+                data: { question: q.question, lines: 4 }
+              }))
+            ];
+          }
         } catch (e) {
           console.error("Failed to parse worksheet content:", e);
           blocks = [];
         }
         return {
           ...ws,
-          subtitle: 'Phiếu học tập AI sinh',
-          subject: 'AI Generated',
-          grade: 'Tất cả',
+          subtitle: ws.subtitle || 'Phiếu học tập AI sinh',
+          subject: ws.subject || 'AI Generated',
+          grade: ws.grade || 'Tất cả',
           blocks
         };
       });
@@ -133,6 +146,32 @@ export default function WorksheetBuilder() {
     navigator.clipboard.writeText(shareUrl);
     setCopiedId(selectedId);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const fetchSubmissions = async (wsId) => {
+    try {
+      setLoadingSubmissions(true);
+      const data = await eduService.getWorksheetSubmissions(wsId);
+      setSubmissions(data);
+    } catch (error) {
+      console.error('Fetch Submissions Error:', error);
+      toast.error('Không thể tải danh sách bài nộp');
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
+  const handleUpdateFeedback = async () => {
+    if (!selectedSubmission) return;
+    try {
+      await eduService.updateSubmissionFeedback(selectedSubmission.id, { feedback, score });
+      toast.success('Đã lưu nhận xét');
+      fetchSubmissions(selectedId);
+      setSelectedSubmission(null);
+    } catch (error) {
+      console.error('Update Feedback Error:', error);
+      toast.error('Không thể lưu nhận xét');
+    }
   };
 
   // ─── Group helpers ───
@@ -192,15 +231,66 @@ export default function WorksheetBuilder() {
   };
 
   // ─── Toggle group assignment ───
-  const toggleGroupAssignment = (groupId) => {
-    setWorksheets(prev => prev.map(ws => {
-      if (ws.id !== selectedId) return ws;
-      const current = ws.assignedTo || [];
-      const newAssigned = current.includes(groupId)
-        ? current.filter(id => id !== groupId)
-        : [...current, groupId];
-      return { ...ws, assignedTo: newAssigned };
-    }));
+  const toggleGroupAssignment = async (groupId) => {
+    if (!currentWorksheet) return;
+    
+    const current = currentWorksheet.assignedTo || [];
+    const newAssigned = current.includes(groupId)
+      ? current.filter(id => id !== groupId)
+      : [...current, groupId];
+
+    try {
+      // Nếu là phiếu đã lưu trong DB thì gọi API cập nhật luôn
+      if (!String(currentWorksheet.id).startsWith('ws-')) {
+        await eduService.assignWorksheetToGroups(currentWorksheet.id, newAssigned);
+        toast.success('Đã cập nhật gán nhóm');
+      }
+      
+      setWorksheets(prev => prev.map(ws => {
+        if (ws.id !== selectedId) return ws;
+        return { ...ws, assignedTo: newAssigned };
+      }));
+    } catch (error) {
+      console.error('Assign Group Error:', error);
+      toast.error('Không thể cập nhật gán nhóm');
+    }
+  };
+
+  // ─── Save Worksheet to Backend ───
+  const handleSaveWorksheet = async () => {
+    if (!currentWorksheet) return;
+    
+    try {
+      setLoading(true);
+      const payload = {
+        title: currentWorksheet.title,
+        material_id: currentWorksheet.material_id,
+        content: currentWorksheet.blocks
+      };
+
+      if (String(currentWorksheet.id).startsWith('ws-')) {
+        // Tạo mới
+        const result = await eduService.createWorksheet(payload);
+        toast.success('Đã tạo phiếu học tập mới');
+        
+        // Nếu có gán nhóm sẵn, hãy gán luôn
+        if (currentWorksheet.assignedTo?.length > 0) {
+          await eduService.assignWorksheetToGroups(result.id, currentWorksheet.assignedTo);
+        }
+        
+        setSelectedId(result.id);
+      } else {
+        // Cập nhật
+        await eduService.updateWorksheet(currentWorksheet.id, payload);
+        toast.success('Đã lưu thay đổi');
+      }
+      await fetchData();
+    } catch (error) {
+      console.error('Save Worksheet Error:', error);
+      toast.error('Không thể lưu phiếu học tập');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── Block update handler ───
@@ -335,8 +425,10 @@ export default function WorksheetBuilder() {
   // ═══════════════════
   return (
     <div className="relative min-h-screen font-sans text-slate-50 flex flex-col">
-      <AnimatedBackground />
-      <Navbar />
+      <div className="no-print">
+        <AnimatedBackground />
+        <Navbar />
+      </div>
 
       <div className="max-w-[1400px] w-full mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 flex-1">
 
@@ -511,6 +603,7 @@ export default function WorksheetBuilder() {
                     subtitle: 'Bài mới - Chủ đề',
                     subject: 'Môn học',
                     grade: 'Lớp',
+                    material_id: null,
                     createdAt: new Date().toISOString().slice(0, 10),
                     assignedTo: [],
                     blocks: [
@@ -658,6 +751,19 @@ export default function WorksheetBuilder() {
                       <Trash2 className="w-4 h-4" />
                     </button>
                     
+                    <button 
+                      onClick={handleSaveWorksheet} 
+                      disabled={loading}
+                      className="ws-toolbar-btn ws-toolbar-btn-primary bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+                    >
+                      <Save className="w-4 h-4" /> 
+                      {loading ? 'Đang lưu...' : (String(currentWorksheet.id).startsWith('ws-') ? 'Tạo phiếu' : 'Lưu thay đổi')}
+                    </button>
+
+                    <button onClick={() => { setShowSubmissions(true); fetchSubmissions(selectedId); }} className="ws-toolbar-btn ws-toolbar-btn-secondary">
+                      <GraduationCap className="w-4 h-4" /> Kết quả
+                    </button>
+                    
                     <button onClick={handlePrint} className="ws-toolbar-btn ws-toolbar-btn-primary">
                       <Printer className="w-4 h-4" /> In phiếu
                     </button>
@@ -700,7 +806,9 @@ export default function WorksheetBuilder() {
         </div>
       </div>
 
-      <Footer />
+      <div className="no-print">
+        <Footer />
+      </div>
 
       {/* ═══ SHARE MODAL ═══ */}
       {showShareModal && (
@@ -757,6 +865,208 @@ export default function WorksheetBuilder() {
                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
                   Phiếu học tập này sẽ được trình bày đẹp mắt, hỗ trợ in ấn tối ưu và không yêu cầu đăng nhập đối với học sinh.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SUBMISSIONS MODAL ═══ */}
+      {showSubmissions && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 no-print">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowSubmissions(false)}></div>
+          <div className="relative w-full max-w-5xl bg-slate-900 border border-slate-700/50 rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-8 border-b border-slate-700/50 flex justify-between items-center bg-slate-900/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20">
+                  <GraduationCap className="w-6 h-6 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-white">Kết quả bài làm học sinh</h3>
+                  <p className="text-slate-400 text-sm font-medium">Phiếu: {currentWorksheet?.title}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSubmissions(false)}
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+              {/* Left: Submission List */}
+              <div className="w-full lg:w-1/3 border-r border-slate-700/50 overflow-y-auto p-6 bg-slate-900/30">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Danh sách bài nộp ({submissions.length})</h4>
+                {loadingSubmissions ? (
+                  <div className="py-20 text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-slate-500 text-sm font-bold">Đang tải...</p>
+                  </div>
+                ) : submissions.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <ClipboardList className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 text-sm font-bold">Chưa có bài nộp nào</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {submissions.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          setSelectedSubmission(s);
+                          setFeedback(s.feedback || '');
+                          setScore(s.score || '');
+                        }}
+                        className={`w-full text-left p-4 rounded-2xl transition-all border ${
+                          selectedSubmission?.id === s.id
+                            ? 'bg-cyan-500/10 border-cyan-500/30'
+                            : 'bg-slate-800/40 border-slate-700/30 hover:bg-slate-800/80 hover:border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-bold text-white text-sm truncate">{s.student_name}</p>
+                          {s.score !== null && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                              {s.score}đ
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate mb-2">{s.student_email}</p>
+                        <p className="text-[10px] text-slate-600 flex items-center gap-1 font-medium">
+                          <Check className="w-3 h-3 text-emerald-500" /> {new Date(s.submitted_at).toLocaleString('vi-VN')}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Submission Detail & Feedback */}
+              <div className="flex-1 overflow-y-auto p-8 bg-slate-900/10">
+                {!selectedSubmission ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-10 opacity-50">
+                    <Eye className="w-16 h-16 text-slate-800 mb-4" />
+                    <h4 className="text-slate-400 font-bold">Chọn một học sinh để xem chi tiết</h4>
+                    <p className="text-slate-600 text-sm mt-2">Nội dung bài làm và phần nhận xét sẽ hiện ở đây.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {/* Student Info Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-2xl font-black text-white">{selectedSubmission.student_name}</h4>
+                        <p className="text-slate-400 text-sm font-medium">{selectedSubmission.student_email}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest font-black mb-1">Nộp bài lúc</p>
+                        <p className="text-sm text-slate-300 font-bold">{new Date(selectedSubmission.submitted_at).toLocaleString('vi-VN')}</p>
+                      </div>
+                    </div>
+
+                    {/* Answers Display */}
+                    <div className="space-y-6">
+                      <h5 className="text-sm font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+                        <FileText className="w-4 h-4" /> Nội dung trả lời
+                      </h5>
+                      <div className="space-y-4">
+                        {(() => {
+                          try {
+                            const answers = typeof selectedSubmission.answers === 'string' 
+                              ? JSON.parse(selectedSubmission.answers) 
+                              : selectedSubmission.answers;
+                            
+                            return answers.map((ans, idx) => {
+                              const block = currentWorksheet?.blocks?.find(b => b.id === ans.question_id);
+                              const answerData = ans.answer || {};
+                              
+                              let content;
+                              if (typeof answerData === 'string') {
+                                content = answerData;
+                              } else if (block?.type === 'header') {
+                                content = `Họ tên: ${answerData.studentName || '...'} | Lớp: ${answerData.className || '...'} | SĐT: ${answerData.phone || '...'}`;
+                              } else if (block?.type === 'open_question') {
+                                content = (answerData.lines || []).join('\n');
+                              } else if (block?.type === 'fill_in_blank') {
+                                content = (answerData.items || []).map((it, i) => `${i+1}. ${it}`).join('\n');
+                              } else if (block?.type === 'table') {
+                                content = (answerData.rows || []).map((rowLines, i) => {
+                                  const rowLabel = block.data.rows[i]?.label || `Mục ${i+1}`;
+                                  return `${rowLabel}: ${rowLines.join(', ')}`;
+                                }).join('\n');
+                              } else if (block?.type === 'two_column_table') {
+                                content = (answerData.cells || []).map((row, i) => row.join(' | ')).join('\n');
+                              } else {
+                                content = JSON.stringify(answerData);
+                              }
+
+                              return (
+                                <div key={idx} className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 shadow-sm">
+                                  <p className="text-slate-400 text-xs font-black uppercase mb-2">
+                                    Câu {idx + 1}: {block?.data?.question || (block?.type === 'header' ? 'Thông tin học sinh' : 'Câu hỏi')}
+                                  </p>
+                                  <div className="text-slate-100 text-base whitespace-pre-wrap font-medium">
+                                    {content || <span className="italic text-slate-600">(Không có câu trả lời)</span>}
+                                  </div>
+                                </div>
+                              );
+                            });
+                          } catch (e) {
+                            return <p className="text-red-400">Lỗi hiển thị câu trả lời: {e.message}</p>;
+                          }
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Feedback Form */}
+                    <div className="pt-8 border-t border-slate-700/50 space-y-6">
+                      <h5 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" /> Nhận xét & Chấm điểm
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-3">
+                          <label className="block text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">Nhận xét của giáo viên</label>
+                          <textarea
+                            value={feedback}
+                            onChange={e => setFeedback(e.target.value)}
+                            placeholder="Nhập nhận xét của bạn về bài làm..."
+                            className="w-full bg-slate-950/50 border border-slate-700/50 rounded-2xl p-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 min-h-[120px] transition-all text-sm font-medium"
+                          />
+                        </div>
+                        <div className="md:col-span-1">
+                          <label className="block text-xs font-black text-slate-500 mb-2 uppercase tracking-wider">Điểm số</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="0.1"
+                            value={score}
+                            onChange={e => setScore(e.target.value)}
+                            placeholder="10"
+                            className="w-full bg-slate-950/50 border border-slate-700/50 rounded-2xl p-4 text-white text-center font-black text-2xl focus:outline-none focus:border-cyan-500/50 transition-all"
+                          />
+                          <p className="text-[10px] text-center text-slate-600 mt-2 font-bold">Thang điểm 10</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-3">
+                        <button 
+                          onClick={() => setSelectedSubmission(null)}
+                          className="px-6 py-2.5 rounded-xl border border-slate-700 text-slate-400 text-sm font-bold hover:bg-slate-800 transition-all"
+                        >
+                          Hủy
+                        </button>
+                        <button 
+                          onClick={handleUpdateFeedback}
+                          className="px-8 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+                        >
+                          <Save className="w-4 h-4" /> Lưu nhận xét
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
