@@ -468,21 +468,6 @@ export default function Profile() {
   const renderOverview = () => (
     <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
       <div className="space-y-6">
-        <ProfileInfo
-          profile={profile}
-          formData={profileForm}
-          errors={formErrors}
-          isEditing={isEditingProfile}
-          isSaving={saveState.profile}
-          onChange={handleProfileFieldChange}
-          onSave={handleSaveProfile}
-          onCancel={() => {
-            setProfileForm(buildProfileForm(profile));
-            setFormErrors({});
-            setIsEditingProfile(false);
-          }}
-          onStartEdit={() => setIsEditingProfile(true)}
-        />
         <ProfileActivity
           title="Hoạt động gần đây"
           description="Theo dõi các bài học và bài kiểm tra bạn vừa tương tác."
@@ -499,6 +484,21 @@ export default function Profile() {
       </div>
 
       <div className="space-y-6">
+        <ProfileInfo
+          profile={profile}
+          formData={profileForm}
+          errors={formErrors}
+          isEditing={isEditingProfile}
+          isSaving={saveState.profile}
+          onChange={handleProfileFieldChange}
+          onSave={handleSaveProfile}
+          onCancel={() => {
+            setProfileForm(buildProfileForm(profile));
+            setFormErrors({});
+            setIsEditingProfile(false);
+          }}
+          onStartEdit={() => setIsEditingProfile(true)}
+        />
         <ProfileBio
           bio={profile?.bio}
           draftBio={bioDraft}

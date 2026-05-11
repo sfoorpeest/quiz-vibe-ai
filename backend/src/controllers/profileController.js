@@ -242,12 +242,46 @@ exports.updateProfile = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const userId = req.user.id;
-        const { name, phone, birthDate, gender, address, bio, notificationEmail, notificationLearning, isProfilePrivate } = req.body;
+        const payload = req.body || {};
+        const hasField = (field) => Object.prototype.hasOwnProperty.call(payload, field);
 
-        // 1. Cập nhật bảng users (chỉ name)
-        if (name) {
-            await sequelize.query("UPDATE users SET name = :name WHERE id = :userId", {
-                replacements: { name, userId },
+        const normalizeOptionalText = (value) => {
+            if (value === undefined) return undefined;
+            if (value === null) return null;
+            const normalized = String(value).trim();
+            return normalized ? normalized : null;
+        };
+
+        // 1. Cập nhật bảng users theo kiểu partial update
+        const userUpdates = [];
+        const userReplacements = { userId };
+
+        let nextName = undefined;
+        if (hasField('name')) {
+            nextName = normalizeOptionalText(payload.name);
+        } else if (hasField('username')) {
+            // username trên frontend hiện ánh xạ cùng dữ liệu name
+            nextName = normalizeOptionalText(payload.username);
+        }
+
+        if (nextName !== undefined && nextName !== null) {
+            userUpdates.push('name = :name');
+            userReplacements.name = nextName;
+        }
+
+        if (hasField('email')) {
+            const nextEmail = normalizeOptionalText(payload.email);
+            if (!nextEmail) {
+                await t.rollback();
+                return res.status(400).json({ success: false, message: 'Email không được để trống.', data: null, errorCode: 'INVALID_EMAIL' });
+            }
+            userUpdates.push('email = :email');
+            userReplacements.email = nextEmail;
+        }
+
+        if (userUpdates.length > 0) {
+            await sequelize.query(`UPDATE users SET ${userUpdates.join(', ')} WHERE id = :userId`, {
+                replacements: userReplacements,
                 type: QueryTypes.UPDATE,
                 transaction: t
             });
@@ -269,32 +303,53 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
-        await sequelize.query(`
-            UPDATE user_profiles SET 
-                phone = :phone, 
-                birth_date = :birthDate, 
-                gender = :gender, 
-                address = :address, 
-                bio = :bio,
-                notification_email = :notificationEmail,
-                notification_learning = :notificationLearning,
-                is_profile_private = :isProfilePrivate
-            WHERE user_id = :userId
-        `, {
-            replacements: { 
-                phone: phone || null, 
-                birthDate: birthDate || null, 
-                gender: gender || null, 
-                address: address || null, 
-                bio: bio || null,
-                notificationEmail: notificationEmail !== undefined ? (notificationEmail ? 1 : 0) : 1,
-                notificationLearning: notificationLearning !== undefined ? (notificationLearning ? 1 : 0) : 1,
-                isProfilePrivate: isProfilePrivate !== undefined ? (isProfilePrivate ? 1 : 0) : 0,
-                userId 
-            },
-            type: QueryTypes.UPDATE,
-            transaction: t
-        });
+        const profileUpdates = [];
+        const profileReplacements = { userId };
+
+        if (hasField('phone')) {
+            profileUpdates.push('phone = :phone');
+            profileReplacements.phone = normalizeOptionalText(payload.phone);
+        }
+        if (hasField('birthDate')) {
+            profileUpdates.push('birth_date = :birthDate');
+            profileReplacements.birthDate = normalizeOptionalText(payload.birthDate);
+        }
+        if (hasField('gender')) {
+            profileUpdates.push('gender = :gender');
+            profileReplacements.gender = normalizeOptionalText(payload.gender);
+        }
+        if (hasField('address')) {
+            profileUpdates.push('address = :address');
+            profileReplacements.address = normalizeOptionalText(payload.address);
+        }
+        if (hasField('bio')) {
+            profileUpdates.push('bio = :bio');
+            profileReplacements.bio = normalizeOptionalText(payload.bio);
+        }
+        if (hasField('notificationEmail')) {
+            profileUpdates.push('notification_email = :notificationEmail');
+            profileReplacements.notificationEmail = payload.notificationEmail ? 1 : 0;
+        }
+        if (hasField('notificationLearning')) {
+            profileUpdates.push('notification_learning = :notificationLearning');
+            profileReplacements.notificationLearning = payload.notificationLearning ? 1 : 0;
+        }
+        if (hasField('isProfilePrivate')) {
+            profileUpdates.push('is_profile_private = :isProfilePrivate');
+            profileReplacements.isProfilePrivate = payload.isProfilePrivate ? 1 : 0;
+        }
+
+        if (profileUpdates.length > 0) {
+            await sequelize.query(`
+                UPDATE user_profiles
+                SET ${profileUpdates.join(', ')}, updated_at = NOW()
+                WHERE user_id = :userId
+            `, {
+                replacements: profileReplacements,
+                type: QueryTypes.UPDATE,
+                transaction: t
+            });
+        }
 
         await t.commit();
 
