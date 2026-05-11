@@ -11,16 +11,16 @@ module.exports = {
       sender_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'Users', key: 'id' } // Giả sử bảng User của bạn tên 'Users'
+        references: { model: 'users', key: 'id' } // lowercase để khớp với tên bảng thực tế
       },
       receiver_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'Users', key: 'id' }
+        references: { model: 'users', key: 'id' }
       },
       content: {
         type: Sequelize.TEXT,
-        allowNull: true // Null nếu chỉ gửi tài liệu mà không kèm lời nhắn
+        allowNull: true
       },
       type: {
         type: Sequelize.ENUM('text', 'material', 'image'),
@@ -28,8 +28,8 @@ module.exports = {
       },
       material_id: {
         type: Sequelize.INTEGER,
-        allowNull: true, // Chỉ có giá trị khi type là 'material'
-        references: { model: 'Materials', key: 'id' }
+        allowNull: true,
+        references: { model: 'materials', key: 'id' } // lowercase để khớp với tên bảng thực tế
       },
       is_forwarded: {
         type: Sequelize.BOOLEAN,

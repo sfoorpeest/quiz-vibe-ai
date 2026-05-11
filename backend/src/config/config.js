@@ -6,21 +6,39 @@ module.exports = {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
     dialect: "mysql",
-    logging: true // Bật để xem Sequelize thực thi lệnh SQL
+    logging: true,
+    dialectOptions: process.env.DB_HOST !== 'localhost' ? {
+      ssl: {
+        rejectUnauthorized: false
+      }
+    } : {}
   },
   test: {
     username: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    dialect: "mysql"
+    port: process.env.DB_PORT || 3306,
+    dialect: "mysql",
+    dialectOptions: process.env.DB_HOST !== 'localhost' ? {
+      ssl: {
+        rejectUnauthorized: false
+      }
+    } : {}
   },
   production: {
     username: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    dialect: "mysql"
+    port: process.env.DB_PORT || 3306,
+    dialect: "mysql",
+    dialectOptions: process.env.DB_HOST !== 'localhost' ? {
+      ssl: {
+        rejectUnauthorized: false
+      }
+    } : {}
   }
 };
