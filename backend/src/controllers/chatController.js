@@ -3,6 +3,7 @@ const fs = require('fs').promises;
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { onlineUsers } = require('../socket/socket');
+const { supabase } = require('../config/supabase');
 
 /**
  * Controller: chatController
@@ -198,10 +199,6 @@ exports.uploadFile = async (req, res) => {
         // --- Kiểm tra quyền upload ---
         // Chỉ Giáo viên (role_id=2) và Admin (role_id=3) mới được upload file mới
         if (currentUserRole === 1) {
-            // Xóa file đã lưu tạm (nếu multer đã lưu)
-            if (req.file) {
-                try { await fs.unlink(req.file.path); } catch (_) {}
-            }
             return res.status(403).json({ success: false, message: "Học sinh không có quyền upload tài liệu. Bạn chỉ có thể chuyển tiếp tài liệu đã nhận.", data: null, errorCode: "UPLOAD_FORBIDDEN" });
         }
 
@@ -210,15 +207,36 @@ exports.uploadFile = async (req, res) => {
             return res.status(400).json({ success: false, message: "Không tìm thấy file được upload", data: null, errorCode: "NO_FILE" });
         }
 
+        if (!supabase) {
+            return res.status(503).json({ success: false, message: "Dịch vụ lưu trữ chưa được cấu hình", data: null, errorCode: "STORAGE_NOT_CONFIGURED" });
+        }
+
         const { receiver_id, content } = req.body;
 
         if (!receiver_id) {
             return res.status(400).json({ success: false, message: "Thiếu receiver_id", data: null, errorCode: "MISSING_RECEIVER_ID" });
         }
 
-        // --- Tạo đường dẫn tương đối để lưu vào DB ---
-        // Frontend sẽ ghép với VITE_API_URL để tạo URL đầy đủ
-        const relativeFilePath = `/chat-files/${req.file.filename}`;
+        // --- Upload lên Supabase Storage ---
+        const fileName = `${Date.now()}-${req.file.originalname.replace(/\s+/g, '-')}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('chat-files')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true
+            });
+
+        if (uploadError) {
+            console.error("Supabase Upload Error:", uploadError);
+            return res.status(500).json({ success: false, message: "Lỗi khi upload file lên cloud", data: null, errorCode: "UPLOAD_CLOUD_FAILED" });
+        }
+
+        // --- Lấy Public URL ---
+        const { data: publicUrlData } = supabase.storage
+            .from('chat-files')
+            .getPublicUrl(fileName);
+
+        const fileUrl = publicUrlData.publicUrl;
 
         // --- Lưu tin nhắn vào Database ---
         const newMessage = await Message.create({
@@ -226,7 +244,7 @@ exports.uploadFile = async (req, res) => {
             receiver_id: parseInt(receiver_id),
             content: content || null,     // Lời nhắn tùy chọn kèm file
             type: 'file',
-            file_path: relativeFilePath,
+            file_path: fileUrl, // Lưu URL trực tiếp
             file_name: req.file.originalname, // Tên gốc để hiển thị
             file_type: req.file.mimetype,     // MIME type
             status: 'sent',
@@ -269,6 +287,7 @@ exports.uploadFile = async (req, res) => {
         res.status(500).json({ success: false, message: "Lỗi máy chủ khi upload file", data: null, errorCode: "UPLOAD_FILE_FAILED" });
     }
 };
+
 
 
 /**

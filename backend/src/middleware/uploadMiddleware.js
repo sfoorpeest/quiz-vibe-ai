@@ -14,30 +14,10 @@ const fs = require('fs');
  * - Tên file được đổi thành: timestamp-originalname để tránh trùng lặp
  */
 
-// --- 1. Xác định thư mục lưu file ---
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/chat-files');
+// --- 1. Cấu hình Storage (Sử dụng MemoryStorage để upload trực tiếp lên Cloud) ---
+const storage = multer.memoryStorage();
 
-// Tạo thư mục nếu chưa tồn tại (đệ quy)
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-// --- 2. Cấu hình Storage (nơi và cách lưu file) ---
-const storage = multer.diskStorage({
-    // Thư mục đích
-    destination: (req, file, cb) => {
-        cb(null, UPLOAD_DIR);
-    },
-
-    // Đặt tên file: Date.now()-originalname để đảm bảo unique
-    // Ví dụ: 1745678901234-bai-giang-vat-ly.pdf
-    filename: (req, file, cb) => {
-        const safeName = file.originalname.replace(/\s+/g, '-'); // Thay khoảng trắng bằng dấu gạch
-        cb(null, `${Date.now()}-${safeName}`);
-    }
-});
-
-// --- 3. Bộ lọc file (chỉ cho phép PDF, DOCX, TXT) ---
+// --- 2. Bộ lọc file (chỉ cho phép PDF, DOCX, TXT) ---
 const fileFilter = (req, file, cb) => {
     // Danh sách MIME types được chấp nhận
     const ALLOWED_MIME_TYPES = [
@@ -55,7 +35,7 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-// --- 4. Tạo instance multer với đầy đủ cấu hình ---
+// --- 3. Tạo instance multer với đầy đủ cấu hình ---
 const upload = multer({
     storage,
     fileFilter,
@@ -65,3 +45,4 @@ const upload = multer({
 });
 
 module.exports = upload;
+
