@@ -2,6 +2,20 @@ import axiosClient from '../api/axiosClient';
 import { unwrapData } from '../utils/apiHelper';
 
 /**
+ * Lấy tổng số tin nhắn chưa xem của người dùng hiện tại.
+ * @returns {Promise<number>} Số lượng tin nhắn chưa đọc
+ */
+export const getUnreadCount = async () => {
+    try {
+        const response = await axiosClient.get('/api/chat/unread-count');
+        return response.data.count || 0;
+    } catch (error) {
+        console.error('Error getting unread count:', error);
+        return 0;
+    }
+};
+
+/**
  * Service: chatService
  * 
  * Tập hợp tất cả các hàm giao tiếp với Chat API.

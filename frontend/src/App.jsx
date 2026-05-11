@@ -29,6 +29,8 @@ import WorksheetPublic from './pages/WorksheetPublic';
 import Chat from './pages/Chat';
 import BadgeToast from './components/BadgeToast';
 import { Toaster } from 'react-hot-toast';
+import { ChatProvider } from './context/ChatContext';
+import ChatBubble from './components/ChatBubble';
 
 // Educational App Main Router
 function App() {
@@ -36,6 +38,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ItemPreferenceProvider>
+          <ChatProvider>
   <Toaster position="top-center" reverseOrder={false} />
   <BadgeToast />
         <Routes>
@@ -189,6 +192,8 @@ function App() {
           <Route path="/shared/worksheet/:id" element={<WorksheetPublic />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ChatBubble />
+          </ChatProvider>
         </ItemPreferenceProvider>
       </AuthProvider>
     </BrowserRouter>

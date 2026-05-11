@@ -16,6 +16,26 @@ const { onlineUsers } = require('../socket/socket');
  * - Chuyển tiếp (forward) file sang user khác
  */
 
+/**
+ * [GET] /api/chat/unread-count
+ * Lấy tổng số tin nhắn chưa xem của người dùng hiện tại.
+ */
+exports.getUnreadCount = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const count = await Message.count({
+            where: {
+                receiver_id: currentUserId,
+                status: { [Op.ne]: 'seen' }
+            }
+        });
+        res.status(200).json({ success: true, count });
+    } catch (error) {
+        console.error("❌ Get Unread Count Error:", error);
+        res.status(500).json({ success: false, message: "Lỗi khi lấy số tin nhắn chưa đọc" });
+    }
+};
+
 
 /**
  * [GET] /api/chat/history/:userId
@@ -224,26 +244,22 @@ exports.uploadFile = async (req, res) => {
         };
 
         // --- Emit qua Socket đến người nhận (nếu online) ---
-        // Import onlineUsers từ socket module để tìm socket ID của receiver
         const io = req.app.get('io');
-        const receiverSocketId = onlineUsers.get(parseInt(receiver_id));
+        const isOnline = onlineUsers.has(parseInt(receiver_id));
 
-        if (receiverSocketId && io) {
-            // Gửi tin nhắn đến receiver
-            io.to(receiverSocketId).emit('receive_message', messagePayload);
+        if (isOnline && io) {
+            // Gửi tin nhắn đến tất cả thiết bị của receiver qua room
+            io.to(`user_${receiver_id}`).emit('receive_message', messagePayload);
 
             // Cập nhật status thành 'delivered' vì receiver đang online
             await newMessage.update({ status: 'delivered' });
             messagePayload.status = 'delivered';
 
-            // Thông báo cho sender biết message đã được delivered
-            const senderSocketId = onlineUsers.get(currentUserId);
-            if (senderSocketId) {
-                io.to(senderSocketId).emit('message_delivered', {
-                    messageId: newMessage.id,
-                    status: 'delivered'
-                });
-            }
+            // Thông báo cho tất cả thiết bị của sender biết message đã được delivered
+            io.to(`user_${currentUserId}`).emit('message_delivered', {
+                messageId: newMessage.id,
+                status: 'delivered'
+            });
         }
 
         res.status(201).json({ success: true, message: "Upload file thành công", data: messagePayload, errorCode: null });
@@ -285,12 +301,11 @@ exports.markMessagesAsSeen = async (req, res) => {
         // --- Thông báo cho sender biết tin nhắn đã được xem ---
         if (updatedCount > 0) {
             const io = req.app.get('io');
-            const senderSocketId = onlineUsers.get(senderId);
-
-            if (senderSocketId && io) {
-                io.to(senderSocketId).emit('messages_seen', {
-                    by: currentUserId,   // Ai đã xem
-                    from: senderId       // Tin nhắn của ai được xem
+            // Thông báo cho tất cả thiết bị của sender qua room
+            if (io) {
+                io.to(`user_${senderId}`).emit('messages_seen', {
+                    by: currentUserId,
+                    from: senderId
                 });
             }
         }
@@ -381,23 +396,20 @@ exports.forwardMessage = async (req, res) => {
 
         // --- Emit qua Socket đến người nhận mới ---
         const io = req.app.get('io');
-        const receiverSocketId = onlineUsers.get(parseInt(receiver_id));
+        const isOnline = onlineUsers.has(parseInt(receiver_id));
 
-        if (receiverSocketId && io) {
-            io.to(receiverSocketId).emit('receive_message', messagePayload);
+        if (isOnline && io) {
+            io.to(`user_${receiver_id}`).emit('receive_message', messagePayload);
 
             // Cập nhật status thành delivered vì receiver đang online
             await forwardedMessage.update({ status: 'delivered' });
             messagePayload.status = 'delivered';
 
-            // Thông báo cho sender biết đã delivered
-            const senderSocketId = onlineUsers.get(currentUserId);
-            if (senderSocketId) {
-                io.to(senderSocketId).emit('message_delivered', {
-                    messageId: forwardedMessage.id,
-                    status: 'delivered'
-                });
-            }
+            // Thông báo cho tất cả thiết bị của sender qua room
+            io.to(`user_${currentUserId}`).emit('message_delivered', {
+                messageId: forwardedMessage.id,
+                status: 'delivered'
+            });
         }
 
         res.status(201).json({ success: true, message: "Chuyển tiếp tin nhắn thành công", data: messagePayload, errorCode: null });

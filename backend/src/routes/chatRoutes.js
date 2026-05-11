@@ -23,6 +23,7 @@ router.use(authMiddleware);
 // --- Danh bạ & Tìm kiếm ---
 router.get('/contacts', chatController.getContacts);
 router.get('/search', chatController.searchUsers);
+router.get('/unread-count', chatController.getUnreadCount);
 
 // --- Lịch sử chat ---
 router.get('/history/:userId', chatController.getChatHistory);
