@@ -92,20 +92,21 @@ export default function MyLessons() {
 
   React.useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
       setLoading(true);
       try {
         const [lessonsRes, wsRes, groupsRes, savedMaterialsRes, favoriteMaterialsRes] = await Promise.all([
-          materialService.getMyLessons(),
-          eduService.getAssignedWorksheets(),
-          eduService.getStudentGroups(),
-          profileService.getSavedMaterials(),
-          profileService.getFavoriteMaterials()
+          materialService.getMyLessons().catch(() => ({ lessons: [] })),
+          eduService.getWorksheetsForStudent().catch(() => []),
+          eduService.getStudentGroups().catch(() => []),
+          profileService.getSavedMaterials().catch(() => []),
+          profileService.getFavoriteMaterials().catch(() => [])
         ]);
 
         const savedMaterials = Array.isArray(savedMaterialsRes) ? savedMaterialsRes : [];
         const favoriteMaterials = Array.isArray(favoriteMaterialsRes) ? favoriteMaterialsRes : [];
 
-        const apiLessons = (lessonsRes.lessons || []).map(m => ({
+        const apiLessons = ((lessonsRes && lessonsRes.lessons) || []).map(m => ({
           id: m.id,
           type: 'lesson',
           title: m.title || 'Bài học',
@@ -115,38 +116,38 @@ export default function MyLessons() {
           status: Number(m.progress) >= 100 ? 'done' : Number(m.progress) > 0 ? 'learning' : 'new',
           isSaved: Boolean(Number(m.is_saved || 0)),
           isFavorite: Boolean(Number(m.is_favorite || 0)),
-          updatedAt: new Date(m.created_at).toLocaleDateString('vi-VN')
+          updatedAt: m.created_at ? new Date(m.created_at).toLocaleDateString('vi-VN') : '---'
         }));
 
-        const apiWorksheets = wsRes.map(w => ({
+        const apiWorksheets = (wsRes || []).map(w => ({
           id: w.id,
           type: 'worksheet',
           title: w.title || 'Phiếu học tập',
-          groupName: w.group_name,
+          groupName: w.group_name || 'Lớp chung',
           materialTitle: w.material_title,
-          status: 'worksheet',
-          updatedAt: new Date(w.created_at).toLocaleDateString('vi-VN')
+          status: w.submission_id ? (w.score !== null ? 'graded' : 'submitted') : 'worksheet',
+          score: w.score,
+          feedback: w.feedback,
+          updatedAt: w.created_at ? new Date(w.created_at).toLocaleDateString('vi-VN') : '---'
         }));
 
-        const mergedLessons = mergeLessons(
-          apiLessons,
-          savedMaterials,
-          favoriteMaterials
-        );
+        const mergedLessons = mergeLessons(apiLessons, savedMaterials, favoriteMaterials);
 
         setLessons(mergedLessons);
         setWorksheets(apiWorksheets);
         seedMaterialStates(mergedLessons);
-        setMyGroups(groupsRes);
+        setMyGroups(groupsRes || []);
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
         setLoading(false);
       }
     };
-    if (user) {
-      fetchData();
-    }
+
+    fetchData();
+    const handleFocus = () => fetchData();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [user]);
 
   React.useEffect(() => {
@@ -368,9 +369,19 @@ export default function MyLessons() {
                       </span>
                     </>
                   ) : (
-                    <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-black rounded uppercase border border-blue-500/20">
-                      Bài tập tự luận
-                    </span>
+                    item.status === 'graded' ? (
+                      <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black rounded uppercase border border-emerald-500/20">
+                        Đã chấm: {item.score}/10
+                      </span>
+                    ) : item.status === 'submitted' ? (
+                      <span className="px-2 py-1 bg-amber-500/10 text-amber-400 text-[10px] font-black rounded uppercase border border-amber-500/20">
+                        Đang chờ chấm
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-black rounded uppercase border border-blue-500/20">
+                        Bài tập tự luận
+                      </span>
+                    )
                   )}
                 </div>
 
@@ -430,7 +441,13 @@ export default function MyLessons() {
                       }`}
                     >
                       {item.type === 'worksheet' ? (
-                        <><Edit3 className="w-3.5 h-3.5" /> Làm bài</>
+                        item.status === 'graded' ? (
+                          <><CheckCircle2 className="w-3.5 h-3.5" /> Xem kết quả</>
+                        ) : item.status === 'submitted' ? (
+                          <><Search className="w-3.5 h-3.5" /> Xem lại bài</>
+                        ) : (
+                          <><Edit3 className="w-3.5 h-3.5" /> Làm bài</>
+                        )
                       ) : item.progress >= 100 ? (
                         <><CheckCircle2 className="w-3.5 h-3.5" /> Xem lại</>
                       ) : item.progress > 0 ? (

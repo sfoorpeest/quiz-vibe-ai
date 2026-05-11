@@ -70,9 +70,15 @@ router.get('/worksheets/all', auth, checkRole([2, 3]), eduController.getAllWorks
 router.get('/worksheets/public/:id', eduController.getWorksheetById);
 router.get('/worksheets/assigned', auth, checkRole([1]), eduController.getWorksheetsForStudent);
 router.post('/worksheets/generate', auth, checkRole([2, 3]), eduController.generateWorksheetWithAI);
+router.post('/worksheets', auth, checkRole([2, 3]), eduController.createWorksheet);
+router.put('/worksheets/:id', auth, checkRole([2, 3]), eduController.updateWorksheet);
+router.post('/worksheets/assign', auth, checkRole([2, 3]), eduController.assignWorksheetToGroups);
 router.post('/worksheets/submit', auth, checkRole([1, 2, 3]), eduController.submitWorksheet);
 router.delete('/worksheets/:id', auth, checkRole([2, 3]), eduController.deleteWorksheet);
 router.get('/worksheets/material/:material_id', auth, eduController.getWorksheetsByMaterial);
+router.get('/worksheets/:worksheet_id/submissions', auth, checkRole([2, 3]), eduController.getWorksheetSubmissions);
+router.get('/worksheets/:id/my-submission', auth, eduController.getMySubmissionForWorksheet);
+router.put('/worksheets/submissions/:submission_id/feedback', auth, checkRole([2, 3]), eduController.updateSubmissionFeedback);
 
 // 7. Quản trị hệ thống (Chỉ Admin mới có quyền)
 router.get('/admin/stats', auth, checkRole([3]), eduController.getSystemStats);

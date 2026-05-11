@@ -7,10 +7,13 @@ import { School, User, Phone, BookOpen } from 'lucide-react';
 // ═══════════════════════════════════════════════════════════════
 
 /* ─── HEADER BLOCK: Trường, Lớp, Họ tên, SĐT ─── */
-export function HeaderBlock({ data, onChange, editable }) {
+export function HeaderBlock({ data, onChange, editable, answers = {}, onAnswerChange, readOnly }) {
   const handleChange = (field, value) => {
-    if (onChange) onChange({ ...data, [field]: value });
+    if (onChange && editable) onChange({ ...data, [field]: value });
+    if (onAnswerChange && !editable) onAnswerChange({ ...answers, [field]: value });
   };
+
+  const getVal = (field) => (editable ? data[field] : answers[field]) || '';
 
   return (
     <div className="ws-header-block">
@@ -19,44 +22,44 @@ export function HeaderBlock({ data, onChange, editable }) {
           <label className="ws-label">Trường:</label>
           <input
             type="text"
-            value={data.schoolName || ''}
+            value={getVal('schoolName')}
             onChange={e => handleChange('schoolName', e.target.value)}
             placeholder="..........................."
             className="ws-input"
-            readOnly={!editable}
+            readOnly={readOnly || (!editable && !onAnswerChange)}
           />
         </div>
         <div className="ws-header-field">
           <label className="ws-label">Họ và tên:</label>
           <input
             type="text"
-            value={data.studentName || ''}
+            value={getVal('studentName')}
             onChange={e => handleChange('studentName', e.target.value)}
             placeholder="..........................."
             className="ws-input"
-            readOnly={!editable}
+            readOnly={readOnly || (!editable && !onAnswerChange)}
           />
         </div>
         <div className="ws-header-field">
           <label className="ws-label">Lớp:</label>
           <input
             type="text"
-            value={data.className || ''}
+            value={getVal('className')}
             onChange={e => handleChange('className', e.target.value)}
             placeholder="..............."
             className="ws-input ws-input-short"
-            readOnly={!editable}
+            readOnly={readOnly || (!editable && !onAnswerChange)}
           />
         </div>
         <div className="ws-header-field">
           <label className="ws-label">SĐT:</label>
           <input
             type="text"
-            value={data.phone || ''}
+            value={getVal('phone')}
             onChange={e => handleChange('phone', e.target.value)}
             placeholder="..........................."
             className="ws-input"
-            readOnly={!editable}
+            readOnly={readOnly || (!editable && !onAnswerChange)}
           />
         </div>
       </div>
@@ -65,9 +68,19 @@ export function HeaderBlock({ data, onChange, editable }) {
 }
 
 /* ─── TABLE BLOCK: Bảng key-value (1 cột label + dòng trả lời) ─── */
-export function TableBlock({ data, onChange, editable }) {
+export function TableBlock({ data, onChange, editable, answers = {}, onAnswerChange, readOnly }) {
   const handleQuestionChange = (value) => {
     if (onChange) onChange({ ...data, question: value });
+  };
+
+  const handleAnswerChange = (rowIdx, lineIdx, value) => {
+    if (onAnswerChange) {
+      const currentAnswers = answers.rows || [];
+      const newRows = [...currentAnswers];
+      if (!newRows[rowIdx]) newRows[rowIdx] = [];
+      newRows[rowIdx][lineIdx] = value;
+      onAnswerChange({ ...answers, rows: newRows });
+    }
   };
 
   const handleAddRow = () => {
@@ -132,7 +145,13 @@ export function TableBlock({ data, onChange, editable }) {
               <td className="ws-table-answer-cell">
                 {Array.from({ length: row.lines }).map((_, lineIdx) => (
                   <div key={lineIdx} className="ws-dotted-line">
-                    <input type="text" className="ws-line-input" placeholder="" />
+                    <input
+                      type="text"
+                      className="ws-line-input"
+                      value={(answers.rows?.[idx]?.[lineIdx]) || ''}
+                      onChange={e => handleAnswerChange(idx, lineIdx, e.target.value)}
+                      readOnly={readOnly || !onAnswerChange}
+                    />
                   </div>
                 ))}
               </td>
@@ -150,9 +169,19 @@ export function TableBlock({ data, onChange, editable }) {
 }
 
 /* ─── TWO COLUMN TABLE BLOCK: Bảng 2 cột (đồng nghĩa / trái nghĩa) ─── */
-export function TwoColumnTableBlock({ data, onChange, editable }) {
+export function TwoColumnTableBlock({ data, onChange, editable, answers = {}, onAnswerChange, readOnly }) {
   const handleQuestionChange = (value) => {
     if (onChange) onChange({ ...data, question: value });
+  };
+
+  const handleAnswerChange = (rowIdx, colIdx, value) => {
+    if (onAnswerChange) {
+      const currentAnswers = answers.cells || [];
+      const newCells = [...currentAnswers];
+      if (!newCells[rowIdx]) newCells[rowIdx] = [];
+      newCells[rowIdx][colIdx] = value;
+      onAnswerChange({ ...answers, cells: newCells });
+    }
   };
 
   const handleRowsChange = (delta) => {
@@ -183,7 +212,7 @@ export function TwoColumnTableBlock({ data, onChange, editable }) {
         </thead>
         <tbody>
           {/* Sample row */}
-          <tr className="ws-sample-row">
+          <tr className="ws-sample-row no-print">
             {data.columns.map((col, idx) => (
               <td key={idx} className="ws-sample-cell">{col.sample}</td>
             ))}
@@ -194,7 +223,13 @@ export function TwoColumnTableBlock({ data, onChange, editable }) {
               {data.columns.map((_, colIdx) => (
                 <td key={colIdx} className="ws-answer-cell">
                   <div className="ws-dotted-line">
-                    <input type="text" className="ws-line-input" placeholder="" />
+                    <input
+                      type="text"
+                      className="ws-line-input"
+                      value={(answers.cells?.[rowIdx]?.[colIdx]) || ''}
+                      onChange={e => handleAnswerChange(rowIdx, colIdx, e.target.value)}
+                      readOnly={readOnly || !onAnswerChange}
+                    />
                   </div>
                 </td>
               ))}
@@ -214,9 +249,18 @@ export function TwoColumnTableBlock({ data, onChange, editable }) {
 }
 
 /* ─── OPEN QUESTION BLOCK: Câu hỏi tự luận + dòng kẻ ─── */
-export function OpenQuestionBlock({ data, onChange, editable }) {
+export function OpenQuestionBlock({ data, onChange, editable, answers = {}, onAnswerChange, readOnly }) {
   const handleQuestionChange = (value) => {
     if (onChange) onChange({ ...data, question: value });
+  };
+
+  const handleAnswerChange = (lineIdx, value) => {
+    if (onAnswerChange) {
+      const currentLines = answers.lines || [];
+      const newLines = [...currentLines];
+      newLines[lineIdx] = value;
+      onAnswerChange({ ...answers, lines: newLines });
+    }
   };
 
   const handleLinesChange = (delta) => {
@@ -241,7 +285,13 @@ export function OpenQuestionBlock({ data, onChange, editable }) {
       <div className="ws-answer-lines">
         {Array.from({ length: data.lines }).map((_, idx) => (
           <div key={idx} className="ws-dotted-line">
-            <input type="text" className="ws-line-input" placeholder="" />
+            <input
+              type="text"
+              className="ws-line-input"
+              value={(answers.lines?.[idx]) || ''}
+              onChange={e => handleAnswerChange(idx, e.target.value)}
+              readOnly={readOnly || !onAnswerChange}
+            />
           </div>
         ))}
       </div>
@@ -257,9 +307,18 @@ export function OpenQuestionBlock({ data, onChange, editable }) {
 }
 
 /* ─── FILL IN BLANK BLOCK: Điền vào chỗ trống ─── */
-export function FillInBlankBlock({ data, onChange, editable }) {
+export function FillInBlankBlock({ data, onChange, editable, answers = {}, onAnswerChange, readOnly }) {
   const handleQuestionChange = (value) => {
     if (onChange) onChange({ ...data, question: value });
+  };
+
+  const handleAnswerChange = (idx, value) => {
+    if (onAnswerChange) {
+      const currentAnswers = answers.items || [];
+      const newItems = [...currentAnswers];
+      newItems[idx] = value;
+      onAnswerChange({ ...answers, items: newItems });
+    }
   };
 
   const handlePromptChange = (idx, value) => {
@@ -317,7 +376,13 @@ export function FillInBlankBlock({ data, onChange, editable }) {
               <span className="ws-fill-prompt">{item.prompt}</span>
             )}
             <div className="ws-dotted-line">
-              <input type="text" className="ws-line-input" placeholder="" />
+              <input
+                type="text"
+                className="ws-line-input"
+                value={(answers.items?.[idx]) || ''}
+                onChange={e => handleAnswerChange(idx, e.target.value)}
+                readOnly={readOnly || !onAnswerChange}
+              />
             </div>
           </div>
         ))}
