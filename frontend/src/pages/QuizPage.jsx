@@ -109,8 +109,16 @@ export default function QuizPage() {
   // ----- STATE QUẢN LÝ SETUP QUIZ -----
   const [topic, setTopic] = useState(location.state?.topic || '');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [questions, setQuestions] = useState([]);
-  const [quizId, setQuizId] = useState(null);
+  const [questions, setQuestions] = useState(() => {
+    const payload = location.state?.quizData;
+    if (!payload) return [];
+    return Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload)
+        ? payload
+        : [];
+  });
+  const [quizId, setQuizId] = useState(location.state?.quizData?.quizId || null);
 
   // ----- STATE QUẢN LÝ ĐANG CHƠI QUIZ -----
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -186,6 +194,18 @@ export default function QuizPage() {
       setIsGenerating(false);
     }
   };
+
+  // Tự động bắt đầu nếu đã có topic nhưng chưa có câu hỏi (hoặc dùng dữ liệu truyền sang)
+  useEffect(() => {
+    if (questions.length > 0) {
+      if (!quizStartTimeRef.current) {
+        quizStartTimeRef.current = Date.now();
+      }
+    } else if (topic && !isGenerating) {
+      handleGenerate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ----- HANDLERS LÀM BÀI -----
   const currentQuestion = questions[currentIndex];

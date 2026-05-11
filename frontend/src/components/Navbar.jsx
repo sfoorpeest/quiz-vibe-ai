@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings, MessageCircle } from 'lucide-react';
+import { BrainCircuit, User, ChevronDown, Key, ShieldCheck, LogOut, Settings, MessageCircle, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import UserAvatar from './UserAvatar';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadCount, isBubbleOpen, setIsBubbleOpen } = useChat();
   const location = useLocation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
@@ -50,10 +52,27 @@ export default function Navbar() {
                 title="Tin nhắn"
               >
                 <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className={`relative inline-flex rounded-full h-3 w-3 bg-blue-500 border ${isLight ? 'border-white' : 'border-slate-900'}`}></span>
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className={`relative inline-flex rounded-full h-3 w-3 bg-blue-500 border ${isLight ? 'border-white' : 'border-slate-900'}`}></span>
+                  </span>
+                )}
+              </button>
+              
+              {/* Nút bật/tắt Chat Bubble */}
+              <button 
+                onClick={() => setIsBubbleOpen(!isBubbleOpen)}
+                className={`relative p-2 rounded-xl border transition-all group shadow-lg ${
+                  isBubbleOpen
+                    ? 'bg-blue-600 border-blue-500 text-white shadow-blue-500/40' 
+                    : (isLight 
+                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600 hover:text-blue-600' 
+                        : 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700/50 hover:border-blue-500/50 text-slate-300 hover:text-blue-400')
+                }`}
+                title={isBubbleOpen ? "Đóng bong bóng chat" : "Bật bong bóng chat"}
+              >
+                <MessageSquare className={`w-5 h-5 ${isBubbleOpen ? 'scale-110' : 'group-hover:scale-110'} transition-transform`} />
               </button>
 
               <div className="relative" ref={profileRef}>

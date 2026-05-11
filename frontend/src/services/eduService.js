@@ -99,7 +99,7 @@ export const eduService = {
     const response = await api.get('/api/edu/worksheets/all');
     return unwrapData(response, 'Get all worksheets');
   },
-  getAssignedWorksheets: async () => {
+  getWorksheetsForStudent: async () => {
     const response = await api.get('/api/edu/worksheets/assigned');
     return unwrapData(response, 'Get assigned worksheets');
   },
@@ -110,6 +110,18 @@ export const eduService = {
   generateWorksheet: async (materialId, title) => {
     const response = await api.post('/api/edu/worksheets/generate', { material_id: materialId, title });
     return unwrapData(response, 'Generate worksheet');
+  },
+  createWorksheet: async (data) => {
+    const response = await api.post('/api/edu/worksheets', data);
+    return unwrapData(response, 'Create worksheet');
+  },
+  updateWorksheet: async (id, data) => {
+    const response = await api.put(`/api/edu/worksheets/${id}`, data);
+    return unwrapData(response, 'Update worksheet');
+  },
+  assignWorksheetToGroups: async (worksheetId, groupIds) => {
+    const response = await api.post('/api/edu/worksheets/assign', { worksheet_id: worksheetId, group_ids: groupIds });
+    return unwrapData(response, 'Assign worksheet');
   },
   submitWorksheet: async (worksheetId, answers) => {
     const response = await api.post('/api/edu/worksheets/submit', { worksheet_id: worksheetId, answers });
@@ -122,6 +134,18 @@ export const eduService = {
   getWorksheetsByMaterial: async (materialId) => {
     const response = await api.get(`/api/edu/worksheets/material/${materialId}`);
     return unwrapData(response, 'Get worksheets by material');
+  },
+  getWorksheetSubmissions: async (worksheetId) => {
+    const response = await api.get(`/api/edu/worksheets/${worksheetId}/submissions`);
+    return unwrapData(response, 'Get worksheet submissions');
+  },
+  getMySubmission: async (worksheetId) => {
+    const response = await api.get(`/api/edu/worksheets/${worksheetId}/my-submission`);
+    return unwrapData(response, 'Get my submission');
+  },
+  updateSubmissionFeedback: async (submissionId, data) => {
+    const response = await api.put(`/api/edu/worksheets/submissions/${submissionId}/feedback`, data);
+    return unwrapData(response, 'Update submission feedback');
   },
   generateQuiz: async ({ topic, limit }) => {
     const response = await api.post('/api/quiz/generate', { topic, limit });

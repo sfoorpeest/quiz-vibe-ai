@@ -490,8 +490,8 @@
    ═══════════════════════════════════════════════════════════════ */
 @media print {
   /* Hide app chrome */
-  nav, footer, .ws-toolbar, .ws-add-row-btn, .ws-row-controls,
-  .ws-remove-row-btn, .no-print {
+  header, footer, nav, aside, .no-print,
+  .ws-toolbar, .ws-add-row-btn, .ws-row-controls, .ws-remove-row-btn {
     display: none !important;
   }
 
@@ -500,16 +500,47 @@
     color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset layout for print */
+  .relative.min-h-screen {
+    min-height: auto !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  .max-w-\[1400px\], .mx-auto, .px-6, .lg\:px-8 {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+
+  .grid {
+    display: block !important;
+  }
+
+  .lg\:col-span-3 {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .ws-paper {
     background: white !important;
+    color: #000 !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    padding: 1.5cm 2cm !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
     max-width: 100% !important;
     backdrop-filter: none !important;
+    position: static !important;
   }
 
   .ws-paper::before {

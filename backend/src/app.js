@@ -26,7 +26,15 @@ const server = http.createServer(app); // Tạo HTTP server từ app Express
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } })); // Cho phép load ảnh cross-origin
-app.use(cors()); // Cho phép FE truy cập
+
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || '*', // Cho phép origin từ env hoặc tất cả (cho dev)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(morgan('dev')); // Log request ra console
 app.use(express.json()); // Đọc dữ liệu JSON từ request body
 app.use('/api/auth', authRoutes);

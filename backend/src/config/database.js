@@ -7,8 +7,14 @@ const sequelize = new Sequelize(
   process.env.DB_PASS,
   {
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
-    logging: false, // Tắt log các câu lệnh SQL thô trong console cho sạch
+    logging: false,
+    dialectOptions: process.env.DB_HOST !== 'localhost' ? {
+      ssl: {
+        rejectUnauthorized: false // Cần thiết cho các Cloud DB như Aiven
+      }
+    } : {},
     pool: {
       max: 5,
       min: 0,
@@ -16,8 +22,8 @@ const sequelize = new Sequelize(
       idle: 10000
     },
     define: {
-      timestamps: true,        // Bật lên vì mình đã thêm created_at/updated_at vào migration
-      underscored: true,       // Giúp map 'createdAt' trong code thành 'created_at' trong DB
+      timestamps: true,
+      underscored: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at'
     }

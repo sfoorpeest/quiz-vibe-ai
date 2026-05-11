@@ -30,10 +30,10 @@ const aiService = require('../services/aiService');
  */
 
 const TOTAL_QUESTIONS = 10;
-const TICK_SECONDS = 12;          // Giây cho mỗi câu hỏi
+const TICK_SECONDS = 15;          // Giây cho mỗi câu hỏi
 const MIN_PLAYERS = 2;            // Tối thiểu để bắt đầu
 const MAX_PLAYERS = 8;            // Tối đa mỗi phòng
-const COUNTDOWN_SECONDS = 5;      // Đếm ngược trước khi bắt đầu
+const COUNTDOWN_SECONDS = 10;     // Đếm ngược trước khi bắt đầu (đủ thời gian cho nhiều người cùng vào)
 const CORRECT_POINTS = 100;       // Điểm cơ bản khi đúng
 const SPEED_BONUS_MAX = 50;       // Điểm bonus tối đa theo tốc độ
 
@@ -56,7 +56,8 @@ function generateRoomId() {
  */
 function findAvailableRoom() {
     for (const [roomId, room] of rooms) {
-        if (room.state === 'waiting' && room.players.size < MAX_PLAYERS) {
+        // Cho phép vào phòng khi đang 'waiting' HOẶC đang 'countdown'
+        if ((room.state === 'waiting' || room.state === 'countdown') && room.players.size < MAX_PLAYERS) {
             return roomId;
         }
     }
@@ -98,6 +99,12 @@ function sendNextQuestion(io, roomId) {
     const room = rooms.get(roomId);
     if (!room || room.state !== 'playing') return;
 
+    // Đảm bảo dừng timer cũ nếu có
+    if (room.timer) {
+        clearInterval(room.timer);
+        room.timer = null;
+    }
+
     const qIndex = room.currentQuestion;
 
     // Hết câu hỏi → kết thúc
@@ -118,12 +125,20 @@ function sendNextQuestion(io, roomId) {
         try { options = JSON.parse(options); } catch { options = []; }
     }
 
+    const playersList = Array.from(room.players.values()).map(p => ({
+        id: p.userId,
+        name: p.name,
+        score: p.score,
+        correctCount: p.correctCount
+    }));
+
     io.to(roomId).emit('game:question', {
         index: qIndex,
         total: room.questions.length,
         question: questionText,
         options: options,
-        timeLeft: TICK_SECONDS
+        timeLeft: TICK_SECONDS,
+        players: playersList
     });
 
     // Bắt đầu đếm ngược
@@ -294,6 +309,7 @@ function initGameSocket(io) {
                     questions: [],
                     currentQuestion: 0,
                     answeredThisRound: new Set(),
+                    readyPlayers: new Set(),
                     questionStartTime: null,
                     timer: null
                 };
@@ -322,6 +338,11 @@ function initGameSocket(io) {
             gameNs.to(roomId).emit('game:player_joined', { players: playersList, roomId });
             socket.emit('game:waiting', { roomId, players: playersList });
 
+            // Nếu người chơi vào lúc phòng đang countdown, thông báo cho họ biết
+            if (room.state === 'countdown' && room.currentCountdown !== undefined) {
+                socket.emit('game:countdown', { seconds: room.currentCountdown });
+            }
+
             // Nếu đủ người → bắt đầu countdown
             if (room.players.size >= MIN_PLAYERS && room.state === 'waiting') {
                 room.state = 'countdown';
@@ -329,11 +350,13 @@ function initGameSocket(io) {
                 // Countdown 5 giây
                 let countdown = COUNTDOWN_SECONDS;
                 const countdownTimer = setInterval(async () => {
+                    room.currentCountdown = countdown; // Lưu lại để người vào sau biết
                     gameNs.to(roomId).emit('game:countdown', { seconds: countdown });
                     countdown--;
 
                     if (countdown < 0) {
                         clearInterval(countdownTimer);
+                        delete room.currentCountdown;
 
                         // Tải câu hỏi từ AI
                         try {
@@ -346,14 +369,24 @@ function initGameSocket(io) {
 
                             room.state = 'playing';
                             room.currentQuestion = 0;
+                            room.readyPlayers.clear(); // Reset ready state trước khi bắt đầu
 
                             gameNs.to(roomId).emit('game:start', {
                                 totalQuestions: room.questions.length,
                                 players: playersList
                             });
 
-                            // Gửi câu hỏi đầu tiên
-                            sendNextQuestion(gameNs, roomId);
+                            // KHÔNG gọi sendNextQuestion ngay, chờ handshake 'game:client_ready'
+                            console.log(`🎮 Game: Room ${roomId} started. Waiting for players to be ready...`);
+                            
+                            // Timeout bảo vệ: Nếu sau 5 giây không đủ người ready, tự động bắt đầu
+                            room.startTimeout = setTimeout(() => {
+                                if (room.state === 'playing' && room.readyPlayers.size < room.players.size) {
+                                    console.log(`🎮 Game: Handshake timeout for ${roomId}. Starting anyway.`);
+                                    sendNextQuestion(gameNs, roomId);
+                                }
+                            }, 5000);
+
                         } catch (error) {
                             console.error('Game: Error generating questions:', error);
                             gameNs.to(roomId).emit('game:error', { message: 'Lỗi tạo câu hỏi. Vui lòng thử lại!' });
@@ -361,6 +394,27 @@ function initGameSocket(io) {
                         }
                     }
                 }, 1000);
+            }
+        });
+
+        // ═══ CLIENT READY HANDSHAKE ═══
+        socket.on('game:client_ready', ({ roomId }) => {
+            const room = rooms.get(roomId);
+            if (!room || room.state !== 'playing') return;
+
+            room.readyPlayers.add(socket.id);
+            console.log(`🎮 Game: Player ${socket.id} ready in ${roomId} (${room.readyPlayers.size}/${room.players.size})`);
+
+            // Nếu tất cả đã sẵn sàng → Gửi câu hỏi đầu tiên
+            if (room.readyPlayers.size >= room.players.size) {
+                if (room.startTimeout) {
+                    clearTimeout(room.startTimeout);
+                    room.startTimeout = null;
+                }
+                // Chỉ gửi câu hỏi đầu tiên nếu chưa bắt đầu (currentQuestion vẫn là 0)
+                if (room.timer === null && room.currentQuestion === 0) {
+                    sendNextQuestion(gameNs, roomId);
+                }
             }
         });
 
@@ -374,7 +428,16 @@ function initGameSocket(io) {
             if (questionIndex !== room.currentQuestion) return;
             if (room.answeredThisRound.has(socket.id)) return; // Đã trả lời rồi
 
+            const player = room.players.get(socket.id);
+            if (!player) return;
+
             room.answeredThisRound.add(socket.id);
+
+            // Thông báo cho cả phòng biết ai vừa chốt đáp án
+            gameNs.to(roomId).emit('game:player_answered', { 
+                playerId: player.userId, 
+                playerName: player.name 
+            });
 
             const q = room.questions[questionIndex];
             const isCorrect = answer === q.correct_answer;
@@ -383,11 +446,8 @@ function initGameSocket(io) {
             const points = calculatePoints(isCorrect, timeLeft);
 
             // Cập nhật điểm
-            const player = room.players.get(socket.id);
-            if (player) {
-                player.score += points;
-                if (isCorrect) player.correctCount++;
-            }
+            player.score += points;
+            if (isCorrect) player.correctCount++;
 
             // Nếu tất cả đã trả lời → kết thúc câu sớm
             if (room.answeredThisRound.size >= room.players.size) {
@@ -439,7 +499,21 @@ function handlePlayerLeave(io, socket) {
     // Nếu phòng trống → xóa phòng
     if (room.players.size === 0) {
         if (room.timer) clearInterval(room.timer);
+        if (room.startTimeout) clearTimeout(room.startTimeout);
         rooms.delete(roomId);
+    }
+    // Nếu đang trong quá trình chờ handshake mà có người rời
+    else if (room.state === 'playing' && room.currentQuestion === 0 && room.readyPlayers) {
+        room.readyPlayers.delete(socket.id);
+        if (room.readyPlayers.size >= room.players.size && room.players.size > 0) {
+            if (room.startTimeout) {
+                clearTimeout(room.startTimeout);
+                room.startTimeout = null;
+            }
+            if (room.timer === null) {
+                sendNextQuestion(io, roomId);
+            }
+        }
     }
     // Nếu đang chơi mà chỉ còn 1 người → kết thúc (người còn lại thắng)
     else if (room.state === 'playing' && room.players.size < MIN_PLAYERS) {

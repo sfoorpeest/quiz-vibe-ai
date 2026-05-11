@@ -36,7 +36,7 @@ const AnimatedBackground = () => {
   const containerRef = useRef(null);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 perspective-1000 overflow-y-hidden pointer-events-none">
+    <div ref={containerRef} className="fixed inset-0 z-0 w-full h-full overflow-hidden bg-slate-950 perspective-1000 overflow-y-hidden pointer-events-none no-print">
       
       {/* Brighter and larger background glowing blobs (blue & purple palette) */}
       <div className="absolute top-[-5%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-cyan-600/20 blur-[130px] animate-blob" />

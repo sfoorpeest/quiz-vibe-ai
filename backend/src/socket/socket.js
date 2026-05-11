@@ -52,23 +52,33 @@ const initSocket = (server) => {
 
     // --- Xử lý khi có client kết nối thành công ---
     io.on('connection', (socket) => {
-        const userId = socket.user.id;
+        const userId = Number(socket.user.id);
         console.log(`🟢 User connected: ${userId} (Socket ID: ${socket.id})`);
 
-        // 1. Thêm user vào danh sách online
-        onlineUsers.set(userId, socket.id);
+        // 1. Gia nhập room cá nhân để nhận tin nhắn đa thiết bị
+        socket.join(`user_${userId}`);
+
+        // 2. Cập nhật trạng thái online
+        if (!onlineUsers.has(userId)) {
+            onlineUsers.set(userId, new Set());
+            // Thông báo cho mọi người user này vừa online
+            io.emit('user_online', userId);
+        }
+        onlineUsers.get(userId).add(socket.id);
+
+        // 3. Gửi danh sách user đang online cho người vừa kết nối
+        socket.emit('online_users_list', Array.from(onlineUsers.keys()));
 
         // =========================================================
         // Event: 'send_message'
         // Workflow: Client gửi tin nhắn văn bản → Lưu DB → 
-        //           Tìm socket receiver → Emit 'receive_message' →
+        //           Gửi đến room người nhận → Emit 'receive_message' →
         //           Nếu receiver online, cập nhật status='delivered'
         // =========================================================
         socket.on('send_message', async (data, callback) => {
             try {
                 const { receiver_id, content, type, material_id } = data;
 
-                // Validate dữ liệu đầu vào
                 if (!receiver_id) {
                     if (typeof callback === 'function') callback({ success: false, error: 'Thiếu receiver_id' });
                     return;
@@ -81,37 +91,31 @@ const initSocket = (server) => {
                     content,
                     type: type || 'text',
                     material_id: material_id || null,
-                    status: 'sent' // Trạng thái ban đầu
+                    status: 'sent'
                 });
 
-                // --- Lấy thông tin người gửi để đính kèm vào payload ---
                 const sender = await User.findByPk(userId, { attributes: ['id', 'name'] });
-
                 let messagePayload = {
                     ...newMessage.toJSON(),
                     Sender: sender
                 };
 
                 // --- Kiểm tra người nhận có online không ---
-                const receiverSocketId = onlineUsers.get(Number(receiver_id));
+                const isOnline = onlineUsers.has(Number(receiver_id));
 
-                if (receiverSocketId) {
-                    // Receiver đang online → gửi tin nhắn đến họ
-                    io.to(receiverSocketId).emit('receive_message', messagePayload);
+                if (isOnline) {
+                    // Gửi đến tất cả socket của người nhận qua room
+                    io.to(`user_${receiver_id}`).emit('receive_message', messagePayload);
 
-                    // Cập nhật status thành 'delivered' trong DB
                     await newMessage.update({ status: 'delivered' });
                     messagePayload.status = 'delivered';
 
-                    // Thông báo cho sender biết tin nhắn đã được delivered
-                    // Sender sẽ cập nhật icon từ ✓ (sent) → ✓✓ (delivered)
                     socket.emit('message_delivered', {
                         messageId: newMessage.id,
                         status: 'delivered'
                     });
                 }
 
-                // --- Trả về kết quả cho sender (để FE cập nhật UI ngay) ---
                 if (typeof callback === 'function') {
                     callback({ success: true, message: messagePayload });
                 }
@@ -126,19 +130,12 @@ const initSocket = (server) => {
 
         // =========================================================
         // Event: 'mark_seen'
-        // Khi user mở một cuộc trò chuyện, client emit event này
-        // để đánh dấu tất cả tin nhắn từ senderId là 'seen'.
-        // 
-        // Workflow: Client emit → Update DB → Emit 'messages_seen' 
-        //           đến sender để FE cập nhật icon tick thành màu xanh
         // =========================================================
         socket.on('mark_seen', async ({ senderId }) => {
             try {
                 if (!senderId) return;
-
                 const { Op } = require('sequelize');
 
-                // Cập nhật tất cả tin nhắn chưa seen từ senderId → userId
                 const [updatedCount] = await Message.update(
                     { status: 'seen' },
                     {
@@ -150,16 +147,12 @@ const initSocket = (server) => {
                     }
                 );
 
-                // Nếu có tin nhắn được cập nhật, thông báo cho sender
                 if (updatedCount > 0) {
-                    const senderSocketId = onlineUsers.get(Number(senderId));
-                    if (senderSocketId) {
-                        // Sender sẽ cập nhật icon từ ✓✓ (delivered) → ✓✓ xanh (seen)
-                        io.to(senderSocketId).emit('messages_seen', {
-                            by: userId,       // userId đã xem
-                            from: senderId    // tin nhắn của senderId được xem
-                        });
-                    }
+                    // Thông báo cho tất cả thiết bị của sender qua room
+                    io.to(`user_${senderId}`).emit('messages_seen', {
+                        by: userId,
+                        from: senderId
+                    });
                 }
             } catch (error) {
                 console.error("❌ Mark Seen Socket Error:", error);
@@ -168,11 +161,19 @@ const initSocket = (server) => {
 
         // =========================================================
         // Event: 'disconnect'
-        // Xử lý khi user ngắt kết nối (đóng tab, mất mạng)
         // =========================================================
         socket.on('disconnect', () => {
             console.log(`🔴 User disconnected: ${userId}`);
-            onlineUsers.delete(userId);
+            
+            const userSockets = onlineUsers.get(userId);
+            if (userSockets) {
+                userSockets.delete(socket.id);
+                if (userSockets.size === 0) {
+                    onlineUsers.delete(userId);
+                    // Thông báo cho mọi người user này đã offline
+                    io.emit('user_offline', userId);
+                }
+            }
         });
     });
 

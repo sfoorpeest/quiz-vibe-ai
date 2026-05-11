@@ -159,22 +159,22 @@ export default function EduGames() {
                 <Gamepad2 className="w-4 h-4" /> Sảnh thi đấu
               </p>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50">
-                Edu Game Arena
+                Đấu trường Tri thức
               </h1>
               <p className="text-slate-400 mt-2 text-base">Thử thách kiến thức, leo rank, thu thập thẻ thành tích!</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Crown className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-extrabold text-white">Rank #{playerRank}</span>
+                <span className="text-sm font-extrabold text-white">Hạng #{playerRank}</span>
               </div>
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                <span className="text-sm font-bold text-slate-200">{Number(playerTotalScore).toLocaleString()} pts</span>
+                <span className="text-sm font-bold text-slate-200">{Number(playerTotalScore).toLocaleString()} điểm</span>
               </div>
               <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-xl px-4 py-2.5">
                 <Trophy className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-bold text-slate-200">{calculateWinRate()}% WR</span>
+                <span className="text-sm font-bold text-slate-200">{calculateWinRate()}% Thắng</span>
               </div>
               <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5">
                 <Flame className="w-4 h-4 text-amber-400" />
