@@ -1,12 +1,130 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns').promises;
+
+const smtpService = process.env.SMTP_SERVICE || 'gmail';
+const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+const contactReceiver = process.env.CONTACT_RECEIVER || smtpUser;
+const blockedTlds = new Set(['example', 'invalid', 'localhost', 'local', 'test', 'fake']);
+const trustedMailDomains = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'yahoo.com',
+  'icloud.com',
+  'proton.me',
+  'protonmail.com',
+  'aol.com',
+  'zoho.com'
+]);
+let transportVerifyPromise = null;
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: smtpService,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: smtpUser,
+    pass: smtpPass
   }
 });
+
+const isEmailStructureValid = (rawEmail) => {
+  if (!rawEmail || typeof rawEmail !== 'string') {
+    return false;
+  }
+
+  const email = rawEmail.trim().toLowerCase();
+  if (email.length < 6 || email.length > 254) {
+    return false;
+  }
+
+  const basicRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i;
+  if (!basicRegex.test(email)) {
+    return false;
+  }
+
+  const [localPart, domain] = email.split('@');
+  if (!localPart || !domain) {
+    return false;
+  }
+
+  if (localPart.length > 64 || localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return false;
+  }
+
+  const tld = labels[labels.length - 1];
+  if (!/^[a-z]{2,24}$/i.test(tld) || blockedTlds.has(tld.toLowerCase())) {
+    return false;
+  }
+
+  // Reject obviously unrealistic domains like single-char second-level domains (e.g. g.com, m.co)
+  const secondLevel = labels[labels.length - 2];
+  if (!secondLevel || secondLevel.length < 2) {
+    return false;
+  }
+
+  return labels.every((label) => /^[a-z0-9-]{1,63}$/i.test(label) && !label.startsWith('-') && !label.endsWith('-'));
+};
+
+const hasMxRecords = async (domain) => {
+  try {
+    const records = await dns.resolveMx(domain);
+    return Array.isArray(records) && records.length > 0;
+  } catch (error) {
+    return false;
+  }
+};
+
+const validateContactEmail = async (email) => {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!isEmailStructureValid(normalized)) {
+    return { valid: false, normalized, reason: 'INVALID_FORMAT' };
+  }
+
+  const domain = normalized.split('@')[1];
+  const hasMx = await hasMxRecords(domain);
+  if (!hasMx && !trustedMailDomains.has(domain)) {
+    return { valid: false, normalized, reason: 'INVALID_DOMAIN' };
+  }
+
+  return { valid: true, normalized, reason: null };
+};
+
+const ensureTransporterReady = async () => {
+  if (!transportVerifyPromise) {
+    transportVerifyPromise = transporter.verify().catch((error) => {
+      transportVerifyPromise = null;
+      throw error;
+    });
+  }
+  return transportVerifyPromise;
+};
+
+const normalizeAddress = (value) => String(value || '').trim().toLowerCase();
+
+const assertDeliverySucceeded = (info, expectedRecipient) => {
+  const expected = normalizeAddress(expectedRecipient);
+  const accepted = Array.isArray(info?.accepted) ? info.accepted.map(normalizeAddress) : [];
+  const rejected = Array.isArray(info?.rejected) ? info.rejected.map(normalizeAddress) : [];
+  const deliveredToExpected = accepted.some((item) => item === expected);
+
+  if (!deliveredToExpected || rejected.length > 0) {
+    const error = new Error('Email delivery was not accepted by SMTP server.');
+    error.code = 'EMAIL_DELIVERY_FAILED';
+    error.smtp = {
+      accepted: info?.accepted || [],
+      rejected: info?.rejected || [],
+      response: info?.response || null
+    };
+    throw error;
+  }
+};
 
 const sendResetEmail = async (email, link) => {
   const emailTemplate = `
@@ -64,7 +182,7 @@ const sendResetEmail = async (email, link) => {
 };
 
 const sendSupportNotificationToAdmin = async ({ name, email, message }) => {
-  const adminEmail = process.env.EMAIL_USER;
+  const adminEmail = contactReceiver;
   
   const emailTemplate = `
     <h3>Bạn có một yêu cầu hỗ trợ mới từ người dùng</h3>
@@ -74,13 +192,15 @@ const sendSupportNotificationToAdmin = async ({ name, email, message }) => {
     <p>${message.replace(/\n/g, '<br>')}</p>
   `;
 
-  await transporter.sendMail({
+  await ensureTransporterReady();
+  const info = await transporter.sendMail({
     from: '"Quiz Vibe AI - Hệ Thống" <noreply@quizvibe.vn>',
     to: adminEmail,
     replyTo: email,
     subject: "[SUPPORT TICKET] Yêu cầu hỗ trợ từ " + name,
     html: emailTemplate
   });
+  assertDeliverySucceeded(info, adminEmail);
 };
 
 const sendSupportConfirmationToUser = async (email, name) => {
@@ -93,12 +213,14 @@ const sendSupportConfirmationToUser = async (email, name) => {
     <p>Đội ngũ QuizVibe AI</p>
   `;
 
-  await transporter.sendMail({
+  await ensureTransporterReady();
+  const info = await transporter.sendMail({
     from: '"Quiz Vibe AI - Hỗ Trợ" <noreply@quizvibe.vn>',
     to: email,
     subject: "Xác nhận: Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn",
     html: emailTemplate
   });
+  assertDeliverySucceeded(info, email);
 };
 
-module.exports = { sendResetEmail, sendSupportNotificationToAdmin, sendSupportConfirmationToUser };
+module.exports = { sendResetEmail, sendSupportNotificationToAdmin, sendSupportConfirmationToUser, validateContactEmail };

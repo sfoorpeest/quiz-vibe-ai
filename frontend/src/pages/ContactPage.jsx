@@ -5,7 +5,34 @@ import Input from '../components/Input';
 import StaticContentLayout from '../components/StaticContentLayout';
 import { contactService } from '../services/contactService';
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,24}$/;
+const blockedTlds = new Set(['example', 'invalid', 'localhost', 'local', 'test', 'fake']);
+
+const isEmailLikelyValid = (value) => {
+  const email = String(value || '').trim().toLowerCase();
+
+  if (!emailRegex.test(email) || email.length > 254) {
+    return false;
+  }
+
+  const [localPart, domain] = email.split('@');
+  if (!localPart || !domain || localPart.length > 64 || localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return false;
+  }
+
+  const tld = labels[labels.length - 1];
+  const secondLevel = labels[labels.length - 2];
+  if (!secondLevel || secondLevel.length < 2 || blockedTlds.has(tld.toLowerCase())) {
+    return false;
+  }
+
+  return labels.every((label) => /^[a-z0-9-]{1,63}$/i.test(label) && !label.startsWith('-') && !label.endsWith('-'));
+};
 
 const initialForm = {
   name: '',
@@ -30,8 +57,8 @@ export default function ContactPage() {
 
     if (!form.email.trim()) {
       nextErrors.email = 'Vui lòng nhập email.';
-    } else if (!emailRegex.test(form.email.trim())) {
-      nextErrors.email = 'Email không đúng định dạng.';
+    } else if (!isEmailLikelyValid(form.email.trim())) {
+      nextErrors.email = 'Email không hợp lệ.';
     }
 
     if (!form.message.trim()) {
