@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { Gamepad2, Trophy, Star, Play, Users, Swords, Target, Clock, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
+import { ArrowLeft, Gamepad2, Trophy, Star, Play, Users, Swords, Target, Clock, Crown, Medal, Lock, Sparkles, ArrowRight, Zap, Shield, Flame } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -155,9 +155,18 @@ export default function EduGames() {
         <div className="mb-10">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div>
-              <p className="text-amber-400 text-sm font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                <Gamepad2 className="w-4 h-4" /> Sảnh thi đấu
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <button 
+                  onClick={() => navigate('/')}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-400 transition-all border border-slate-700/50 hover:border-amber-500/30"
+                  title="Về trang chủ"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <p className="text-amber-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Gamepad2 className="w-4 h-4" /> Sảnh thi đấu
+                </p>
+              </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50">
                 Đấu trường Tri thức
               </h1>

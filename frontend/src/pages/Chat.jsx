@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Search, MessageSquare, Loader2, Paperclip, FileText, Download, Forward, X, Check, CheckCheck } from 'lucide-react';
+import { Send, User, Search, MessageSquare, Loader2, Paperclip, FileText, Download, Forward, X, Check, CheckCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import Navbar from '../components/Navbar';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { searchUsers, uploadFileMessage, forwardMessage } from '../services/chatService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper: Lấy icon và màu sắc phù hợp với loại file dựa trên MIME type
 const getFileIcon = (fileType) => {
-    if (fileType?.includes('pdf')) return { label: 'PDF', color: 'text-red-500 bg-red-100' };
-    if (fileType?.includes('word') || fileType?.includes('document')) return { label: 'DOCX', color: 'text-blue-500 bg-blue-100' };
-    if (fileType?.includes('text')) return { label: 'TXT', color: 'text-slate-600 bg-slate-100' };
-    return { label: 'FILE', color: 'text-slate-600 bg-slate-100' };
+    if (fileType?.includes('pdf')) return { label: 'PDF', color: 'text-rose-400 bg-rose-500/20' };
+    if (fileType?.includes('word') || fileType?.includes('document')) return { label: 'DOCX', color: 'text-blue-400 bg-blue-500/20' };
+    if (fileType?.includes('text')) return { label: 'TXT', color: 'text-slate-300 bg-slate-500/20' };
+    return { label: 'FILE', color: 'text-slate-300 bg-slate-500/20' };
 };
 
 // Helper: Kiểm tra xem hai ngày có giống nhau không
@@ -140,10 +141,8 @@ export default function Chat() {
                 formData.append('content', inputMessage.trim());
             }
 
-            const newMessage = await uploadFileMessage(formData);
-            // Re-fetch contacts để cập nhật preview nếu cần
+            await uploadFileMessage(formData);
             fetchContacts();
-            
             setSelectedFile(null);
             setInputMessage('');
         } catch (error) {
@@ -162,7 +161,6 @@ export default function Chat() {
             await forwardMessage(forwardingMessage.id, receiverId);
             setForwardingMessage(null);
             setForwardSearchQuery('');
-            // Thông báo thành công hoặc fetch lại contacts
             fetchContacts();
         } catch (error) {
             console.error("Lỗi forward:", error);
@@ -173,63 +171,78 @@ export default function Chat() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="relative min-h-screen font-sans text-slate-50 flex flex-col overflow-hidden">
+            <AnimatedBackground />
             <Navbar />
             
-            <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex gap-6 h-[calc(100vh-64px)]">
+            <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex gap-6 h-[calc(100vh-64px)] relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 
-                {/* 1. Cột Sidebar (Danh bạ) */}
-                <div className="w-1/3 max-w-sm bg-white border border-slate-300 rounded-3xl overflow-hidden flex flex-col shadow-xl shadow-slate-200/50 hidden md:flex">
-                    <div className="p-5 border-b border-slate-200 bg-slate-50/50">
-                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5 text-blue-600" />
-                            Danh bạ
-                        </h2>
-                        <div className="mt-4 relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                {/* 1. Sidebar: Danh sách bạn bè */}
+                <div className="w-80 lg:w-96 flex-shrink-0 bg-slate-900/60 backdrop-blur-2xl border border-slate-700/30 rounded-[32px] overflow-hidden flex flex-col shadow-2xl shadow-black/40 hidden md:flex">
+                    <div className="p-6 border-b border-slate-800/50 bg-linear-to-b from-slate-800/30 to-transparent">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-black text-white flex items-center gap-2">
+                                <div className="p-2 bg-blue-500/20 rounded-lg">
+                                    <MessageSquare className="w-5 h-5 text-blue-400" />
+                                </div>
+                                Tin nhắn
+                            </h2>
+                            <div className="p-1.5 bg-slate-800/50 rounded-full border border-slate-700/50">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
                             <input 
                                 type="text" 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Tìm người mới..." 
-                                className="w-full bg-white text-sm text-slate-800 placeholder:text-slate-500 rounded-xl pl-9 pr-4 py-2.5 border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-sm"
+                                placeholder="Tìm kiếm hội thoại..." 
+                                className="w-full bg-slate-950/40 text-sm text-slate-200 placeholder:text-slate-600 rounded-2xl pl-11 pr-4 py-3 border border-slate-700/50 focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all shadow-inner"
                             />
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
                         {isLoadingContacts ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                                <p className="text-xs font-medium">Đang tải...</p>
+                            <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500/50" />
+                                <p className="text-xs font-bold tracking-widest uppercase">Đang đồng bộ...</p>
                             </div>
                         ) : (
                             (searchQuery.trim() ? searchResults : contacts).map((contact) => (
                                 <button
                                     key={contact.id}
                                     onClick={() => setSelectedContact(contact)}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-left group relative ${
                                         selectedContact?.id === contact.id
-                                            ? 'bg-blue-50 border border-blue-100 shadow-sm'
-                                            : 'hover:bg-slate-50 border border-transparent'
+                                            ? 'bg-blue-600/10 border border-blue-500/20 shadow-lg'
+                                            : 'hover:bg-slate-800/40 border border-transparent'
                                     }`}
                                 >
-                                    <div className={`w-10 h-10 rounded-full flex shrink-0 items-center justify-center shadow-lg relative ${
-                                        contact.role_id === 3 ? 'bg-amber-500/20 text-amber-500' :
-                                        contact.role_id === 2 ? 'bg-emerald-500/20 text-emerald-500' :
-                                        'bg-blue-500/20 text-blue-500'
+                                    {selectedContact?.id === contact.id && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full"></div>
+                                    )}
+                                    <div className={`w-12 h-12 rounded-2xl flex shrink-0 items-center justify-center shadow-2xl relative transition-transform group-hover:scale-105 ${
+                                        contact.role_id === 3 ? 'bg-linear-to-br from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/20' :
+                                        contact.role_id === 2 ? 'bg-linear-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/20' :
+                                        'bg-linear-to-br from-blue-500/20 to-violet-500/20 text-blue-400 border border-blue-500/20'
                                     }`}>
-                                        <User className="w-5 h-5" />
-                                        {/* Dot trạng thái online */}
+                                        <User className="w-6 h-6" />
                                         {onlineUsers.has(Number(contact.id)) && (
-                                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-slate-900 rounded-full"></span>
                                         )}
                                     </div>
-                                    <div className="overflow-hidden">
-                                        <h3 className="text-sm font-bold text-slate-800 truncate">{contact.name}</h3>
-                                        <p className="text-xs text-slate-500 truncate mt-0.5">
-                                            {contact.role_id === 3 ? 'Admin' : contact.role_id === 2 ? 'Giáo viên' : 'Học sinh'}
-                                        </p>
+                                    <div className="overflow-hidden flex-1">
+                                        <div className="flex justify-between items-center mb-0.5">
+                                            <h3 className="text-sm font-bold text-slate-100 truncate group-hover:text-white transition-colors">{contact.name}</h3>
+                                            <span className="text-[10px] text-slate-500 font-medium">12:45</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-slate-500 truncate mt-0.5 font-medium italic">
+                                                {contact.role_id === 3 ? 'Quản trị hệ thống' : contact.role_id === 2 ? 'Giáo viên bộ môn' : 'Học sinh năng động'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </button>
                             ))
@@ -237,30 +250,37 @@ export default function Chat() {
                     </div>
                 </div>
 
-                {/* 2. Cột Nội dung Chat */}
-                <div className="flex-1 bg-white border border-slate-300 rounded-3xl overflow-hidden flex flex-col shadow-xl shadow-slate-200/50">
+                {/* 2. Chat Area: Nội dung tin nhắn */}
+                <div className="flex-1 bg-slate-900/40 backdrop-blur-3xl border border-slate-700/30 rounded-[40px] overflow-hidden flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)]">
                     {selectedContact ? (
                         <>
                             {/* Header Chat */}
-                            <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center gap-4 z-10">
-                                <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                    <User className="w-5 h-5 text-white" />
+                            <div className="px-8 py-5 border-b border-slate-800/50 bg-slate-900/40 flex items-center justify-between z-10 backdrop-blur-xl">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-xl shadow-blue-500/20">
+                                        <User className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-extrabold text-white text-lg tracking-tight">{selectedContact.name}</h3>
+                                        {onlineUsers.has(Number(selectedContact.id)) ? (
+                                            <p className="text-[11px] text-emerald-400 font-black uppercase tracking-widest flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                                                Online
+                                            </p>
+                                        ) : (
+                                            <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest">Offline</p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-base">{selectedContact.name}</h3>
-                                    {onlineUsers.has(Number(selectedContact.id)) ? (
-                                        <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                            Đang hoạt động
-                                        </p>
-                                    ) : (
-                                        <p className="text-xs text-slate-400 font-medium">Ngoại tuyến</p>
-                                    )}
+                                <div className="flex items-center gap-2">
+                                    <button className="p-2.5 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl border border-slate-700/50 text-slate-400 hover:text-white transition-all">
+                                        <Search className="w-5 h-5" />
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Vùng Tin Nhắn */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
+                            {/* Messages Container */}
+                            <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-linear-to-b from-transparent to-slate-950/20 custom-scrollbar">
                                 {messages.map((msg, index) => {
                                     const isMe = msg.sender_id === user.id;
                                     const showDateSeparator = index === 0 || !isSameDay(messages[index-1].createdAt, msg.createdAt);
@@ -268,70 +288,76 @@ export default function Chat() {
                                     return (
                                         <React.Fragment key={msg.id || index}>
                                             {showDateSeparator && (
-                                                <div className="flex justify-center my-6">
-                                                    <span className="px-4 py-1.5 rounded-full bg-white text-slate-500 text-[11px] font-semibold tracking-wider uppercase border border-slate-300/50 shadow-sm">
+                                                <div className="flex justify-center my-10 relative">
+                                                    <div className="absolute inset-0 flex items-center">
+                                                        <div className="w-full border-t border-slate-800/50"></div>
+                                                    </div>
+                                                    <span className="relative px-6 py-2 rounded-full bg-slate-900 border border-slate-700/50 text-slate-400 text-[10px] font-black tracking-[0.2em] uppercase shadow-2xl">
                                                         {formatDateSeparator(msg.createdAt)}
                                                     </span>
                                                 </div>
                                             )}
                                             <motion.div
-                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                initial={{ opacity: 0, x: isMe ? 20 : -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
                                                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                             >
-                                                <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                                    <div className={`px-5 py-3 rounded-2xl shadow-sm border ${
+                                                <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                                    <div className={`group relative px-6 py-4 rounded-[28px] shadow-2xl transition-all hover:scale-[1.01] ${
                                                         isMe 
-                                                            ? 'bg-blue-600 text-white rounded-br-sm border-blue-500 shadow-blue-200' 
-                                                            : 'bg-white text-slate-800 rounded-bl-sm border-slate-300'
+                                                            ? 'bg-linear-to-br from-blue-600 to-indigo-700 text-white rounded-br-md border-t border-white/20' 
+                                                            : 'bg-slate-800/80 backdrop-blur-md text-slate-100 rounded-bl-md border border-slate-700/50 shadow-black/40'
                                                     }`}>
-                                                        {/* Hiển thị tệp đính kèm */}
+                                                        {/* File Attachment Styling */}
                                                         {msg.type === 'file' && (
-                                                            <div className="mb-2 p-3 bg-white/10 rounded-xl border border-white/20 flex items-center gap-3">
-                                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${getFileIcon(msg.file_type).color}`}>
-                                                                    <FileText className="w-5 h-5" />
+                                                            <div className={`mb-3 p-4 rounded-2xl border flex items-center gap-4 ${
+                                                                isMe ? 'bg-white/10 border-white/20' : 'bg-slate-950/40 border-slate-700'
+                                                            }`}>
+                                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${getFileIcon(msg.file_type).color}`}>
+                                                                    <FileText className="w-6 h-6" />
                                                                 </div>
-                                                                <div className="overflow-hidden">
-                                                                    <p className="text-sm font-bold truncate">{msg.file_name}</p>
-                                                                    <p className="text-[10px] opacity-70 uppercase tracking-wider">{getFileIcon(msg.file_type).label}</p>
+                                                                <div className="overflow-hidden flex-1 pr-2">
+                                                                    <p className="text-sm font-black truncate leading-tight mb-1">{msg.file_name}</p>
+                                                                    <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest">{getFileIcon(msg.file_type).label}</p>
                                                                 </div>
-                                                                <a 
-                                                                    href={`${import.meta.env.VITE_API_URL}${msg.file_path}`} 
-                                                                    target="_blank" 
-                                                                    rel="noreferrer"
-                                                                    className="p-2 hover:bg-white/20 rounded-lg transition-colors ml-auto"
-                                                                    title="Tải xuống"
-                                                                >
-                                                                    <Download className="w-4 h-4" />
-                                                                </a>
-                                                                {/* Nút Forward */}
-                                                                <button 
-                                                                    onClick={() => setForwardingMessage(msg)}
-                                                                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                                                                    title="Chuyển tiếp"
-                                                                >
-                                                                    <Forward className="w-4 h-4" />
-                                                                </button>
+                                                                <div className="flex gap-1">
+                                                                    <a 
+                                                                        href={`${import.meta.env.VITE_API_URL}${msg.file_path}`} 
+                                                                        target="_blank" 
+                                                                        rel="noreferrer"
+                                                                        className={`p-2.5 rounded-xl transition-all ${isMe ? 'hover:bg-white/20' : 'hover:bg-slate-700/50'}`}
+                                                                        title="Tải xuống"
+                                                                    >
+                                                                        <Download className="w-4 h-4" />
+                                                                    </a>
+                                                                    <button 
+                                                                        onClick={() => setForwardingMessage(msg)}
+                                                                        className={`p-2.5 rounded-xl transition-all ${isMe ? 'hover:bg-white/20' : 'hover:bg-slate-700/50'}`}
+                                                                        title="Chuyển tiếp"
+                                                                    >
+                                                                        <Forward className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         )}
                                                         
-                                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p>
                                                     </div>
                                                     
-                                                    <div className="flex items-center gap-1.5 mt-1.5 px-1">
-                                                        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">
+                                                    <div className="flex items-center gap-2 mt-2 px-2">
+                                                        <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
                                                             {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                         {isMe && (
                                                             <div className="flex items-center">
-                                                                {msg.status === 'sent' && <Check className="w-3 h-3 text-slate-300" />}
-                                                                {msg.status === 'delivered' && <CheckCheck className="w-3 h-3 text-slate-300" />}
-                                                                {msg.status === 'seen' && <CheckCheck className="w-3 h-3 text-blue-500" />}
+                                                                {msg.status === 'sent' && <Check className="w-3 h-3 text-slate-600" />}
+                                                                {msg.status === 'delivered' && <CheckCheck className="w-3 h-3 text-slate-600" />}
+                                                                {msg.status === 'seen' && <CheckCheck className="w-3 h-3 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />}
                                                             </div>
                                                         )}
                                                         {msg.is_forwarded && (
-                                                            <span className="text-[9px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded italic">
-                                                                ↪ Đã chuyển tiếp
+                                                            <span className="text-[9px] text-indigo-400 font-black bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+                                                                REDIRECTED
                                                             </span>
                                                         )}
                                                     </div>
@@ -343,140 +369,133 @@ export default function Chat() {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* Khu vực nhập tin nhắn */}
-                            <div className="p-4 border-t border-slate-200 bg-white flex flex-col gap-2">
-                                {/* Preview file đã chọn (trước khi gửi) */}
+                            {/* Input Area: Thanh nhập liệu */}
+                            <div className="p-6 border-t border-slate-800/50 bg-slate-900/60 backdrop-blur-xl">
                                 {selectedFile && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-sm text-slate-600 animate-in slide-in-from-bottom-2">
-                                        <FileText className="w-4 h-4 text-blue-500" />
-                                        <span className="flex-1 truncate font-medium">{selectedFile.name}</span>
-                                        <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-red-500">
-                                            <X className="w-4 h-4" />
+                                    <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-blue-500/10 rounded-2xl border border-blue-500/30 text-sm text-blue-300 animate-in slide-in-from-bottom-2">
+                                        <FileText className="w-5 h-5 text-blue-400" />
+                                        <span className="flex-1 truncate font-bold uppercase tracking-tight">{selectedFile.name}</span>
+                                        <button onClick={() => setSelectedFile(null)} className="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded-lg transition-all">
+                                            <X className="w-5 h-5" />
                                         </button>
                                     </div>
                                 )}
 
-                                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                                    {/* Input File Ẩn */}
-                                    <input 
-                                        type="file" 
-                                        ref={fileInputRef} 
-                                        onChange={handleFileUpload}
-                                        accept=".pdf,.docx,.doc,.txt"
-                                        className="hidden"
-                                        id="chat-file-input"
-                                    />
+                                <form onSubmit={handleSendMessage} className="flex items-center gap-4">
+                                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".pdf,.docx,.doc,.txt" className="hidden" id="chat-file-input" />
 
-                                    {/* Nút đính kèm file */}
                                     {(user?.role_id === 2 || user?.role_id === 3) && (
                                         <button 
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="w-11 h-11 rounded-full bg-slate-50 border border-slate-300 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:border-blue-500/50 transition-all shrink-0"
-                                            title="Đính kèm tài liệu (PDF, DOCX, TXT)"
+                                            className="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all shrink-0 group active:scale-95"
                                         >
-                                            <Paperclip className="w-5 h-5" />
+                                            <Paperclip className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                                         </button>
                                     )}
 
-                                    <input 
-                                        type="text" 
-                                        value={inputMessage}
-                                        onChange={(e) => setInputMessage(e.target.value)}
-                                        placeholder={selectedFile ? "Thêm lời nhắn kèm file (tuỳ chọn)..." : "Nhập tin nhắn của bạn..."}
-                                        className="flex-1 bg-slate-50 text-slate-900 placeholder:text-slate-500 rounded-full px-6 py-3 border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-sm"
-                                    />
+                                    <div className="flex-1 relative group">
+                                        <input 
+                                            type="text" 
+                                            value={inputMessage}
+                                            onChange={(e) => setInputMessage(e.target.value)}
+                                            placeholder={selectedFile ? "Thêm ghi chú..." : "Viết tin nhắn của bạn..."}
+                                            className="w-full bg-slate-950/60 text-white placeholder:text-slate-600 rounded-2xl px-7 py-4 border border-slate-800 group-hover:border-slate-700 focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all shadow-inner text-sm font-medium"
+                                        />
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-slate-700 group-focus-within:text-blue-500/40 transition-colors" />
+                                        </div>
+                                    </div>
 
-                                    {/* Nút gửi */}
                                     <button 
                                         type="button"
                                         onClick={selectedFile ? confirmSendFile : handleSendMessage}
                                         disabled={isUploading || (!inputMessage.trim() && !selectedFile)}
-                                        className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 transition-all hover:scale-105 active:scale-95 shrink-0"
+                                        className="w-14 h-14 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] disabled:opacity-30 disabled:grayscale transition-all active:scale-95 shrink-0"
                                     >
-                                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                        {isUploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
                                     </button>
                                 </form>
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                            {/* Màn hình chờ khi chưa chọn ai */}
-                            <div className="w-24 h-24 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mb-6 shadow-xl shadow-slate-200/50">
-                                <MessageSquare className="w-10 h-10 text-slate-300" />
+                        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                            <div className="relative mb-10">
+                                <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-[60px] animate-pulse"></div>
+                                <div className="relative w-32 h-32 rounded-[40px] bg-slate-800/50 border border-slate-700/50 flex items-center justify-center shadow-2xl rotate-12">
+                                    <MessageSquare className="w-14 h-14 text-blue-400/60 -rotate-12" />
+                                </div>
                             </div>
-                            <h2 className="text-xl font-bold text-slate-800 mb-2">Xin chào, {user?.name}!</h2>
-                            <p className="text-sm font-medium text-slate-500">Chọn một người từ danh bạ để bắt đầu trò chuyện</p>
+                            <h2 className="text-3xl font-black text-white mb-4 bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">Trung tâm Liên lạc</h2>
+                            <p className="text-slate-500 max-w-sm leading-relaxed font-medium">Chào mừng bạn trở lại! Hãy chọn một người bạn để bắt đầu trao đổi kiến thức hoặc giải đáp thắc mắc.</p>
+                            <div className="mt-12 flex gap-4">
+                                <div className="px-5 py-2 bg-slate-800/40 rounded-xl border border-slate-700/30 text-[10px] font-black uppercase tracking-widest text-slate-500">Fast Connect</div>
+                                <div className="px-5 py-2 bg-slate-800/40 rounded-xl border border-slate-700/30 text-[10px] font-black uppercase tracking-widest text-slate-500">Secure P2P</div>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Modal Chuyển tiếp (Forward) */}
+            {/* Modal: Forwarding (Chuyển tiếp) */}
             <AnimatePresence>
                 {forwardingMessage && (
                     <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md"
                     >
                         <motion.div 
-                            initial={{ scale: 0.95, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 20 }}
-                            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 border border-white"
+                            initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
+                            className="bg-slate-900 w-full max-w-md rounded-[32px] shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden p-8 border border-slate-700/50 relative"
                         >
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                    <Forward className="w-5 h-5 text-blue-600" /> Chuyển tiếp tài liệu
+                            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                            
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-xl font-black text-white flex items-center gap-3">
+                                    <Forward className="w-6 h-6 text-indigo-400" /> Chuyển tiếp
                                 </h3>
-                                <button onClick={() => setForwardingMessage(null)} className="text-slate-400 hover:text-slate-600">
+                                <button onClick={() => setForwardingMessage(null)} className="p-2 bg-slate-800/50 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded-xl transition-all">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            {/* Thông tin file đang được forward */}
-                            <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-300 flex items-center gap-3 text-sm">
-                                <FileText className="w-5 h-5 text-blue-500 shrink-0" />
-                                <span className="text-slate-700 truncate">{forwardingMessage.file_name || 'Tài liệu'}</span>
+                            <div className="mb-6 p-4 bg-slate-950/60 rounded-2xl border border-slate-800 flex items-center gap-4 text-sm">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                    <FileText className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <span className="text-slate-300 font-bold truncate">{forwardingMessage.file_name || 'Đang chọn...'}</span>
                             </div>
 
-                            {/* Tìm kiếm người nhận */}
-                            <div className="relative mb-3">
-                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <div className="relative mb-4">
+                                <Search className="w-4 h-4 text-slate-600 absolute left-4 top-1/2 -translate-y-1/2" />
                                 <input 
                                     type="text" 
                                     value={forwardSearchQuery}
                                     onChange={(e) => setForwardSearchQuery(e.target.value)}
-                                    placeholder="Tìm người để chuyển tiếp..." 
-                                    className="w-full bg-slate-50 text-sm text-slate-800 placeholder:text-slate-500 rounded-xl pl-9 pr-4 py-2.5 border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
+                                    placeholder="Tìm người nhận..." 
+                                    className="w-full bg-slate-950/40 text-sm text-white placeholder:text-slate-700 rounded-2xl pl-12 pr-4 py-3.5 border border-slate-800 focus:outline-none focus:border-indigo-500/50 transition-all"
                                     autoFocus
                                 />
                             </div>
 
-                            {/* Danh sách kết quả tìm kiếm */}
-                            <div className="max-h-52 overflow-y-auto space-y-1">
+                            <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                                 {(forwardSearchQuery.trim() ? forwardSearchResults : contacts).map(contact => (
                                     <button
                                         key={contact.id}
                                         onClick={() => handleForward(contact.id)}
                                         disabled={isForwarding}
-                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all text-left disabled:opacity-60"
+                                        className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-800/30 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all text-left disabled:opacity-40 group"
                                     >
-                                        <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                            <User className="w-4 h-4" />
+                                        <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                            <User className="w-5 h-5 text-slate-400 group-hover:text-indigo-400" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-800">{contact.name}</p>
-                                            <p className="text-xs text-slate-500">{contact.role_id === 3 ? 'Admin' : contact.role_id === 2 ? 'Giáo viên' : 'Học sinh'}</p>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-slate-200">{contact.name}</p>
+                                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{contact.role_id === 3 ? 'ADMIN' : contact.role_id === 2 ? 'TEACHER' : 'STUDENT'}</p>
                                         </div>
-                                        {isForwarding && <Loader2 className="w-4 h-4 animate-spin text-blue-500 ml-auto" />}
+                                        {isForwarding ? <Loader2 className="w-4 h-4 animate-spin text-indigo-400" /> : <Forward className="w-4 h-4 text-slate-600 group-hover:text-indigo-400" />}
                                     </button>
                                 ))}
-                                {forwardSearchQuery.trim() && forwardSearchResults.length === 0 && (
-                                    <p className="text-center text-slate-500 text-sm py-4">Không tìm thấy người dùng</p>
-                                )}
                             </div>
                         </motion.div>
                     </motion.div>

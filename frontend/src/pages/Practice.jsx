@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BrainCircuit, Sparkles, ArrowRight, Clock, CheckCircle2, XCircle, Search, History, Zap, Target, BookOpen } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, Sparkles, ArrowRight, Clock, CheckCircle2, XCircle, Search, History, Zap, Target, BookOpen } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -66,10 +66,19 @@ export default function Practice() {
       <div className="max-w-[1400px] mx-auto px-6 lg:px-8 relative z-10 pt-10 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 w-full">
 
         {/* ═══ CENTER HERO: AI Prompt Form ═══ */}
-        <div className="max-w-3xl mx-auto text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm font-bold mb-6">
-            <BrainCircuit className="w-4 h-4" />
-            AI-Powered Practice
+        <div className="max-w-3xl mx-auto text-center mb-16 flex flex-col items-center">
+          <div className="flex items-center gap-3 mb-6">
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-purple-500/20 text-slate-400 hover:text-purple-400 transition-all border border-slate-700/50 hover:border-purple-500/30"
+              title="Về trang chủ"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm font-bold">
+              <BrainCircuit className="w-4 h-4" />
+              Tự luyện tập AI
+            </div>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-50 mb-4 leading-tight">
             Luyện tập với

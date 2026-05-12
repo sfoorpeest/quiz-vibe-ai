@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star, Edit3, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Play, Heart, CheckCircle2, ArrowRight, Search, X, Bookmark, TrendingUp, Star, Edit3, Users } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -205,6 +205,18 @@ export default function MyLessons() {
         {/* ═══ HEADER: Chào mừng + Stats ═══ */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
           <div>
+            <div className="flex items-center gap-3 mb-2">
+              <button 
+                onClick={() => navigate('/')}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 transition-all border border-slate-700/50 hover:border-cyan-500/30"
+                title="Về trang chủ"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <p className="text-cyan-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <BookOpen className="w-4 h-4" /> Bài học của tôi
+              </p>
+            </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50">
               Hành trình của bạn, {user?.name || 'Học viên'} ✨
             </h1>
