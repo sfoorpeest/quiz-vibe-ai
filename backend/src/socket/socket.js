@@ -50,21 +50,24 @@ const initSocket = (server) => {
         }
     });
 
-    // --- Xử lý khi có client kết nối thành công ---
     io.on('connection', (socket) => {
         const userId = Number(socket.user.id);
         console.log(`🟢 User connected: ${userId} (Socket ID: ${socket.id})`);
 
         // 1. Gia nhập room cá nhân để nhận tin nhắn đa thiết bị
-        socket.join(`user_${userId}`);
+        if (!isNaN(userId)) {
+            socket.join(`user_${userId}`);
+        }
 
         // 2. Cập nhật trạng thái online
-        if (!onlineUsers.has(userId)) {
-            onlineUsers.set(userId, new Set());
-            // Thông báo cho mọi người user này vừa online
-            io.emit('user_online', userId);
+        if (!isNaN(userId)) {
+            if (!onlineUsers.has(userId)) {
+                onlineUsers.set(userId, new Set());
+                // Thông báo cho mọi người user này vừa online
+                io.emit('user_online', userId);
+            }
+            onlineUsers.get(userId).add(socket.id);
         }
-        onlineUsers.get(userId).add(socket.id);
 
         // 3. Gửi danh sách user đang online cho người vừa kết nối
         socket.emit('online_users_list', Array.from(onlineUsers.keys()));

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User, Tag, Hash, GraduationCap, LayoutGrid, Layers, Bookmark, Heart } from 'lucide-react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, FileText, Search, Download, Filter, X, File, Image, Video, BookOpen, SlidersHorizontal, ChevronDown, Eye, Clock, User, Tag, Hash, GraduationCap, LayoutGrid, Layers, Bookmark, Heart } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -65,6 +65,7 @@ function FilterSection({ title, icon, defaultOpen = true, children }) {
 }
 
 export default function Materials() {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [materials, setMaterials] = useState([]);
   const [pagination, setPagination] = useState({});
@@ -162,9 +163,18 @@ export default function Materials() {
         {/* ═══ HEADER ═══ */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <p className="text-emerald-400 text-sm font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-              <BookOpen className="w-4 h-4" /> Thư viện học liệu
-            </p>
+            <div className="flex items-center gap-3 mb-2">
+              <button 
+                onClick={() => navigate('/')}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-all border border-slate-700/50 hover:border-emerald-500/30"
+                title="Về trang chủ"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <p className="text-emerald-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <BookOpen className="w-4 h-4" /> Thư viện học liệu
+              </p>
+            </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-50">Kho tài liệu</h1>
             <p className="text-slate-400 mt-2 text-sm">{pagination.total || 0} tài liệu từ giảng viên và hệ thống</p>
           </div>
