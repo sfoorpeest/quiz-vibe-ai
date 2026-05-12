@@ -276,7 +276,15 @@ function initGameSocket(io) {
     });
 
     const updateOnlineCount = () => {
-        gameNs.emit('game:online_count', gameNs.sockets.size);
+        // Đếm số lượng User ID duy nhất thay vì số lượng socket connections
+        // Điều này giúp tránh việc 1 người mở nhiều tab bị đếm thành nhiều người
+        const uniqueUserIds = new Set();
+        gameNs.sockets.forEach((s) => {
+            if (s.user && s.user.id) {
+                uniqueUserIds.add(s.user.id);
+            }
+        });
+        gameNs.emit('game:online_count', uniqueUserIds.size);
     };
 
     gameNs.on('connection', (socket) => {
