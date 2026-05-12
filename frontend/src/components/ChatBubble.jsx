@@ -118,7 +118,7 @@ export default function ChatBubble() {
                                                             <div className="flex items-center gap-2 mb-1 p-2 bg-black/5 rounded-lg border border-black/5">
                                                                 <FileText className="w-4 h-4 text-blue-500" />
                                                                 <span className="truncate flex-1 text-xs">{msg.file_name}</span>
-                                                                <a href={`${import.meta.env.VITE_API_URL}${msg.file_path}`} target="_blank" rel="noreferrer">
+                                                                <a href={msg.file_path} target="_blank" rel="noreferrer">
                                                                     <Download className="w-3 h-3" />
                                                                 </a>
                                                             </div>

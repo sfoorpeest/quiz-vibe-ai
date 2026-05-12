@@ -296,7 +296,7 @@ export default function Chat() {
                                                                     <p className="text-[10px] opacity-70 uppercase tracking-wider">{getFileIcon(msg.file_type).label}</p>
                                                                 </div>
                                                                 <a 
-                                                                    href={`${import.meta.env.VITE_API_URL}${msg.file_path}`} 
+                                                                    href={msg.file_path} 
                                                                     target="_blank" 
                                                                     rel="noreferrer"
                                                                     className="p-2 hover:bg-white/20 rounded-lg transition-colors ml-auto"
