@@ -8,7 +8,7 @@ const { sendResetEmail } = require('../services/emailService');
 // 1. Hàm Đăng ký 
 exports.register = async (req, res) => {
     try {
-        const { name, email, password, secretCode } = req.body;
+        const { name, username, email, password, secretCode } = req.body;
 
         const userExists = await User.findOne({ where: { email } });
         if (userExists) return res.status(400).json({ success: false, message: "Email đã tồn tại", data: null, errorCode: "EMAIL_EXISTS" });
@@ -35,6 +35,7 @@ exports.register = async (req, res) => {
 
         const newUser = await User.create({
             name,
+            username: username ? String(username).trim() : name,
             email,
             password_hash: hashedPassword,
             role_id: assignedRoleId
@@ -48,6 +49,7 @@ exports.register = async (req, res) => {
             data: {
                 id: newUser.id,
                 name: newUser.name,
+                username: newUser.username,
                 email: newUser.email,
                 role_id: assignedRoleId
             },
@@ -94,6 +96,7 @@ exports.login = async (req, res) => {
                 user: {
                     id: user.id,
                     name: user.name,
+                    username: user.username,
                     email: user.email,
                     role_id: user.role_id
                 }

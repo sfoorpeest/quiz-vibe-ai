@@ -170,7 +170,7 @@ exports.getProfile = async (req, res) => {
         // Join users với user_profiles và badges (cho equipped badge)
         const [profile] = await sequelize.query(`
             SELECT 
-                u.id, u.name, u.email, u.role_id, u.created_at,
+                u.id, u.name, u.username, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
                 up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
                 up.featured_badges, up.equipped_badge_id,
@@ -217,7 +217,7 @@ exports.getProfile = async (req, res) => {
             message: "Lấy thông tin hồ sơ thành công.",
             data: {
                 ...profile,
-                username: profile.name,
+                username: profile.username || profile.name,
                 avatar: profile.avatar || null,
                 notificationEmail: Boolean(profile.notification_email),
                 notificationLearning: Boolean(profile.notification_learning),
@@ -256,17 +256,16 @@ exports.updateProfile = async (req, res) => {
         const userUpdates = [];
         const userReplacements = { userId };
 
-        let nextName = undefined;
-        if (hasField('name')) {
-            nextName = normalizeOptionalText(payload.name);
-        } else if (hasField('username')) {
-            // username trên frontend hiện ánh xạ cùng dữ liệu name
-            nextName = normalizeOptionalText(payload.username);
-        }
-
+        const nextName = hasField('name') ? normalizeOptionalText(payload.name) : undefined;
         if (nextName !== undefined && nextName !== null) {
             userUpdates.push('name = :name');
             userReplacements.name = nextName;
+        }
+
+        const nextUsername = hasField('username') ? normalizeOptionalText(payload.username) : undefined;
+        if (nextUsername !== undefined && nextUsername !== null) {
+            userUpdates.push('username = :username');
+            userReplacements.username = nextUsername;
         }
 
         if (hasField('email')) {
@@ -356,7 +355,7 @@ exports.updateProfile = async (req, res) => {
         // Trả về data mới bằng cách gọi getProfile logic (hoặc tương đương)
         const [updated] = await sequelize.query(`
             SELECT 
-                u.id, u.name, u.email, u.role_id, u.created_at,
+                u.id, u.name, u.username, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
                 up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
                 up.featured_badges, up.equipped_badge_id, up.updated_at AS avatarUpdatedAt
@@ -370,7 +369,7 @@ exports.updateProfile = async (req, res) => {
             message: "Cập nhật hồ sơ thành công.",
             data: {
                 ...updated,
-                username: updated.name,
+                username: updated.username || updated.name,
                 avatar: updated.avatar || null,
                 notificationEmail: Boolean(updated.notification_email),
                 notificationLearning: Boolean(updated.notification_learning),
@@ -478,7 +477,7 @@ exports.uploadAvatar = async (req, res) => {
         // Fetch lại data sạch
         const [updated] = await sequelize.query(`
             SELECT 
-                u.id, u.name, u.email, u.role_id, u.created_at,
+                u.id, u.name, u.username, u.email, u.role_id, u.created_at,
                 up.phone, up.birth_date AS birthDate, up.gender, up.address, up.bio, 
                 up.avatar_url AS avatar, up.notification_email, up.notification_learning, up.is_profile_private,
                 up.featured_badges, up.equipped_badge_id, up.updated_at AS avatarUpdatedAt
@@ -492,7 +491,7 @@ exports.uploadAvatar = async (req, res) => {
             message: "Upload avatar thành công.",
             data: {
                 ...updated,
-                username: updated.name,
+                username: updated.username || updated.name,
                 avatar: updated.avatar || null,
                 notificationEmail: Boolean(updated.notification_email),
                 notificationLearning: Boolean(updated.notification_learning),
