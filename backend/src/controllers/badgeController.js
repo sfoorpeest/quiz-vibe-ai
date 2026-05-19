@@ -17,7 +17,7 @@ exports.getAllBadges = async (req, res) => {
 
         // Lấy toàn bộ badges
         const badges = await sequelize.query(
-            'SELECT * FROM badges ORDER BY FIELD(tier, "BRONZE", "SILVER", "GOLD", "DIAMOND"), condition_value ASC',
+            "SELECT * FROM badges ORDER BY FIELD(tier, 'BRONZE', 'SILVER', 'GOLD', 'DIAMOND'), condition_value ASC",
             { type: QueryTypes.SELECT }
         );
 

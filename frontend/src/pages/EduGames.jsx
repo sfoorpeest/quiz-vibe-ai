@@ -66,6 +66,16 @@ export default function EduGames() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Lấy Badges độc lập để tránh bị chặn bởi lỗi leaderboard/stats
+        const resBadges = await api.get('/api/badges');
+        if (resBadges.data?.data?.all) {
+          setStudyCards(resBadges.data.data.all);
+        }
+      } catch (error) {
+        console.error('Error fetching badges:', error);
+      }
+
+      try {
         // 1. Lấy Leaderboard và Rank của tôi
         const resLeaderboard = await api.get('/api/quiz/leaderboard');
         if (resLeaderboard.data?.success && resLeaderboard.data?.data) {
@@ -84,21 +94,15 @@ export default function EduGames() {
         if (resStats.data && resStats.data.data) {
           setUserStats(resStats.data.data);
         }
-        
-        // 3. Lấy Badges (Study Cards)
-        const resBadges = await api.get('/api/badges');
-        if (resBadges.data && resBadges.data.data && resBadges.data.data.all) {
-          setStudyCards(resBadges.data.data.all);
-        }
 
-        // 4. Lấy số lượng người dùng online thực tế qua API (dự phòng)
+        // 3. Lấy số lượng người dùng online thực tế qua API (dự phòng)
         const resOnline = await api.get('/api/stats/online-count');
         if (resOnline.data && resOnline.data.status === 'success') {
           // Chỉ set nếu chưa có giá trị từ socket (socket sẽ realtime hơn)
           setOnlineCount(prev => prev > 0 ? prev : resOnline.data.count);
         }
       } catch (error) {
-        console.error("Error fetching EduGames data:", error);
+        console.error('Error fetching leaderboard/stats/online data:', error);
       } finally {
         setIsLoadingLeaderboard(false);
       }

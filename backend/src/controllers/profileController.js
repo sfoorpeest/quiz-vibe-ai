@@ -206,7 +206,7 @@ exports.getProfile = async (req, res) => {
         const featuredIds = parseFeaturedBadges(profile.featured_badges);
         if (featuredIds.length > 0) {
             const [highestBadge] = await sequelize.query(
-                'SELECT tier FROM badges WHERE id IN (?) ORDER BY FIELD(tier, "BRONZE", "SILVER", "GOLD", "DIAMOND") DESC LIMIT 1',
+                "SELECT tier FROM badges WHERE id IN (?) ORDER BY FIELD(tier, 'BRONZE', 'SILVER', 'GOLD', 'DIAMOND') DESC LIMIT 1",
                 { replacements: [featuredIds], type: QueryTypes.SELECT }
             );
             if (highestBadge) highestFeaturedTier = highestBadge.tier;
