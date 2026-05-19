@@ -173,6 +173,7 @@ const sendResetEmail = async (email, link) => {
     </html>
   `;
 
+  await ensureTransporterReady();
   await transporter.sendMail({
     from: '"Quiz Vibe AI - Hỗ Trợ" <noreply@quizvibe.vn>',
     to: email, // <--- THƯ SẼ ĐƯỢC GỬI ĐẾN ĐỊA CHỈ EMAIL DO NGƯỜI DÙNG NHẬP VÀO

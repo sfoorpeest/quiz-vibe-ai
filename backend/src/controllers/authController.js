@@ -156,8 +156,9 @@ exports.forgotPassword = async (req, res) => {
         user.resetTokenExpires = resetTokenExpires;
         await user.save();
 
-        const resetLink = `http://localhost:5173/forgot-password?token=${resetToken}`;
-
+        // Lấy URL frontend từ biến môi trường hoặc header origin của request
+        const frontendUrl = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173';
+        const resetLink = `${frontendUrl}/forgot-password?token=${resetToken}`;
         // =========================================================================
         // 🛠️ DEVELOPMENT LOGGING (DÀNH CHO TEAM FE & TESTER)
         // GHI CHÚ: Đoạn code này dùng để in trực tiếp Link Reset ra Terminal của Server.
@@ -178,8 +179,18 @@ exports.forgotPassword = async (req, res) => {
         try {
             await sendResetEmail(email, resetLink);
         } catch (mailError) {
+            console.error("Gửi email thất bại:", mailError);
             if (process.env.NODE_ENV !== "production") {
                 console.log(`⚠️ Không thể gửi mail tới ${email} (Có thể do email giả/sai cấu hình). Vui lòng dùng link ở Terminal để test tiếp.`);
+                // Ở local, có thể vẫn trả về success để test
+            } else {
+                // Ở production, nếu lỗi gửi mail, trả về lỗi thay vì báo thành công ảo
+                return res.status(500).json({ 
+                    success: false, 
+                    message: "Không thể gửi email đặt lại mật khẩu. Vui lòng kiểm tra lại cấu hình email (SMTP) trên server production.", 
+                    data: null, 
+                    errorCode: "SEND_MAIL_FAILED" 
+                });
             }
         }
 
