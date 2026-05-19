@@ -187,8 +187,10 @@ exports.forgotPassword = async (req, res) => {
                 // Ở production, nếu lỗi gửi mail, trả về lỗi thay vì báo thành công ảo
                 return res.status(500).json({ 
                     success: false, 
-                    message: "Không thể gửi email đặt lại mật khẩu. Vui lòng kiểm tra lại cấu hình email (SMTP) trên server production.", 
-                    data: null, 
+                    message: "Lỗi cấu hình gửi mail: " + (mailError.message || "Không xác định"), 
+                    data: {
+                        errorDetails: mailError.code || mailError.toString()
+                    }, 
                     errorCode: "SEND_MAIL_FAILED" 
                 });
             }
