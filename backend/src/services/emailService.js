@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 const dns = require('dns').promises;
 
+// Fix lỗi ENETUNREACH trên các server Production (Render, Vercel...) khi Node 17+ tự động ưu tiên IPv6 nhưng mạng không hỗ trợ.
+require('dns').setDefaultResultOrder('ipv4first');
+
 const smtpService = process.env.SMTP_SERVICE || 'gmail';
 const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
 const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
