@@ -1,34 +1,17 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config(); // Load biến môi trường từ .env
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
-    logging: false,
-    dialectOptions: process.env.DB_HOST !== 'localhost' ? {
-      ssl: {
-        rejectUnauthorized: false // Cần thiết cho các Cloud DB như Aiven
-      }
-    } : {},
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    define: {
-      timestamps: true,
-      underscored: true,
-      createdAt: 'created_at',
-      updatedAt: 'updated_at'
-    }
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: './database.sqlite',
+  logging: false,
+  define: {
+    timestamps: true,
+    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
   }
-);
+});
 
 // Kiểm tra kết nối
 const connectDB = async () => {

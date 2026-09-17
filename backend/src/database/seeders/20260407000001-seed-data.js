@@ -15,12 +15,12 @@ module.exports = {
       await queryInterface.sequelize.query(
         `INSERT INTO materials (id, title, description, content_url, content, created_by, created_at, updated_at) 
          VALUES (:id, :title, :description, :content_url, :content, :created_by, :created_at, :updated_at)
-         ON DUPLICATE KEY UPDATE 
-         title = VALUES(title), 
-         description = VALUES(description), 
-         content = VALUES(content), 
-         content_url = VALUES(content_url),
-         updated_at = VALUES(updated_at)`,
+         ON CONFLICT(id) DO UPDATE SET 
+         title = excluded.title, 
+         description = excluded.description, 
+         content = excluded.content, 
+         content_url = excluded.content_url,
+         updated_at = excluded.updated_at`,
         {
           replacements: {
             id: item.id,

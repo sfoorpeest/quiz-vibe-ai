@@ -11,17 +11,18 @@
  */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Dùng raw SQL để ALTER ENUM — cách đáng tin cậy nhất với MySQL
-    await queryInterface.sequelize.query(
-      `ALTER TABLE \`Messages\` MODIFY COLUMN \`type\` ENUM('text', 'file', 'material', 'image') NOT NULL DEFAULT 'text';`
-    );
+    if (queryInterface.sequelize.options.dialect !== 'sqlite') {
+      await queryInterface.sequelize.query(
+        `ALTER TABLE \`Messages\` MODIFY COLUMN \`type\` ENUM('text', 'file', 'material', 'image') NOT NULL DEFAULT 'text';`
+      );
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Rollback: Trả về ENUM gốc (xóa 'file' ra)
-    // Cảnh báo: Nếu DB đã có bản ghi type='file', lệnh này sẽ lỗi
-    await queryInterface.sequelize.query(
-      `ALTER TABLE \`Messages\` MODIFY COLUMN \`type\` ENUM('text', 'material', 'image') NOT NULL DEFAULT 'text';`
-    );
+    if (queryInterface.sequelize.options.dialect !== 'sqlite') {
+      await queryInterface.sequelize.query(
+        `ALTER TABLE \`Messages\` MODIFY COLUMN \`type\` ENUM('text', 'material', 'image') NOT NULL DEFAULT 'text';`
+      );
+    }
   }
 };

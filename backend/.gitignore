@@ -4,3 +4,9 @@ node_modules/
 
 # Bỏ qua tất cả các file trong public/materials (không push tài liệu lên Git)
 /public/materials/*
+
+# SQLite database file (chỉ dùng cho local demo, không push lên Git)
+database.sqlite
+
+# Script seed tạm thời dùng cho demo local
+seed-demo.js
